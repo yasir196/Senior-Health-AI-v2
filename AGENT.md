@@ -281,7 +281,7 @@ Apply each rule only in the stage where its corresponding file is listed as a Re
 - Generate hooks using `System/SYS_05_HOOK_ENGINE.json`.
 - Write scripts using `System/SYS_10_SCRIPT_STATE_MACHINE.json`.
 - Validate outputs using `System/SYS_15_VALIDATION_GATES.json`.
-- Record final project summary notes in `14_project_summary.md`.
+- Record final project summary notes in `16_project_summary.md`.
 - Keep medical rules frozen from self-improvement changes.
 
 Never:
