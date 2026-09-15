@@ -115,7 +115,7 @@
       "stage": "project_summary",
       "agent": "orchestrator",
       "input": "01-13 project outputs + publish_schedule_status",
-      "output": "14_project_summary.md",
+      "output": "16_project_summary.md",
       "gate": false
     }
   ],
