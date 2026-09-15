@@ -1,7 +1,7 @@
 {
   "module": "thumbnail_engine",
   "version": "2.5",
-  "purpose": "CTR-first professional YouTube thumbnail packaging, visual pattern intelligence, and thumbnail text intelligence system for Senior Health AI videos while preserving medical integrity.",
+  "purpose": "Packaging-first professional YouTube thumbnail packaging, visual pattern intelligence, and thumbnail text intelligence system for Senior Health AI videos while preserving medical integrity. Internal Packaging Score is a quality heuristic, not measured or predicted YouTube CTR.",
   "required_project_inputs": [
     "Projects/<topic_slug>/01_topic_validation.md",
     "Projects/<topic_slug>/02_research_sheet.md",
@@ -15,7 +15,7 @@
     "required_concept_count": 10,
     "visual_pattern_analysis_required": true,
     "thumbnail_text_intelligence_required": true,
-    "ctr_first_text_packaging_required": true,
+    "packaging_first_text_optimization_required": true,
     "text_options_per_concept": 3,
     "competitor_similarity_estimate_required": true,
     "unique_concept_requirement": "Each concept must vary composition, text family, text wording, signal cue, facial expression, color emphasis, curiosity route, or title-overlap strategy.",
@@ -81,7 +81,7 @@
     ]
   },
   "thumbnail_text_intelligence": {
-    "purpose": "Maximize thumbnail text curiosity and click-through rate while ensuring text is specific to the viewer problem, title gap, research promise, and visual concept rather than generic or interchangeable.",
+    "purpose": "Maximize thumbnail text curiosity and predicted packaging strength while ensuring text is specific to the viewer problem, title gap, research promise, and visual concept rather than generic or interchangeable.",
     "analysis_timing": "before_concept_generation",
     "required_pre_generation_fields": [
       "primary_viewer_problem",
@@ -104,14 +104,14 @@
       "first_step",
       "evidence_gap"
     ],
-    "ctr_optimization_priorities": [
+    "packaging_optimization_priorities": [
       "viewer_psychology",
       "information_gap",
       "emotional_trigger",
       "mobile_readability",
       "medical_safety"
     ],
-    "research_integrity_policy": "Research integrity is a gate. Among medically safe options, select the highest ethical CTR option.",
+    "research_integrity_policy": "Research integrity is a gate. Among medically safe options, select the highest ethical Packaging Score option.",
     "complement_title_do_not_repeat": true,
     "generic_text_restriction": {
       "avoid_generic_phrases": [
@@ -226,7 +226,7 @@
         0,
         10
       ],
-      "overall_ctr_score_range": [
+      "packaging_score_range": [
         0,
         100
       ],
@@ -238,9 +238,9 @@
         "emotional_trigger",
         "internal_question",
         "self_identification",
-        "overall_ctr_score"
+        "packaging_score"
       ],
-      "internal_question_rule": "Every text must naturally create an internal question. If no internal question exists, lower the CTR score.",
+      "internal_question_rule": "Every text must naturally create an internal question. If no internal question exists, lower the Packaging Score.",
       "self_identification_rule": "Evaluate whether the viewer imagines themselves in the situation. Score 0-10."
     },
     "per_concept_required_fields": [
@@ -255,7 +255,7 @@
       "text_option_c",
       "recommended_winner",
       "why_it_won",
-      "ctr_score",
+      "packaging_score",
       "medical_safety",
       "interchangeability_risk"
     ],
@@ -407,7 +407,8 @@
   "master_recipe": {
     "background": "dark_high_contrast",
     "text_words_min": 2,
-    "text_words_max": 4,
+    "text_words_max": null,
+    "text_length_policy": "No fixed maximum. Prefer the shortest wording that stays immediately clear for a 60+ viewer on mobile. Length is a learned packaging variable and must not be shortened into ambiguous shorthand.",
     "face_position": "right_third_preferred",
     "hero_objects": 1,
     "signal_icons": 1,
@@ -551,7 +552,7 @@
         "id": "text_readability",
         "label": "Text Readability",
         "max_points": 10,
-        "definition": "Large, short, high-contrast text, usually 2 to 5 words, readable at small size."
+        "definition": "Large, high-contrast text that is immediately clear to a 60+ viewer at small feed size. Prefer concise wording, but do not enforce an arbitrary word-count maximum or shorten into ambiguous shorthand."
       },
       {
         "id": "color_contrast",
@@ -645,9 +646,9 @@
     },
     {
       "id": "V9",
-      "rule": "short_readable_high_contrast_text",
+      "rule": "senior_clear_high_contrast_text",
       "severity": "block",
-      "pass_condition": "text is short, high contrast, and usually 2 to 5 words"
+      "pass_condition": "text is high contrast and immediately clear to a 60+ viewer on mobile; prefer concise wording but do not enforce a fixed word-count maximum or shorten into ambiguous shorthand"
     },
     {
       "id": "V10",
@@ -693,9 +694,9 @@
     },
     {
       "id": "V17",
-      "rule": "thumbnail_text_four_words_or_fewer",
+      "rule": "thumbnail_text_senior_clear_not_arbitrary_length",
       "severity": "block",
-      "pass_condition": "thumbnail text is 2 to 4 words and readable on mobile"
+      "pass_condition": "thumbnail text is immediately clear to a 60+ viewer on mobile; it is not shortened into ambiguous shorthand and is not so long or dense that it fails quick mobile reading. No fixed word-count maximum."
     },
     {
       "id": "V18",
@@ -723,15 +724,15 @@
     },
     {
       "id": "V22",
-      "rule": "text_option_ctr_scoring_complete",
+      "rule": "text_option_packaging_scoring_complete",
       "severity": "block",
-      "pass_condition": "each text option is scored for Research Integrity, Medical Safety, Mobile Readability, Information Gap, Emotional Trigger, Internal Question, Self Identification, and Overall CTR Score"
+      "pass_condition": "each text option is scored for Research Integrity, Medical Safety, Mobile Readability, Information Gap, Emotional Trigger, Internal Question, Self Identification, and Packaging Score"
     },
     {
       "id": "V23",
-      "rule": "winning_text_highest_valid_ctr",
+      "rule": "winning_text_highest_valid_packaging_score",
       "severity": "block",
-      "pass_condition": "the recommended text winner for each concept does not have a lower Overall CTR Score than another medically valid option for that concept"
+      "pass_condition": "the recommended text winner for each concept does not have a lower Packaging Score than another medically valid option for that concept"
     },
     {
       "id": "V24",
@@ -741,9 +742,9 @@
     },
     {
       "id": "V25",
-      "rule": "internal_question_present_or_ctr_penalized",
+      "rule": "internal_question_present_or_packaging_penalized",
       "severity": "block",
-      "pass_condition": "every text naturally creates an internal question; if not, it is not selected and its CTR score is lowered"
+      "pass_condition": "every text naturally creates an internal question; if not, it is not selected and its Packaging Score is lowered"
     },
     {
       "id": "V26",
@@ -809,7 +810,7 @@
       "all_concepts",
       "text_intelligence_fields_for_every_concept",
       "text_option_a_b_c_for_every_concept",
-      "text_option_ctr_scoring",
+      "text_option_packaging_scoring",
       "internal_question_scores",
       "self_identification_scores",
       "recommended_text_winner_per_concept",
@@ -860,11 +861,10 @@
     "generic_interchangeable_thumbnail_text",
     "generic_winning_thumbnail_text",
     "single_text_option_only",
-    "winning_text_lower_ctr_than_alternative",
+    "winning_text_lower_packaging_score_than_alternative",
     "missing_internal_question_score",
     "missing_self_identification_score",
     "thumbnail_text_that_repeats_title",
-    "thumbnail_text_longer_than_4_words",
     "podcast_equipment_from_reference",
     "office_background_from_reference",
     "unrelated_reference_accessories",
