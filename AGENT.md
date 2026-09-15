@@ -170,36 +170,48 @@ Speech Optimizer validation fails if:
 - the output is not suitable for ElevenLabs Studio V3
 - `06b_voice_checklist.md` is missing Speech QA, Paragraph Statistics, Pronunciation Review, Chapter Plan, or Upload Checklist
 
+## Optional Pre-Project Ideation
+
+Topic ideation is an optional utility that runs BEFORE project creation and is NOT part of the production pipeline. When used, the flow is:
+
+Consensus / topic inputs -> Topic_Generator_Agent -> Content Diversity gate -> human topic selection -> optional Pre-Title validation -> user finalizes the Anchor / Outlier Title -> Create Project.
+
+Locks:
+- This entire flow is optional. The user may skip it and supply a final Anchor / Outlier Title directly at project creation.
+- `00_topic_ideas.md` and `00_topic_ideas.csv` are pre-project ideation artifacts, NOT required production project outputs.
+- Topic_Generator_Agent is not a title authority. It never selects the final topic automatically and cannot modify `anchor_title` after project creation.
+- Once the project is created, the Anchor / Outlier Title is immutable and no ideation, generation, ranking, repair, or replacement stage may alter it.
+
 ## Canonical Production Pipeline
+
+The production pipeline begins after the user finalizes the immutable Anchor / Outlier Title and creates the project. Topic ideation is not part of this pipeline (see "Optional Pre-Project Ideation").
 
 Run the production pipeline in this exact order:
 
-1. Consensus Report / Topic Intelligence Inputs
-2. Topic_Generator_Agent as Topic Intelligence Agent with Content Diversity Engine
-3. Content Diversity quality gate
-4. Research_Agent
-5. Medical_Agent Gate 1
-6. User-supplied Anchor / Outlier Title remains the immutable winning title (no Title_Agent stage)
-7. Thumbnail_Agent
-8. Script_Agent
-9. Manual Claude Opus writing step when `writer_mode` is `outline_to_script`
-10. Narrative_QA_Agent creates `14_narrative_qa.md` when `narrative_qa_enabled` is true
-11. Apply any required narrative revisions manually and rerun Narrative QA
-12. Medical_Agent Gate 2 creates `15_medical_gate_2.md`
-13. Speech Optimizer workflow when `voice_director_enabled` is true
-14. Review `06b_voice_checklist.md`
-15. Upload `06a_voice_script.md` directly into ElevenLabs Studio V3
-16. Generate narration
-17. Export WAV
-18. Upload WAV into HeyGen
-19. Production_Agent
-20. Visual Director dry run / B-roll Collector report-first workflow
-21. Review `visual_director_report.csv` and approve downloads or fallback visuals
-22. Download approved B-roll, generate AI images for remaining scenes, and prepare edit assets
-23. SEO_Agent
-24. Final QA
-25. Publish/Schedule checklist
-26. Project Summary
+1. Project creation with the user-supplied immutable Anchor / Outlier Title (no Title_Agent stage)
+2. Topic Validation Stage 1
+3. Research_Agent
+4. Medical_Agent Gate 1
+5. Thumbnail_Agent
+6. Script_Agent
+7. Manual Claude Opus writing step when `writer_mode` is `outline_to_script`
+8. Narrative_QA_Agent creates `14_narrative_qa.md` when `narrative_qa_enabled` is true
+9. Apply any required narrative revisions manually and rerun Narrative QA
+10. Medical_Agent Gate 2 creates `15_medical_gate_2.md`
+11. Speech Optimizer workflow when `voice_director_enabled` is true
+12. Review `06b_voice_checklist.md`
+13. Upload `06a_voice_script.md` directly into ElevenLabs Studio V3
+14. Generate narration
+15. Export WAV
+16. Upload WAV into HeyGen
+17. Production_Agent
+18. Visual Director dry run / B-roll Collector report-first workflow
+19. Review `visual_director_report.csv` and approve downloads or fallback visuals
+20. Download approved B-roll, generate AI images for remaining scenes, and prepare edit assets
+21. SEO_Agent
+22. Final QA
+23. Publish/Schedule checklist
+24. Project Summary
 
 The output of each agent becomes the input for the next agent. No stage may skip its upstream dependency.
 
@@ -207,8 +219,6 @@ The output of each agent becomes the input for the next agent. No stage may skip
 
 Each completed project must include:
 
-- `00_topic_ideas.md`
-- `00_topic_ideas.csv`
 - `01_topic_validation.md`
 - `02_research_sheet.md`
 - `04_thumbnail_concepts.md`
@@ -236,8 +246,6 @@ Post-production asset collection may also create:
 
 ## Failure Routing
 
-- Topic generation fail -> return to `Topic_Generator_Agent`
-- Content Diversity gate fail -> return to `Topic_Generator_Agent`
 - Research fail -> return to `Research_Agent`
 - Medical Gate 1 fail -> return to `Research_Agent`
 - User-supplied title validation fail -> stop and report the unsupported title promise; never generate or rewrite a replacement title
@@ -254,10 +262,8 @@ Post-production asset collection may also create:
 
 Apply each rule only in the stage where its corresponding file is listed as a Required Input:
 
-- Convert Consensus Reports into original topic ideas using `Topic_Generator_Agent`; this stage must create both `00_topic_ideas.md` and `00_topic_ideas.csv` from one canonical set of 15 topics, extract viewer intent without copying competitor wording, apply consensus-first opportunity and evergreen scoring, assign a content format, score diversity, assess repetition risk, and must not perform research.
-- Topic Intelligence is incomplete unless both files exist and pass synchronization validation for topic count, rank, topic text, and opportunity score. The CSV must use the exact schema and UTF-8 Excel-compatible rules in `System/SYS_01_TOPIC_ENGINE.json`.
-- Apply topic diversity rules from `System/SYS_01_TOPIC_ENGINE.json` before Research_Agent runs.
-- Content Diversity must run before Research. Research_Agent must not start if more than 3 consecutive previous projects use the same content format or if the selected topic has unresolved HIGH Repetition Risk.
+- Topic ideation via `Topic_Generator_Agent` (with `System/SYS_01_TOPIC_ENGINE.json`) is an OPTIONAL pre-project utility. When run, it must create both `00_topic_ideas.md` and `00_topic_ideas.csv` and pass synchronization validation, but these are pre-project artifacts and are not required for a production project.
+- The production pipeline does not depend on topic ideation. Research_Agent runs against the created project's immutable Anchor / Outlier Title, whether or not ideation was used.
 - Apply medical rules from `System/SYS_09_MEDICAL_RULE_ENGINE.json`.
 - Run the Visual Director / B-roll Collector only after Production_Agent creates `07_production_sheet.csv`, `10_image_prompts.md`, and `12_broll_prompts.md`. The first run should normally be `python Tools/broll_collector.py --project Projects/<topic_slug> --dry-run`. It must not rewrite narration. It may recommend visual-mode overrides, but every override must be documented in `visual_director_report.csv`.
 - Production_Agent must create visual planning from narrative context before generating stock queries, AI prompts, overlay instructions, split-screen instructions, or avatar directions. Each production row must include narrative context, visual intent, filmability, asset decision reason, recommended asset type, concrete stock-query fields when stock is used, AI prompt fields when AI image is used, overlay instructions when overlay or split-screen communication is needed, and matching asset status. Stock searches must come from scene meaning plus nearby-scene context, not isolated words or old prompt text.
