@@ -250,8 +250,8 @@
     {
       "name": "project_initialization",
       "order": 1,
-      "output": "approved_channel_niche",
-      "next": "topic_generator_agent"
+      "output": "project.json.anchor_title (immutable user-supplied title)",
+      "next": "outlier_agent"
     },
     {
       "name": "human_topic_selection",
@@ -259,8 +259,7 @@
       "pipeline_role": "optional_pre_project",
       "input": "00_topic_ideas.md + 00_topic_ideas.csv",
       "output": "selected_topic_id",
-      "required_value": "selected_topic_id",
-      "blocks": "outlier_agent",
+      "optional_provenance": true,
       "next": "outlier_agent"
     },
     {
