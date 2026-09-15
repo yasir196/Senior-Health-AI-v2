@@ -1,0 +1,207 @@
+# ============================================================
+# Senior Health AI V3.4v — Git Ignore
+# Keep source code / agents / templates / tests in Git.
+# Exclude secrets, local runtime state, generated media/data.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# 1. PYTHON CACHE / TEST CACHE
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+
+# ------------------------------------------------------------
+# 2. PYTHON VIRTUAL ENVIRONMENTS
+# ------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+
+# ------------------------------------------------------------
+# 3. ENVIRONMENT VARIABLES / SECRETS
+# Keep .env.example tracked.
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+client_secret*.json
+credentials*.json
+oauth*.json
+token*.json
+tokens*.json
+
+youtube_client_secret*.json
+youtube_credentials*.json
+youtube_token*.json
+youtube_oauth*.json
+
+
+# ------------------------------------------------------------
+# 4. CODEX LOCAL RUNTIME
+# Never commit Codex state, memories, logs or installation IDs.
+# ------------------------------------------------------------
+.codex/
+.codex_child_home/
+
+
+# ------------------------------------------------------------
+# 5. LOCAL DATABASES / SQLITE RUNTIME
+# ------------------------------------------------------------
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+
+
+# ------------------------------------------------------------
+# 6. APPLICATION RUN LOGS
+# ------------------------------------------------------------
+RunLogs/
+Run_Logs/
+*.log
+
+
+# ------------------------------------------------------------
+# 7. GENERATED PROJECTS
+# Project output should remain local, not source-controlled.
+# ------------------------------------------------------------
+Projects/
+
+
+# ------------------------------------------------------------
+# 8. GENERATED ANALYTICS RUNTIME DATA
+# Keep Analytics source/rules files, but not runtime DB/assets.
+# ------------------------------------------------------------
+Analytics/project_assets/
+Analytics/*.db
+Analytics/*.sqlite
+Analytics/*.sqlite3
+
+
+# ------------------------------------------------------------
+# 9. GENERATED VALIDATION / TEMP WORKSPACES
+# ------------------------------------------------------------
+validation_ai_image_motion/
+tmp/
+temp/
+.tmp/
+.cache/
+
+
+# ------------------------------------------------------------
+# 10. GENERATED MEDIA
+# ------------------------------------------------------------
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.flac
+
+*.srt
+*.vtt
+
+
+# ------------------------------------------------------------
+# 11. LARGE / GENERATED ARCHIVES
+# ------------------------------------------------------------
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+
+
+# ------------------------------------------------------------
+# 12. GENERATED IMAGE ASSETS
+# Do NOT globally ignore PNG/JPG because repository templates
+# may intentionally contain image assets.
+# Project/generated image folders are already excluded above.
+# ------------------------------------------------------------
+
+
+# ------------------------------------------------------------
+# 13. CAPCUT / VIDEO EDITOR GENERATED PROJECT DATA
+# ------------------------------------------------------------
+CapCut_Project/
+capcut_output/
+capcut_exports/
+
+
+# ------------------------------------------------------------
+# 14. OS FILES
+# ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# ------------------------------------------------------------
+# 15. IDE / EDITOR LOCAL SETTINGS
+# ------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+
+# ------------------------------------------------------------
+# 16. TEMPORARY / BACKUP FILES
+# ------------------------------------------------------------
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*~
+~$*
+
+
+# ------------------------------------------------------------
+# 17. LOCAL TRANSCRIPTS / DOWNLOAD CACHE
+# ------------------------------------------------------------
+downloads/
+download_cache/
+transcript_cache/
+thumbnail_cache/
+
+
+# ------------------------------------------------------------
+# 18. NODE (if local tooling is used)
+# ------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
