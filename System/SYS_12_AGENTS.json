@@ -8,6 +8,8 @@
       "name": "topic_generator_agent",
       "file": "Agents/Topic_Generator_Agent.md",
       "order": 1.5,
+      "pipeline_role": "optional_pre_project",
+      "produces_required_production_outputs": false,
       "role": "Generate a diverse, ranked set of original topic candidates for the approved channel niche before outlier validation.",
       "input_schema": {
         "project_initialization": "approved_channel_niche"
@@ -35,9 +37,10 @@
       "file": "Agents/Outlier_Agent.md",
       "order": 2,
       "input_schema": {
-        "topic_ideas_markdown": "00_topic_ideas.md",
-        "topic_ideas_csv": "00_topic_ideas.csv",
-        "selected_topic_id": "required"
+        "anchor_title": "project.json.anchor_title (required, immutable user-supplied title)",
+        "topic_ideas_markdown": "00_topic_ideas.md (optional provenance, if pre-project ideation was used)",
+        "topic_ideas_csv": "00_topic_ideas.csv (optional provenance)",
+        "selected_topic_id": "optional"
       },
       "output_files": [
         "01_topic_validation.md",
@@ -253,6 +256,7 @@
     {
       "name": "human_topic_selection",
       "order": 1.75,
+      "pipeline_role": "optional_pre_project",
       "input": "00_topic_ideas.md + 00_topic_ideas.csv",
       "output": "selected_topic_id",
       "required_value": "selected_topic_id",
@@ -288,17 +292,17 @@
     }
   ],
   "workflow_validation": {
-    "topic_generator_before_outlier": true,
-    "required_before_topic_selection": [
-      "00_topic_ideas.md",
-      "00_topic_ideas.csv"
-    ],
+    "topic_generator_before_outlier": false,
+    "topic_generator_is_optional_pre_project": true,
     "required_before_outlier_agent": [
+      "project.json.anchor_title"
+    ],
+    "optional_provenance_before_outlier_agent": [
       "00_topic_ideas.md",
       "00_topic_ideas.csv",
       "selected_topic_id"
     ],
-    "outlier_direct_raw_niche_input_allowed": false,
+    "outlier_direct_anchor_title_input_allowed": true,
     "responsibility_separation": {
       "topic_generator_agent": [
         "generates_multiple_candidate_topics",
@@ -307,7 +311,7 @@
         "does_not_select_final_topic_automatically"
       ],
       "outlier_agent": [
-        "validates_the_human_selected_topic",
+        "validates_the_created_project_immutable_anchor_title",
         "checks_opportunity_and_outlier_evidence",
         "creates_01_topic_validation_md",
         "creates_01b_outlier_references_md"
