@@ -79,7 +79,7 @@
       "exclude_outputs": [
         "Projects/<topic_slug>/08_youtube_metadata.md",
         "Projects/<topic_slug>/09_qa_checklist.md",
-        "Projects/<topic_slug>/14_project_summary.md"
+        "Projects/<topic_slug>/16_project_summary.md"
       ],
       "missing_publishing_stage_files_do_not_fail_scope": true
     },
@@ -89,7 +89,7 @@
       "required_outputs": [
         "Projects/<topic_slug>/08_youtube_metadata.md",
         "Projects/<topic_slug>/09_qa_checklist.md",
-        "Projects/<topic_slug>/14_project_summary.md"
+        "Projects/<topic_slug>/16_project_summary.md"
       ],
       "conditional_outputs": [
         "final_timestamps_or_chapters_when_required_by_current_workflow",
