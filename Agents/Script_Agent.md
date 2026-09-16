@@ -64,7 +64,7 @@ When `writer_mode` is `"outline_to_script"`, stop after `05_script_outline.md`. 
 15. Use `config.json` values for channel name, host name, and host title only when non-empty. Otherwise use placeholders: `{{CHANNEL_NAME}}`, `{{HOST_NAME}}`, and `{{HOST_TITLE}}`.
 16. If `channel_name` is empty or unavailable, use a generic subscribe CTA that does not name a channel. If channel name is present, prefer: `If you value calm, evidence-based health guidance for life after 60, consider subscribing to Evidence After 60.`
 17. Place the CTA naturally after the recap or as part of the final payoff. Never place the CTA before the recap.
-18. When writing an internal final script, end it with Estimated Runtime, Estimated Word Count, Average Speaking Rate, Target Runtime Status, and a Retention Report.
+18. When writing an internal final script, end it with Estimated Runtime, Estimated Word Count, Average Speaking Rate, Runtime Advisory, and a Retention Report.
 19. When `writer_mode` is `"outline_to_script"`, report exactly: `Outline complete. Use Templates/Writing/opus_writer_prompt.md together with 05_script_outline.md in Claude Opus. After Opus writes the script, save it as 06_final_script.md, then run Narrative QA.`
 20. Save the outline for the external writer handoff or, when internal writing is enabled, save the outline and final script for Medical Gate 2.
 21. If `doctor_mode` is false or `credentials_claim` is false, the outline and script must identify Adrian Westbrook only as `Health Educator` or as the host of `Evidence After 60`. Never imply medical licensure, medical credentials, patient care, clinic practice, viewer consultations, or private clinical experience.
@@ -205,13 +205,13 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - CTA must use the channel brand when available: Evidence After 60.
 - The script must match title and thumbnail expectations without overpromising.
 - Default target runtime comes from `config.json`; current default is 18-23 minutes, aiming for approximately 20 minutes.
-- Scripts outside the configured target runtime range fail QA unless the user explicitly overrides the runtime target.
-- Do not pad to reach runtime. If evidence does not support a longer script, shorten the script and mark Target Runtime Status as FAIL unless an override exists.
+- Runtime is production-planning metadata only and is ADVISORY ONLY — NON-BLOCKING. Scripts outside the configured target runtime range must NOT fail QA and must not trigger revision, trimming, or upstream routing on the basis of runtime alone.
+- Do not pad to reach runtime. If the approved evidence does not support a longer script, write the shortest honest, medically-safe script the evidence supports and record `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. Runtime shortfall is never a FAIL and never a reason to add filler, repetition, or upstream research.
 - Every section must add new value through evidence, mechanism, myth, comparison, practical tip, warning, or recap.
-- Every final script must end with: Estimated Runtime, Estimated Word Count, Average Speaking Rate, and Target Runtime Status (PASS/FAIL).
+- Every final script must end with: Estimated Runtime, Estimated Word Count, Average Speaking Rate, and Runtime Advisory (ADVISORY ONLY — NON-BLOCKING).
 - Never hardcode a channel name. Use `config.json` value `channel_name` only when non-empty; otherwise use `{{CHANNEL_NAME}}` or a generic subscribe CTA.
 - Never hardcode presenter names. Use `config.json` values `host_name` and `host_title` only when non-empty; otherwise use `{{HOST_NAME}}` and `{{HOST_TITLE}}`.
-- QA must fail if there are no curiosity loops, missing pattern interrupts, no mini stories, runtime outside target without override, abrupt ending, CTA before recap, or missing Retention Report.
+- QA must fail if there are no curiosity loops, missing pattern interrupts, no mini stories, abrupt ending, CTA before recap, or missing Retention Report. Runtime outside the target range is ADVISORY ONLY and never a QA failure.
 - Failure routing: script issues return to Script_Agent; evidence gaps return to Research_Agent through Medical_Agent Gate 2.
 
 ## 7. Output Format
@@ -268,7 +268,7 @@ When `writer_mode` is `"outline_to_script"`, `05_script_outline.md` must be comp
 - Estimated Runtime
 - Estimated Word Count
 - Average Speaking Rate
-- Target Runtime Status (PASS/FAIL)
+- Runtime Advisory (ADVISORY ONLY — NON-BLOCKING)
 - Retention Report
 - Config values used: language, audience, script tone, target runtime, CTA mode, and name placeholders or resolved names
 - Config values used must include channel name, host name, host title, `doctor_mode`, and `credentials_claim`.
@@ -305,7 +305,7 @@ Identity discipline: Adrian Westbrook is a virtual educational presenter and Hea
 - Do not pad the script to reach 18-23 minutes.
 - Do not hardcode a channel name; use `config.json`, `{{CHANNEL_NAME}}`, or a generic subscribe CTA if the channel name is empty.
 - Do not hardcode presenter names; use `config.json`, `{{HOST_NAME}}`, and `{{HOST_TITLE}}`.
-- Do not mark Target Runtime Status as PASS if the script is outside the target runtime and no explicit override exists.
+- Do not use runtime range, runtime shortfall, or runtime overage as a PASS/FAIL criterion; runtime is ADVISORY ONLY — NON-BLOCKING.
 - Do not load whole folders or unrelated agent files.
 
 
