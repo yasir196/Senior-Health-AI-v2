@@ -35,7 +35,7 @@ Title context: Bones Getting Weaker After 60? Try These 3 Simple Calcium Rich Fo
 Hero visual: clear bone-strength cue beside three calcium-rich foods.
 
 ## Text Overlay Specification
-Overlay: GETTING ENOUGH?
+Final overlay text: GETTING ENOUGH CALCIUM?
 """
 
 
