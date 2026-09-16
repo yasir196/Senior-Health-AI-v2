@@ -45,10 +45,10 @@ def _prompt(overlay: str | None, hidden_prompt: str = "calcium-fortified foods")
     )
 
 
-def _project(tmp_path: Path, overlay: str | None, title: str = TITLE) -> Path:
+def _project(tmp_path: Path, overlay: str | None, title: str = TITLE, hidden_prompt: str = "calcium-fortified foods") -> Path:
     (tmp_path / "project.json").write_text(json.dumps({"anchor_title": title}), encoding="utf-8")
     (tmp_path / "04_thumbnail_concepts.md").write_text(_concepts(), encoding="utf-8")
-    (tmp_path / "11_thumbnail_prompt.md").write_text(_prompt(overlay), encoding="utf-8")
+    (tmp_path / "11_thumbnail_prompt.md").write_text(_prompt(overlay, hidden_prompt=hidden_prompt), encoding="utf-8")
     return tmp_path
 
 
@@ -76,5 +76,12 @@ def test_bug8_missing_overlay_blocks_known_bone_subject(tmp_path):
 
 def test_bug8_unmapped_title_gets_no_new_subject_block(tmp_path):
     title = "The Tea Mistake Many Seniors Make Before Sleep"
-    result = validate_thumbnail_concepts(_project(tmp_path, "WHAT'S IN YOUR NIGHT CUP?", title=title))
+    result = validate_thumbnail_concepts(
+        _project(
+            tmp_path,
+            "WHAT'S IN YOUR NIGHT CUP?",
+            title=title,
+            hidden_prompt="night tea cup before sleep",
+        )
+    )
     assert result.passed, result.issues
