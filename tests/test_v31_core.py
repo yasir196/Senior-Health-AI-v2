@@ -130,6 +130,57 @@ def test_missing_script_is_invalid_and_blocks_narrative_qa(tmp_path: Path):
     assert any("missing" in reason.lower() for reason in reasons)
 
 
+def script_with_swollen_legs_safety_and_cta() -> str:
+    filler = " ".join(["healthy"] * 80)
+    return f"""# Hook
+{filler}
+
+# Introduction
+{filler}
+
+# Main Content
+{filler}
+
+Do not try movements for new or worsening one-sided swelling; seek prompt medical assessment.
+Call emergency services for chest pain or shortness of breath.
+Stop movement for pain, dizziness, or breathlessness.
+Do not start, stop, skip, or change medicine or a diuretic on your own because of swelling.
+
+# Conclusion
+{filler}
+
+If you value calm, evidence-based health guidance for life after 60, consider subscribing to Evidence After 60.
+"""
+
+
+def test_swollen_legs_script_detects_cta_and_medical_safety(tmp_path: Path):
+    (tmp_path / "06_final_script.md").write_text(
+        script_with_swollen_legs_safety_and_cta(), encoding="utf-8"
+    )
+
+    validation = validate_final_script(tmp_path, base_config())
+
+    assert validation.cta_present is True
+    assert validation.medical_safety_present is True
+    assert "No CTA or medical-safety language was detected." not in validation.issues
+    assert validation.valid
+
+
+def test_script_with_neither_cta_nor_medical_safety_still_fails(tmp_path: Path):
+    script = valid_script().replace(
+        "Please talk to your doctor and subscribe for more evidence-based education.",
+        "Thank you for watching this evidence-based education.",
+    )
+    (tmp_path / "06_final_script.md").write_text(script, encoding="utf-8")
+
+    validation = validate_final_script(tmp_path, base_config())
+
+    assert validation.cta_present is False
+    assert validation.medical_safety_present is False
+    assert "No CTA or medical-safety language was detected." in validation.issues
+    assert not validation.valid
+
+
 def test_invalid_extension_is_rejected_without_write(tmp_path: Path):
     result = save_uploaded_script(tmp_path, "script.pdf", b"not a script", base_config())
     assert not result.success

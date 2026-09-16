@@ -1924,6 +1924,7 @@ class RunResult:
 class ScriptValidation:
     valid: bool; exists: bool; word_count: int; runtime_minutes: float; target_words_min: int; target_words_max: int
     target_runtime_min: float; target_runtime_max: float; missing_headings: list[str]; issues: list[str]; preview: str
+    cta_present: bool = False; medical_safety_present: bool = False
 
 @dataclass
 class UploadResult:
@@ -2277,6 +2278,30 @@ def _target_runtime(config: dict[str, Any]) -> tuple[float, float]:
     target = float(config.get("target_runtime_minutes", 25)); return max(1.0, target - 2), target + 3
 def _headings(text: str) -> list[str]: return [m.group(1).strip().lower() for m in re.finditer(r"(?m)^#{1,6}\s+(.+?)\s*$", text)]
 
+CTA_PATTERNS = (
+    r"\bsubscrib(?:e|es|ed|ing)\b",
+    r"\b(?:comment|like|share)\b",
+)
+MEDICAL_SAFETY_PATTERNS = (
+    r"\b(?:talk|speak)\s+(?:to|with)\s+(?:your\s+|a\s+)?doctor\b",
+    r"\b(?:healthcare|health care|medical)\s+professional\b",
+    r"\bmedical\s+advice\b",
+    r"\bseek\s+(?:(?:prompt|urgent|immediate|emergency|medical|clinical)\s+){0,3}"
+    r"(?:assessment|care|attention|advice|help)\b",
+    r"\b(?:call|contact)\s+(?:your\s+local\s+)?emergency\s+services\b",
+    r"\bstop\s+(?:the\s+)?(?:movement|movements|exercise|exercises|activity)\s+(?:if|for)\b",
+    r"\b(?:do\s+not|don't)\s+(?:start|stop|skip|change)\b[^.\n]{0,100}"
+    r"\b(?:medicine|medicines|medication|medications|diuretic|diuretics)\b",
+    r"\b(?:persistent|recurrent|worsening|concerning)\b[^.\n]{0,80}\bclinical\s+assessment\b",
+)
+
+
+def detect_script_safety_signals(text: str) -> tuple[bool, bool]:
+    """Return independently detected CTA and explicit medical-safety signals."""
+    cta_present = any(re.search(pattern, text, re.I) for pattern in CTA_PATTERNS)
+    medical_safety_present = any(re.search(pattern, text, re.I) for pattern in MEDICAL_SAFETY_PATTERNS)
+    return cta_present, medical_safety_present
+
 def validate_final_script(project: Path, config: dict[str, Any]) -> ScriptValidation:
     path = project / "06_final_script.md"; exists = path.is_file() and path.stat().st_size > 0; text = read_text(path) if exists else ""
     profile = canonical_runtime(config)
@@ -2286,14 +2311,15 @@ def validate_final_script(project: Path, config: dict[str, Any]) -> ScriptValida
     numbered_sections = {int(m.group(1)) for heading in found for m in [re.search(r"\bsection\s+(\d+)\b", heading, re.I)] if m}
     numbered_schema_valid = all(number in numbered_sections for number in range(1, 12))
     missing = [] if numbered_schema_valid else [h for h in required if not any(h in f for f in found)]
+    cta_present, medical_safety_present = detect_script_safety_signals(text)
     issues: list[str] = []
     if not exists: issues.append("06_final_script.md is missing or empty.")
     if exists and words < int(config.get("writer_minimum_words", 300)): issues.append(f"Script is too short ({words} words).")
     if exists and not found: issues.append("Script has no Markdown headings.")
     if missing: issues.append("Missing required headings: " + ", ".join(missing) + ".")
     if exists and re.search(r"(?im)^#{1,6}\s*(runtime metrics|retention report|medical review|humanization report|config values used)", text): issues.append("QA/report content must be stored in separate 06_* report files, not 06_final_script.md.")
-    if exists and not re.search(r"(?i)\b(subscribe|comment|like|share|talk to your doctor|healthcare professional|medical advice)\b", text): issues.append("No CTA or medical-safety language was detected.")
-    return ScriptValidation(exists and not issues, exists, words, runtime, profile.words_min, profile.words_max, runtime_min, runtime_max, missing, issues, text[:12000])
+    if exists and not (cta_present or medical_safety_present): issues.append("No CTA or medical-safety language was detected.")
+    return ScriptValidation(exists and not issues, exists, words, runtime, profile.words_min, profile.words_max, runtime_min, runtime_max, missing, issues, text[:12000], cta_present, medical_safety_present)
 
 def _safe_project_file(project: Path, filename: str) -> Path:
     root = project.resolve(); dest = (root / Path(filename).name).resolve()
