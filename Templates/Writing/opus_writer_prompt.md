@@ -1,6 +1,6 @@
 # Claude Opus Master Writer Prompt
 
-Write the final production-ready narration for the selected project using the existing outline, research, approved claims, host identity, templates, runtime target, retention structure, visual cues, cautions, and CTA rules.
+Write the final production-ready narration for the selected project using the existing outline, research, approved claims, host identity, templates, retention structure, visual cues, cautions, and CTA rules. Runtime and word count are informational metadata only and must not influence drafting.
 
 Do not research again, add sources, add or strengthen medical claims, invent credentials, or imply the virtual host is a licensed clinician.
 
@@ -9,7 +9,7 @@ Do not research again, add sources, add or strengthen medical claims, invent cre
 Create exactly these separate files:
 
 1. `06_final_script.md` — narration only, with title, section headings, spoken narration, `[Visual Cue: ...]` blocks, cautions, and CTA. Do not include QA reports, scorecards, runtime tables, configuration notes, or process commentary.
-2. `06_runtime_report.md` — word count, estimated narration runtime, target comparison, section runtimes, and assumed WPM.
+2. `06_runtime_report.md` — `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`, actual word count, estimated narration runtime, section runtimes, and actual assumed WPM. This report is informational metadata only and must not contain a runtime PASS/FAIL verdict, target, range, minimum, maximum, floor, required word adjustment, or runtime-driven revision/research instruction.
 3. `06_retention_report.md` — hook, open loops, pattern interrupts, section teasers, payoff, CTA placement, and retention risks.
 4. `06_medical_review.md` — claims-preserved check, safety language, cautions, and unsupported-claim check. This is an editorial review, not a replacement for Medical Gate 2.
 5. `06_humanization_report.md` — conversational score, host-voice score, emotional connection, repeated phrasing, contractions, rhetorical questions, and largest humanization changes.
@@ -27,7 +27,7 @@ Recaps, stories, curiosity loops, and pattern interrupts are adaptive tools, not
 
 Pay off the core title question progressively from the opening onward. Do not postpone the substantive answer behind long setup or qualification, and avoid late phrases such as "now we can finally answer" when the title answer should already be underway.
 
-Consolidate repeated safety/context boundaries while preserving every medically required warning and its meaning. If removing semantic repetition makes the script shorter than the configured runtime floor, add only evidence-approved NEW viewer value; never restore repetition or pad with another recap, disclaimer, analogy, or hypothetical story.
+Consolidate repeated safety/context boundaries while preserving every medically required warning and its meaning. Use all materially useful approved evidence at legitimate depth. Accept the strongest complete non-repetitive script supported by that evidence and report its actual length afterward as informational metadata; never restore repetition, expand, compress, or pad with another recap, disclaimer, analogy, hypothetical story, source, or claim because of runtime or word count.
 
 ## Retention-First Drafting Lock
 
@@ -51,7 +51,6 @@ Before finalizing, do one silent retention-prevention pass over the draft: check
 
 Do not pre-negotiate the assignment. Do not tell the user that the approved research is insufficient, estimate in advance how many words the evidence can support, propose a shorter target, discuss whether the minimum runtime is achievable, or stop to explain a word-count conflict before drafting. First write the strongest complete production-ready script using all approved material at legitimate depth and following the Semantic Progression Lock.
 
-Target runtime/word count is a soft planning preference. The configured minimum and maximum are validation boundaries, not reasons to negotiate before writing. Do not stop drafting merely because the planned target or midpoint may not be reached. Do not ask for more research merely to reach a runtime target.
+Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. Do not pre-calculate or include an automatic runtime target, range, minimum, maximum, floor, WPM target, word-count target/range, numerical drafting constraint, or required word adjustment. Write the strongest complete script supported by approved evidence. Runtime is ADVISORY ONLY — NON-BLOCKING.
 
-Only after `06_final_script.md` is complete, calculate the actual spoken word count and runtime in `06_runtime_report.md`. If the completed script falls below the configured minimum despite using all approved material without padding, report that fact in `06_runtime_report.md`; do not withhold, shorten, pad, or refuse to produce `06_final_script.md`. Never substitute filler, repeated cautions, extra hypotheticals, invented mechanisms, unsupported claims, or redundant recaps to chase duration.
-
+Only after `06_final_script.md` is complete, calculate the actual spoken word count and runtime in `06_runtime_report.md`. Label the report `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. Report actual runtime/word count as informational metadata without comparison to a target/range, a PASS/FAIL verdict, or a required adjustment. Because of runtime or word count, do not withhold, shorten, pad, or refuse to produce the script; do not expand, compress, revise, request research/sources, add claims, or route upstream either. Never substitute filler, repeated cautions, extra hypotheticals, invented mechanisms, unsupported claims, added sources, or redundant recaps to chase duration.
