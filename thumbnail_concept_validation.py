@@ -29,6 +29,13 @@ TITLE_STOPWORDS = {
     "senior", "seniors", "people", "foods", "food", "ways", "things", "tips",
 }
 
+# BUG 8: deterministic viewer-facing subject locks. Keep this deliberately
+# narrow: only confidently mapped subjects are hard-blocked. Unknown subjects
+# retain the generic drift preflight rather than being guessed.
+SUBJECT_CLUSTERS = {
+    "bone": {"bone", "bones", "calcium", "skeletal"},
+}
+
 
 @dataclass(frozen=True)
 class ThumbnailValidationResult:
@@ -61,6 +68,59 @@ def _normalize(value: str) -> str:
 def _distinct_title_terms(title: str) -> list[str]:
     terms = re.findall(r"[a-z0-9]+", title.lower())
     return sorted({t for t in terms if len(t) >= 4 and not t.isdigit() and t not in TITLE_STOPWORDS})
+
+
+def _subject_cluster_for_title(title: str) -> tuple[str, set[str]] | None:
+    title_terms = set(re.findall(r"[a-z0-9]+", title.lower()))
+    for name, terms in SUBJECT_CLUSTERS.items():
+        if title_terms & terms:
+            return name, terms
+    return None
+
+
+def _final_overlay_text(prompt: str) -> str:
+    """Extract only the viewer-facing winner overlay from its specification.
+
+    Prefer the explicit Final overlay text field. A conservative section fallback
+    supports legacy files, but never scans the whole prompt; hidden prompt prose
+    was the source of the BUG 8 false pass.
+    """
+    section_match = re.search(
+        r"(?ims)^##\s+Text Overlay Specification\s*$\n(?P<body>.*?)(?=^##\s+|\Z)",
+        prompt,
+    )
+    if not section_match:
+        return ""
+
+    body = section_match.group("body")
+    explicit = re.search(
+        r"(?ims)^\s*(?:[-*]\s*)?(?:\*\*)?"
+        r"Final\s+overlay\s+text(?:\s*/\s*line\s+breaks)?"
+        r"(?:\*\*)?\s*:\s*(?P<value>.+?)"
+        r"(?=^\s*(?:[-*]\s*)?(?:\*\*)?[A-Za-z][^\n:]{1,60}(?:\*\*)?\s*:|\Z)",
+        body,
+    )
+    if explicit:
+        value = explicit.group("value")
+        value = re.sub(r"(?m)^\s*(?:[-*]\s*)?", "", value)
+        return value.strip(" \t\r\n`*_")
+
+    # Legacy fallback: only use unlabeled text from this section. Metadata cannot
+    # satisfy a subject lock.
+    kept: list[str] = []
+    for raw in body.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        candidate = line.lstrip("-* ")
+        if re.match(
+            r"(?i)^(?:font|font style|font size|position|color|colour|stroke|shadow|"
+            r"hierarchy|alignment|line breaks?|mobile|notes?|reason|rationale)\s*:",
+            candidate,
+        ):
+            continue
+        kept.append(line.strip("-* `"))
+    return " ".join(kept).strip()
 
 
 def _concept_numbers(text: str) -> set[int]:
@@ -117,7 +177,6 @@ def validate_thumbnail_concepts(project: Path) -> ThumbnailValidationResult:
     if "Ranked-table ↔ detailed-winner sync: PASS" not in concepts:
         issues.append("Missing exact `Ranked-table ↔ detailed-winner sync: PASS` verification line.")
 
-    # Internal score terminology must not masquerade as measured YouTube CTR.
     if re.search(r"(?i)\b(?:overall\s+)?CTR\s+Score\s*:", concepts):
         issues.append("Deprecated internal `CTR Score` terminology found; use `Packaging Score` only.")
 
@@ -154,10 +213,28 @@ def validate_thumbnail_concepts(project: Path) -> ThumbnailValidationResult:
     if not re.search(r"(?im)^##\s+Text Overlay Specification\s*$", prompt):
         issues.append("11_thumbnail_prompt.md is missing `## Text Overlay Specification`.")
 
-    # Final prompt must explicitly preserve title context. This is not a complete
-    # semantic proof, but it catches winner prompts that have drifted to a side topic.
     title = _anchor_title(project)
     if title:
+        # BUG 8 hard lock: a confidently mapped title subject must be visible in
+        # the actual winner overlay. Hidden prompt/negative-prompt terms cannot
+        # rescue an ambiguous viewer-facing overlay.
+        cluster = _subject_cluster_for_title(title)
+        if cluster:
+            cluster_name, cluster_terms = cluster
+            overlay = _normalize(_final_overlay_text(prompt))
+            if not overlay:
+                issues.append(
+                    f"Final viewer-facing overlay could not be extracted for mapped `{cluster_name}` "
+                    "subject; known subject locks require explicit overlay text."
+                )
+            elif not any(re.search(rf"\b{re.escape(term)}\b", overlay) for term in cluster_terms):
+                issues.append(
+                    f"Final viewer-facing overlay does not name the mapped `{cluster_name}` subject "
+                    f"with an allowed anchor ({', '.join(sorted(cluster_terms))}); hidden prompt terms "
+                    "cannot satisfy standalone subject comprehension."
+                )
+
+        # Preserve the existing generic prompt-level drift preflight for all titles.
         combined_final = _normalize(prompt)
         distinctive = _distinct_title_terms(title)
         present = [term for term in distinctive if re.search(rf"\b{re.escape(term)}\b", combined_final)]
