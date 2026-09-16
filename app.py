@@ -208,31 +208,14 @@ def project_selector(key: str) -> Path | None:
     return PROJECTS_DIR / name
 
 
-def writer_runtime_advisory_contract(config: dict[str, Any] | None = None) -> str:
-    """Render Writer-package runtime values as non-blocking planning metadata."""
-    profile = canonical_runtime(config if config is not None else load_config())
-    target = f"{profile.runtime_target:g}"
-    runtime_range = f"{profile.runtime_min:g}–{profile.runtime_max:g}"
-    return (
-        f"Runtime: {target} minutes is a soft planning reference "
-        f"(approximately {profile.words_target:,} words at {profile.wpm} WPM). "
-        f"Planning runtime reference: {runtime_range} minutes. "
-        "Runtime is ADVISORY ONLY — NON-BLOCKING. "
-        "Do not use runtime range, runtime shortfall, runtime overage, word count, or target duration as a PASS/FAIL criterion. "
-        "Do not expand, pad, repeat, trim, request additional research, add sources/claims, or route upstream merely to reach a runtime or word-count target. "
-        "Use all materially useful approved evidence at legitimate depth and report actual runtime/word count as advisory metadata."
-    )
-
-
 def command_for_stage(project: Path, stage: str, anchor_outlier_pattern: str | None = None) -> str:
     ref = f"Projects/{project.name}/"
-    writer_runtime_contract = writer_runtime_advisory_contract()
     commands = {
         "Topic Validation": f"Run Stage 1 only for {ref}. Read project.json.anchor_title first and treat that exact Anchor / Outlier Title as the immutable, already-approved winning title and sole wording authority. Follow the Topic Validation policy in Agents/Outlier_Agent.md. Treat 01a_anchor_claim_map.json only as supporting parser context, never as the evidence verdict. Research the topic deeply enough to establish the evidence-supported production angle, payoff, boundaries, demand, and safety without reopening title generation or rewriting. Create only 01_topic_validation.md; preserve project.json and 01a_anchor_claim_map.json unchanged. Stop after validation.",
         "Research + Medical Gate 1": f"For {ref}, run Research_Agent and Medical_Agent Gate 1 using the exact immutable, already-approved project.json.anchor_title and the Stage 1 handoff in 01_topic_validation.md. Follow the role-boundary policies in Agents/Research_Agent.md and Agents/Medical_Agent.md: research and medically validate the content claims, production angle, evidence limits, and safety boundaries without re-adjudicating, repairing, replacing, or failing the title itself. Treat 01a_anchor_claim_map.json only as parser context. Create only 02_research_sheet.md and 13_fact_check_log.md, then stop before creative work.",
         "Thumbnail": f"For {ref}, run Thumbnail_Agent only using approved upstream files. Use project.json.anchor_title EXACTLY as the winning title; do not generate, rank, rewrite, repair, or replace the title. BEFORE generating concepts, read Analytics/active_channel_packaging_rules.md when present and apply every ACTIVE packaging rule that is contextually applicable to this project. When that artifact contains matching historical channel examples, derive thumbnail text structure/hierarchy AND visual/color packaging from those real channel patterns BEFORE inventing generic concepts; adapt the pattern to this topic and never copy old wording verbatim. In 04_thumbnail_concepts.md, include a mandatory `Historical Channel Examples Used` audit section listing 3-5 actual consumed examples per applicable ACTIVE rule (or all if fewer), with exact historical thumbnail text, source video/title, CTR, impressions, relevant text structure/hierarchy, relevant visual/color traits, and what was adapted. If no examples exist, state `NO MATCHING HISTORICAL EXAMPLES AVAILABLE` and do not claim an example-derived historical pattern. Treat learned packaging rules as impression-aware historical associations, never causal guarantees. They may guide thumbnail text/visual packaging only and must never override the immutable title promise, approved research/evidence, Medical Gate requirements, medical safety, or project-specific creative fit. Ignore CANDIDATE, REJECTED, and RETIRED rules; only the ACTIVE rules artifact may be injected. If an ACTIVE rule is not applicable to the current hero/category/context, mark it N/A rather than forcing it. For any digestion/anatomy visual, preserve one physiologically coherent continuous route; never render multiple colored internal pathways, branching arrows through organs, glowing nutrient streams, or magic-path effects unless explicitly supported by approved evidence. Create only 04_thumbnail_concepts.md and 11_thumbnail_prompt.md.",
         "Script Outline": f"For {ref}, run Script_Agent in outline_to_script mode. Use project.json.anchor_title EXACTLY as the immutable winning title and align the complete outline to its promise; do not generate or substitute another title. BEFORE outlining, read Analytics/active_channel_script_rules.md when present and apply every ACTIVE learned writing rule that does not conflict with the immutable title, approved evidence/research, Medical Gate requirements, or necessary safety language. Learned rules control pacing/structure only and may never override medical accuracy. Create only 05_script_outline.md. Do not create 06_final_script.md.",
-        "Prepare Opus Package": f"For {ref}, prepare a fresh per-project opus_writer_package.md from the current writing templates and 05_script_outline.md. BEFORE building the package, read Analytics/active_channel_script_rules.md when present. Read Templates/Writing/opus_writer_prompt.md in full. HARD PRESERVATION RULE: copy the complete `## Semantic Progression Lock`, `## Retention-First Drafting Lock`, and `## Execution / No-Negotiation Lock` sections from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md without summarizing, weakening, paraphrasing, or omitting their rules. Also preserve the Execution / No-Negotiation rule that the writer must draft first without pre-negotiating research sufficiency, predicted word capacity, target feasibility, or asking for more research merely to reach runtime. Include this exact current-config runtime contract in the package: {writer_runtime_contract} Only after completing the script should actual runtime be reported. In particular, preserve the full material-delta semantics: a different example/food/section, new wording, another hypothetical, or repeated safety/scope reminder is not sufficient new value; if no concrete material delta exists, omit or merge the recurrence; allow at most one concise final recap that compresses rather than reteaches. Include a clearly labeled ACTIVE CHANNEL SCRIPT RULES section in opus_writer_package.md and require the writer to apply those rules unless they conflict with the immutable winning title, approved research/evidence, Medical Gate requirements, or necessary safety language. Learned retention rules may improve pacing/structure but may never override medical accuracy. Create or update only opus_writer_package.md.",
+        "Prepare Opus Package": f"For {ref}, prepare a fresh per-project opus_writer_package.md from the current writing templates and 05_script_outline.md. BEFORE building the package, read Analytics/active_channel_script_rules.md when present. Read Templates/Writing/opus_writer_prompt.md in full. HARD PRESERVATION RULE: copy the complete `## Semantic Progression Lock`, `## Retention-First Drafting Lock`, and `## Execution / No-Negotiation Lock` sections from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md without summarizing, weakening, paraphrasing, or omitting their rules. Also preserve the Execution / No-Negotiation rule that the writer must draft first without pre-negotiating research sufficiency, predicted word capacity, target feasibility, or asking for more research merely to reach runtime. RUNTIME PACKAGE LOCK: do not place any automatic runtime target, runtime range, WPM target, word-count target/range, minimum, maximum, floor, validation boundary, required word adjustment, or numeric drafting target in opus_writer_package.md. Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. The writer must write the strongest complete script supported by approved evidence, then report actual word count/runtime afterward as informational metadata only with `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. In particular, preserve the full material-delta semantics: a different example/food/section, new wording, another hypothetical, or repeated safety/scope reminder is not sufficient new value; if no concrete material delta exists, omit or merge the recurrence; allow at most one concise final recap that compresses rather than reteaches. Include a clearly labeled ACTIVE CHANNEL SCRIPT RULES section in opus_writer_package.md and require the writer to apply those rules unless they conflict with the immutable winning title, approved research/evidence, Medical Gate requirements, or necessary safety language. Learned retention rules may improve pacing/structure but may never override medical accuracy. Create or update only opus_writer_package.md.",
         "Writer Workspace": f"Manual stage for {ref}. Download opus_writer_package.md, write the full script in Claude, then upload the result through Writer Workspace as 06_final_script.md. Direct Codex Run is intentionally disabled for this manual stage.",
         "Retention Structure Analysis": f"For {ref}, run ONLY the Retention Structure Analyzer. Read the complete current 06_final_script.md and project.json.anchor_title. Read Templates/Writing/retention_structure_analyzer.md and obey it exactly. Also read Analytics/active_channel_script_rules.md when present and verify EACH currently ACTIVE rule against the actual current 06_final_script.md. Include the required ACTIVE CHANNEL RULE COMPLIANCE table with PASS/FAIL/N/A, a 5–8+ word verbatim script anchor, concise reason, and corrective H/O/P/R/C/B patch IDs for failures when safely fixable. Do not count rule injection into the writer package as implementation evidence. Analyze structure and pacing only; do not judge medical correctness and do not modify 06_final_script.md, facts, evidence, numbers, medical claims, required safety language, or the immutable winning title. Create or replace ONLY retention_structure_analysis.md in the selected project root. The report must use Status: READY or Status: NEEDS REVISION, include the one-line Retention Risk Reason, unique H/O/P/R/C/B patch IDs, 5–8+ word verbatim anchors, relevant timestamp/word-position estimates, adaptive pacing signals, execution sequence, verification table, copy-ready Script Chat Revision Prompt, and the required unchanged-substance footer. Stop after writing retention_structure_analysis.md.",
         "Narrative QA": f"For {ref}, run Narrative_QA_Agent using 05_script_outline.md, 02_research_sheet.md when present, 13_fact_check_log.md when present, retention_structure_analysis.md when present, 06_final_script.md, config.json, the Narrative QA templates, and Analytics/active_channel_script_rules.md when present. Independently audit the CURRENT final script for storytelling, pacing, semantic repetition, whole-script recurrence, information progression, title-payoff timing, redundant recap/ending cycles, safety-boundary consolidation, transitions, tone, CTA placement, non-blocking evidence-review flags, and approved blueprint order. Treat the Retention Structure report as prior context, not proof; do not treat writer-package injection or the earlier Retention report as proof of implementation. Verify EACH currently ACTIVE rule against the current script with PASS/FAIL/N/A, a verbatim anchor, reason, and revision-required status; a learned-rule FAIL is evidence to inspect, not automatically an overall FAIL. Keep density separate from progression: paragraph length or several sourced facts alone are not a hard failure when the beat adds concrete new viewer value. MATERIAL-DELTA TEST: apply a MATERIAL-DELTA TEST to every post-primary occurrence for repeated core ideas; later occurrences must add exact new viewer knowledge/decision/mechanism/consequence/evidence/action, except one concise final recap; any post-primary occurrence with no concrete material delta must be CUT/MERGED. EVIDENCE REVIEW HANDOFF — NON-BLOCKING: classify factual additions as Type A material factual claims, Type B source-faithful explanatory paraphrases, or Type C narrative connectives for auditability. If a Type A proposition lacks an explicit approved trace, mark EVIDENCE REVIEW FLAG — SOURCE TRACE: NONE and KEEP — MG2 REVIEW. Missing provenance alone MUST NOT cause CUT/MERGE, Revision Patch, PASS WITH REVISIONS, or FAIL in Narrative QA; Medical Gate 2 / Fact Check owns that evidence decision. Narrative QA may revise the same sentence only for an independent narrative defect and must name that narrative defect. Type B may use EXPLANATORY PARAPHRASE — TRACE: <source>; Type C may use NARRATIVE CONNECTIVE — NO SOURCE REQUIRED. BLUEPRINT ORDER GATE: compare the current major sequence with 05_script_outline.md and authorized retention changes; unresolved unapproved major reorder cannot PASS. RUNTIME ADVISORY-ONLY LOCK: runtime, word count, configured minimum/target/maximum, WPM, and runtime tolerance MUST NOT determine PASS / PASS WITH REVISIONS / FAIL. Runtime must never cause a revision, expansion, compression, source-pool audit, redevelopment route, or another QA cycle. Count spoken narration only and include one compact ## Runtime Advisory with current narration words, estimated runtime at config.json WPM, preferred configured range, BELOW/INSIDE/ABOVE position, and the exact statement 'QA effect: NONE — runtime is advisory and cannot change the Narrative QA verdict.' Do not output Runtime Shortfall Cause, Remaining Approved Material Audit, Runtime Prediction, Convergence Check, required word adjustment, or runtime-driven patch. Every Revision Patch must identify a concrete narrative or safety-placement defect that would still exist if runtime and missing source provenance were ignored, and use the minimum necessary correction. Missing source provenance alone can never be a patch reason. Create 14_narrative_qa.md with Status: PASS / PASS WITH REVISIONS / FAIL based ONLY on narrative-quality, structure, repetition/progression, payoff, and safety-placement gates; evidence-review flags are handed to Medical Gate 2 and are non-blocking here. Include required Semantic Progression Gate with Material delta vs primary and Approved source trace columns, Approved Blueprint Order Audit, Active Channel Rule Compliance, Issue List, Revision Patch when needed, and Runtime Advisory. Repetition Risk HIGH, unresolved semantic recurrence above threshold, unresolved redundant endings/recaps, materially delayed title payoff, unresolved 2+ consecutive low-progression beats, or unresolved blueprint-order defects cannot PASS. Evidence Review Flags never block Narrative QA and proceed to Medical Gate 2 / Fact Check. Do not estimate AVD percentages. Do not directly rewrite 06_final_script.md.",
@@ -257,6 +240,38 @@ def _artifact_signature(path: Path) -> tuple[int, int] | None:
     stat = path.stat()
     return stat.st_mtime_ns, stat.st_size
 
+
+OPUS_RUNTIME_ADVISORY_TEXT = "Runtime Advisory: ADVISORY ONLY — NON-BLOCKING"
+OPUS_STALE_RUNTIME_PATTERNS = (
+    r"configured\s+validation\s+range",
+    r"validation\s+(?:runtime\s+)?(?:range|floor|boundary|boundaries)",
+    r"configured\s+(?:runtime\s+)?(?:minimum|maximum|floor)",
+    r"(?:under|below|reach|meet|toward)\s+(?:the\s+)?(?:runtime\s+)?floor",
+    r"soft\s+planning\s+(?:target|reference)",
+    r"planning\s+runtime\s+reference\s*:\s*\d",
+    r"\b\d{1,3}(?:,\d{3})?\s*(?:[–-]|to)\s*\d{1,3}(?:,\d{3})?\s+words\b",
+    r"\bruntime\s*:\s*\d+(?:\.\d+)?\s+minutes?\b",
+    r"\bapproximately\s+\d{1,3}(?:,\d{3})?\s+words?\s+at\s+\d+\s+WPM\b",
+    r"\b(?:expand|increase|lengthen)\s+(?:the\s+)?(?:draft|script|word\s+count|length)\b",
+    r"\b(?:additional|more)\s+(?:approved\s+)?(?:research|sources?|claims?)(?:/claims?)?\s+to\s+(?:increase|reach|meet)\b",
+)
+
+
+def opus_writer_package_runtime_issues(project: Path) -> list[str]:
+    """Validate the actual generated Writer package against the advisory-only lock."""
+    path = Path(project) / "opus_writer_package.md"
+    if not path.is_file() or path.stat().st_size == 0:
+        return ["opus_writer_package.md is missing or empty."]
+    text = safe_read_text(path)
+    issues: list[str] = []
+    if OPUS_RUNTIME_ADVISORY_TEXT not in text:
+        issues.append(f"Missing exact runtime lock: {OPUS_RUNTIME_ADVISORY_TEXT}")
+    for pattern in OPUS_STALE_RUNTIME_PATTERNS:
+        match = re.search(pattern, text, re.I)
+        if match:
+            issues.append(f"Stale Writer-package runtime semantics detected: {match.group(0)}")
+    return issues
+
 def run_external_command(command_template: str, prompt: str, project: Path, title_anchor_outlier_pattern: str | None = None, manual_titles: list[str] | None = None, stage: str | None = None):
     # Title generation/judging has been removed. Every active stage reads the immutable
     # user-supplied winning title from project.json.anchor_title.
@@ -275,6 +290,20 @@ def run_external_command(command_template: str, prompt: str, project: Path, titl
             # preserve and use the last valid ACTIVE artifact instead.
             pass
     result = run_codex(command_template, prompt, project, ROOT, RUN_LOG_DIR)
+    is_opus_package_run = stage == "Prepare Opus Package" or (
+        stage is None and "prepare a fresh per-project opus_writer_package.md" in prompt
+    )
+    if result.returncode == 0 and is_opus_package_run:
+        package_issues = opus_writer_package_runtime_issues(project)
+        if package_issues:
+            result.returncode = 2
+            result.output = (
+                result.output
+                + "\n\nOpus Writer package runtime contract: FAIL\n"
+                + "\n".join(f"- {issue}" for issue in package_issues)
+            )[-20000:]
+        else:
+            result.output = (result.output + "\n\nOpus Writer package runtime contract: PASS")[-20000:]
     is_seo_run = stage == "SEO" or (stage is None and "run SEO_Agent" in prompt)
     if result.returncode == 0 and is_seo_run:
         from seo_chapters import SEOChapterError, finalize_project_seo
@@ -905,7 +934,8 @@ def render_writer_workspace() -> None:
         return
     config = load_config()
     package_path = project / "opus_writer_package.md"
-    package_ready = package_path.is_file() and package_path.stat().st_size > 0
+    package_issues = opus_writer_package_runtime_issues(project) if package_path.is_file() else []
+    package_ready = package_path.is_file() and package_path.stat().st_size > 0 and not package_issues
     validation = validate_final_script(project, config)
 
     c1, c2, c3 = st.columns(3)
@@ -935,7 +965,12 @@ def render_writer_workspace() -> None:
             mime="text/markdown",
         )
     else:
-        st.warning("Prepare Opus Package must be completed first. Expected opus_writer_package.md.")
+        if package_issues:
+            st.error("The existing Opus package is blocked by the advisory-only runtime contract. Regenerate Prepare Opus Package.")
+            for issue in package_issues:
+                st.write(f"- {issue}")
+        else:
+            st.warning("Prepare Opus Package must be completed first. Expected opus_writer_package.md.")
 
     try:
         writer_active_rules = active_channel_script_rules(ANALYTICS_DB_PATH)
