@@ -24,6 +24,7 @@
     "observational allergy research": "outcome_study",
     "randomized controlled feeding trial": "outcome_study",
     "systematic review and meta-analysis": "outcome_study",
+	"systematic review": "outcome_study",
     "clinical practice guideline": "guideline",
     "major body guideline": "guideline",
     "government nutrition database": "descriptive_compositional"
