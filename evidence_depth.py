@@ -163,6 +163,40 @@ def validate_research_artifact(
     source_type_by_id: dict[str, str] | None = None,
 ) -> tuple[str, list[str]]:
     errors: list[str] = []
+
+    resolved_source_types = dict(source_type_by_id or {})
+
+    source_catalog = artifact.get("source_catalog") or []
+
+    if not isinstance(source_catalog, list):
+        errors.append("source_catalog must be a list")
+        source_catalog = []
+
+    for source in source_catalog:
+        if not isinstance(source, dict):
+            errors.append("source_catalog entries must be objects")
+            continue
+
+        source_id = source.get("source_id")
+        source_type = source.get("source_type")
+
+        if not _nonempty(source_id):
+            errors.append("source_catalog entry requires source_id")
+            continue
+
+        if not _nonempty(source_type):
+            errors.append(f"{source_id}: source_catalog entry requires source_type")
+            continue
+
+        existing_type = resolved_source_types.get(source_id)
+        if existing_type is not None and existing_type != source_type:
+            errors.append(
+                f"{source_id}: project source_type {source_type!r} conflicts "
+                f"with evidence library source_type {existing_type!r}"
+            )
+            continue
+
+        resolved_source_types[source_id] = source_type
     for field in contract.get("artifact_binding", {}).get("required_artifact_fields", []):
         if field not in artifact:
             errors.append(f"missing required artifact field: {field}")
@@ -240,7 +274,7 @@ def validate_research_artifact(
             if not isinstance(claim, dict):
                 errors.append("claim entry must be an object")
                 continue
-            errors.extend(_validate_population_claim(claim, evidence_library or {}, source_type_by_id or {}))
+            errors.extend(_validate_population_claim(claim, evidence_library or {}, resolved_source_types))
 
     expected_hash = research_content_hash(artifact, contract)
     recorded = artifact.get("research_content_hash")

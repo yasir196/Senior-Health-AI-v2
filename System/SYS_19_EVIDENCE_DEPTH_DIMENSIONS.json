@@ -1,6 +1,6 @@
 {
   "contract_id": "evidence_depth_dimensions",
-  "version": "1.0",
+  "version": "1.1",
   "authority_boundary": "This contract owns evidence-depth completeness only. It does not assess medical validity, reinterpret SYS_09 severities, or override System/SYS_09_MEDICAL_RULE_ENGINE.json. Medical adjudication remains with Medical Gate 1 under SYS_09.",
   "baseline_dimensions": [
     "core_proposition",
@@ -40,10 +40,19 @@
     "note": "A single global counterevidence note cannot satisfy proposition-level requirements."
   },
   "saturation_requirement": {
-    "fields": ["counterevidence_searched", "saturation_note"],
-    "rule": "Saturation may be declared only when further searching yields no materially new information for that proposition. No numeric source or claim count floor exists or may be added.",
-    "anti_fabrication_rule": "A proposition added without material support, or added merely to fill an otherwise empty dimension, is a validation failure."
-  },
+  "fields": [
+    "counterevidence_searched",
+    "saturation_note",
+    "discovery_record"
+  ],
+  "discovery_record_required_fields": [
+    "search_scope",
+    "evidence_families_checked",
+    "materially_distinct_evidence_result"
+  ],
+  "rule": "Saturation may be declared only when further reasonable searching yields no materially distinct evidence that changes support, qualification, limitations, alternatives, safety boundaries, or population applicability for that proposition. A bare assertion that no additional source is needed is not evidence of saturation. No numeric source or claim count floor exists or may be added.",
+  "anti_fabrication_rule": "A proposition added without material support, or added merely to fill an otherwise empty dimension, is a validation failure."
+},
   "topic_extensions": {
     "sleep": ["sleep_hygiene_context", "medication_interaction_boundary"],
     "blood_pressure": ["medication_interaction_boundary", "measurement_context"],

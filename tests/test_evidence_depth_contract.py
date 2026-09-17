@@ -487,3 +487,79 @@ def test_research_gate1_readiness_passes_valid_structured_handoff(tmp_path):
 
     assert status == "PASS"
     assert errors == []
+
+def test_discovery_record_rejects_noncanonical_material_result_key():
+    a = artifact()
+    discovery = a["propositions"][0]["discovery_record"]
+    discovery["materially_distinct_evidence_after_search"] = (
+        discovery.pop("materially_distinct_evidence_result")
+    )
+
+    status, errors = validate(finalize(a))
+
+    assert status == "FAIL"
+    assert any(
+        "discovery_record.materially_distinct_evidence_result is required" in error
+        for error in errors
+    )
+
+
+def test_project_local_source_catalog_can_supply_new_material_source():
+    a = artifact()
+    a["source_catalog"] = [
+        {
+            "source_id": "SRC_NEW_REVIEW",
+            "title": "Project-local systematic review",
+            "body": "Example body",
+            "year": "2026",
+            "url": "https://example.com/review",
+            "evidence_tier": 1,
+            "source_type": "systematic review",
+            "population": "Adults",
+            "limitation": "Not senior-specific.",
+        }
+    ]
+    a["claims"] = [
+        outcome_claim(
+            material_source_ids=["SRC_NEW_REVIEW"],
+            evidence_applicability_type="outcome_study",
+            study_population="Adults",
+            target_population="Adults 60+",
+            senior_specific=False,
+            extrapolation_caveat="Evidence is not senior-specific.",
+            population_metadata_status="complete",
+            usable_for_production=True,
+        )
+    ]
+
+    status, errors = validate(finalize(a))
+
+    assert status == "PASS", errors
+def test_dimensions_contract_v11_declares_discovery_record_schema():
+    assert CONTRACT["version"] == "1.1"
+
+    saturation = CONTRACT["saturation_requirement"]
+
+    assert "discovery_record" in saturation["fields"]
+    assert saturation["discovery_record_required_fields"] == [
+        "search_scope",
+        "evidence_families_checked",
+        "materially_distinct_evidence_result",
+    ]
+
+
+def test_systematic_review_source_type_maps_to_outcome_study():
+    assert (
+        EVIDENCE_LIBRARY["source_type_map"]["systematic review"]
+        == "outcome_study"
+    )
+
+
+def test_research_agent_pins_machine_schema_and_project_local_sources():
+    text = (ROOT / "Agents" / "Research_Agent.md").read_text(encoding="utf-8")
+
+    assert "materially_distinct_evidence_result" in text
+    assert "Do not emit substitutes such as `materially_distinct_evidence_after_search`" in text
+    assert "`source_catalog` is the project-local structured record" in text
+    assert "MUST NOT modify `Evidence/evidence_sources.csv`" in text
+    assert "`sha256:<hex>`" in text
