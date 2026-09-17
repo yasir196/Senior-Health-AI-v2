@@ -32,7 +32,7 @@
       "mark_fail": false,
       "behavior": "halt_and_await_explicit_human_action"
     },
-    "note": "This is an evidence floor, not a content-volume floor. No source, claim, word, or runtime count participates in it."
+    "note": "This is an evidence floor, not a content-volume floor. Missing, malformed, no-evidence, or not-applicable core_proposition states all resolve to the same terminal human-decision state. No source, claim, word, or runtime count participates in it."
   },
   "counterevidence_requirement": {
     "dimension_level": "Records whether the contrary-evidence space for the approved angle was searched and what was found.",
@@ -63,7 +63,7 @@
   "canonicalization": {
     "version": "research-v1",
     "steps": [
-      "drop fields classified volatile/non-semantic",
+      "drop fields classified volatile/non-semantic plus explicitly self-excluded hash fields",
       "normalize all strings to Unicode NFC",
       "recursively sort object keys",
       "serialize UTF-8 with deterministic compact separators and no insignificant whitespace",
@@ -71,7 +71,9 @@
       "deterministically normalize schema-declared set-like arrays",
       "SHA-256 the resulting bytes"
     ],
-    "volatile_fields": ["generated_at", "validated_at", "ui_metadata", "research_content_hash"],
+    "volatile_fields": ["generated_at", "validated_at", "ui_metadata"],
+    "self_excluded_fields": ["research_content_hash"],
+    "self_excluded_fields_note": "research_content_hash is semantic binding metadata, not volatile decoration. It is excluded only because a digest cannot include itself; removing this exclusion breaks deterministic staleness detection.",
     "set_like_arrays": ["applicable_topic_tags", "source_ids", "material_source_ids"],
     "numeric_rule": "Avoid floats in the evidence contract. Where numeric evidence is required, constrain representation explicitly rather than relying on language-specific float serialization."
   }
