@@ -238,6 +238,7 @@ def gate1_disposition(a, **item_overrides):
     }
     item.update(item_overrides)
     return {
+        "schema_version": CONTRACT["gate1_binding"]["schema_version"],
         "research_artifact_hash": research_content_hash(a, CONTRACT),
         "canonicalization_version": CONTRACT["canonicalization"]["version"],
         "claim_dispositions": [item],
@@ -265,6 +266,14 @@ def test_gate1_disposition_requires_matching_canonicalization_version():
     errors = validate_gate1_disposition(a, disposition, CONTRACT)
     assert any("canonicalization_version" in e for e in errors)
 
+def test_gate1_disposition_requires_schema_version():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a)
+    disposition.pop("schema_version")
+
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+
+    assert any("schema_version" in e for e in errors)
 
 def test_gate1_disposition_requires_every_research_claim():
     a = gate1_artifact()
@@ -330,6 +339,67 @@ def test_gate1_claim_requires_medical_notes():
     errors = validate_gate1_disposition(a, disposition, CONTRACT)
     assert any("requires concise medical notes" in e for e in errors)
 
+def test_terminal_core_state_survives_missing_gate1_artifacts(tmp_path):
+    a = artifact()
+
+    core = next(
+        d for d in a["dimensions"]
+        if d["dimension"] == "core_proposition"
+    )
+    core.clear()
+    core.update({
+        "dimension": "core_proposition",
+        "status": "no_evidence_found",
+        "search_note": "Searched; no adequate support found.",
+    })
+
+    finalize(a)
+
+    (tmp_path / "02_research_sheet.md").write_text(
+        "Research complete.",
+        encoding="utf-8",
+    )
+    (tmp_path / "02_research_claims.json").write_text(
+        json.dumps(a),
+        encoding="utf-8",
+    )
+
+    status, errors = research_gate1_readiness(tmp_path, ROOT)
+
+    assert status == HUMAN_DECISION_REQUIRED
+    assert CORE_INSUFFICIENT in errors
+    assert not any(
+        "13_gate1_disposition.json is missing" in e
+        for e in errors
+    )
+    assert not any(
+        "13_fact_check_log.md is missing" in e
+        for e in errors
+    )
+
+def test_ordinary_research_pass_still_requires_gate1_artifacts(tmp_path):
+    a = finalize(artifact())
+
+    (tmp_path / "02_research_sheet.md").write_text(
+        "Research complete.",
+        encoding="utf-8",
+    )
+    (tmp_path / "02_research_claims.json").write_text(
+        json.dumps(a),
+        encoding="utf-8",
+    )
+
+    status, errors = research_gate1_readiness(tmp_path, ROOT)
+
+    assert status == "FAIL"
+    assert any(
+        "13_gate1_disposition.json is missing" in e
+        for e in errors
+    )
+    assert any(
+        "13_fact_check_log.md is missing" in e
+        for e in errors
+    )
 
 def test_research_gate1_readiness_rejects_empty_fact_check_log(tmp_path):
     a = gate1_artifact()

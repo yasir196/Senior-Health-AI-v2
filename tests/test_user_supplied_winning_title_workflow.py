@@ -99,11 +99,11 @@ def test_thumbnail_ready_without_generated_title_files(tmp_path):
     )
 
     disposition = {
+        "schema_version": contract["gate1_binding"]["schema_version"],
         "research_artifact_hash": research_content_hash(research, contract),
         "canonicalization_version": contract["canonicalization"]["version"],
         "claim_dispositions": [],
     }
-
     (tmp_path / "13_gate1_disposition.json").write_text(
         json.dumps(disposition),
         encoding="utf-8",

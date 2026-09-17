@@ -256,7 +256,11 @@ def validate_gate1_disposition(
 
     if not isinstance(disposition, dict):
         return ["13_gate1_disposition.json must contain a JSON object."]
-
+    expected_schema = contract["gate1_binding"]["schema_version"]
+    if disposition.get("schema_version") != expected_schema:
+        errors.append(
+            "13_gate1_disposition.json schema_version does not match the Gate-1 contract."
+        )
     expected_hash = research_content_hash(research_artifact, contract)
     if disposition.get("research_artifact_hash") != expected_hash:
         errors.append(
@@ -334,27 +338,39 @@ def validate_gate1_disposition(
 
 def research_gate1_readiness(project: Path, root: Path) -> tuple[str, list[str]]:
     project = Path(project)
-    required = (
+
+    research_required = (
         "02_research_sheet.md",
         "02_research_claims.json",
-        "13_fact_check_log.md",
-        "13_gate1_disposition.json",
     )
-    missing = [name for name in required if not (project / name).is_file()]
-    if missing:
-        return "FAIL", [f"{name} is missing." for name in missing]
+    missing_research = [
+        name for name in research_required
+        if not (project / name).is_file()
+    ]
+    if missing_research:
+        return "FAIL", [
+            f"{name} is missing."
+            for name in missing_research
+        ]
 
     try:
         research_artifact = json.loads(
-            (project / "02_research_claims.json").read_text(encoding="utf-8")
-        )
-        disposition = json.loads(
-            (project / "13_gate1_disposition.json").read_text(encoding="utf-8")
+            (project / "02_research_claims.json").read_text(
+                encoding="utf-8"
+            )
         )
         contract = load_contract(root)
         evidence_library, source_type_by_id = load_evidence_context(root)
-    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, csv.Error) as exc:
-        return "FAIL", [f"Research/Gate-1 structured artifact could not be loaded: {exc}"]
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        KeyError,
+        csv.Error,
+    ) as exc:
+        return "FAIL", [
+            f"Research structured artifact could not be loaded: {exc}"
+        ]
 
     status, errors = validate_research_artifact(
         research_artifact,
@@ -369,6 +385,35 @@ def research_gate1_readiness(project: Path, root: Path) -> tuple[str, list[str]]
     if status != "PASS":
         return "FAIL", errors
 
+    gate1_required = (
+        "13_fact_check_log.md",
+        "13_gate1_disposition.json",
+    )
+    missing_gate1 = [
+        name for name in gate1_required
+        if not (project / name).is_file()
+    ]
+    if missing_gate1:
+        return "FAIL", [
+            f"{name} is missing."
+            for name in missing_gate1
+        ]
+
+    try:
+        disposition = json.loads(
+            (project / "13_gate1_disposition.json").read_text(
+                encoding="utf-8"
+            )
+        )
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+    ) as exc:
+        return "FAIL", [
+            f"Gate-1 structured artifact could not be loaded: {exc}"
+        ]
+
     gate1_errors = validate_gate1_disposition(
         research_artifact,
         disposition,
@@ -377,9 +422,17 @@ def research_gate1_readiness(project: Path, root: Path) -> tuple[str, list[str]]
     if gate1_errors:
         return "FAIL", gate1_errors
 
-    fact_check_log = (project / "13_fact_check_log.md").read_text(
-        encoding="utf-8"
-    ).strip()
+    try:
+        fact_check_log = (
+            project / "13_fact_check_log.md"
+        ).read_text(
+            encoding="utf-8"
+        ).strip()
+    except (OSError, UnicodeError) as exc:
+        return "FAIL", [
+            f"13_fact_check_log.md could not be loaded: {exc}"
+        ]
+
     if not fact_check_log:
         return "FAIL", ["13_fact_check_log.md is empty."]
 

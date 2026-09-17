@@ -92,7 +92,6 @@ For Gate 1, `13_gate1_disposition.json` must additionally include:
 - `schema_version`
 - `research_artifact_hash`
 - `canonicalization_version`
-- `overall_status`
 - `claim_dispositions[]`, each with `claim_id`, `disposition`, bounded wording/boundary where applicable, and concise medical notes
 
 ## 7. Context Discipline and Quality Notes

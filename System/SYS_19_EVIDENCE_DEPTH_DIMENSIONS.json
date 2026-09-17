@@ -58,8 +58,11 @@
   },
   "artifact_binding": {
     "required_artifact_fields": ["dimensions_contract_version", "applicable_topic_tags", "research_content_hash", "canonicalization_version"],
-    "migration_rule": "A newer contract version never silently reinterprets an existing artifact. An artifact remains attributable to its recorded version until explicitly regenerated or migrated."
+    "migration_rule": "Phase A validates artifacts only against the current contract version. A dimensions_contract_version mismatch must fail closed and requires explicit Research regeneration or migration before validation; it must never silently reinterpret the artifact under a different contract version."
   },
+  "gate1_binding": {
+  "schema_version": "gate1-disposition-v1"
+},
   "canonicalization": {
     "version": "research-v1",
     "steps": [
