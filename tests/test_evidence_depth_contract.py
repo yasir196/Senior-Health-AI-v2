@@ -38,7 +38,18 @@ def artifact():
             "counterevidence_searched": True,
             "counterevidence_found": [],
             "resulting_qualification": "Bounded to the evidence.",
-            "saturation_note": "Further searching yielded no materially new distinction."
+            "saturation_note": "Further searching yielded no materially new distinction.",
+            "discovery_record": {
+                "search_scope": "Approved-angle supporting, limiting, and contrary evidence.",
+                "evidence_families_checked": [
+                    "guideline",
+                    "systematic_review",
+                    "primary_study"
+                ],
+                "materially_distinct_evidence_result": (
+                    "Further reasonable searching yielded no materially distinct evidence."
+                )
+            }
         }],
         "claims": []
     }
@@ -93,6 +104,34 @@ def test_invented_unsupported_proposition_fails():
     status, errors = validate(finalize(a))
     assert status == "FAIL"
     assert any("P2" in e and "evidence_source_ids" in e for e in errors)
+
+
+def test_bare_saturation_assertion_without_discovery_record_fails():
+    a = artifact()
+    a["propositions"][0].pop("discovery_record")
+    a["propositions"][0]["saturation_note"] = "No additional source is needed."
+    status, errors = validate(finalize(a))
+    assert status == "FAIL"
+    assert any(
+        "discovery_record is required for saturation" in e
+        for e in errors
+    )
+
+
+def test_incomplete_discovery_record_fails_closed():
+    a = artifact()
+    a["propositions"][0]["discovery_record"] = {
+        "search_scope": "Supporting evidence only.",
+        "evidence_families_checked": [],
+        "materially_distinct_evidence_result": ""
+    }
+    status, errors = validate(finalize(a))
+    assert status == "FAIL"
+    assert any("evidence_families_checked" in e for e in errors)
+    assert any(
+        "materially_distinct_evidence_result" in e
+        for e in errors
+    )
 
 
 def test_partial_support_requires_explicit_boundary():

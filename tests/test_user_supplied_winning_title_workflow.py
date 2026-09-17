@@ -83,7 +83,16 @@ def test_thumbnail_ready_without_generated_title_files(tmp_path):
             "counterevidence_searched": True,
             "counterevidence_found": False,
             "resulting_qualification": "None required.",
-            "saturation_note": "Relevant evidence considered.",
+"saturation_note": "Further reasonable searching yielded no materially distinct evidence.",
+"discovery_record": {
+    "search_scope": "Approved-angle supporting, limiting, and contrary evidence.",
+    "evidence_families_checked": [
+        "descriptive_compositional"
+    ],
+    "materially_distinct_evidence_result": (
+        "Further reasonable searching yielded no materially distinct evidence."
+    ),
+},
         }],
         "claims": [],
     }
