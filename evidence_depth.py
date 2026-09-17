@@ -212,6 +212,25 @@ def validate_research_artifact(
             errors.append(f"{pid}: resulting_qualification is required")
         if not _nonempty(prop.get("saturation_note")):
             errors.append(f"{pid}: saturation_note is required")
+        discovery = prop.get("discovery_record")
+        if not isinstance(discovery, dict):
+            errors.append(f"{pid}: discovery_record is required for saturation")
+        else:
+            if not _nonempty(discovery.get("search_scope")):
+                errors.append(f"{pid}: discovery_record.search_scope is required")
+            if (
+                not isinstance(discovery.get("evidence_families_checked"), list)
+                or not discovery.get("evidence_families_checked")
+            ):
+                errors.append(
+                    f"{pid}: discovery_record.evidence_families_checked is required"
+                )
+            if not _nonempty(
+                discovery.get("materially_distinct_evidence_result")
+            ):
+                errors.append(
+                    f"{pid}: discovery_record.materially_distinct_evidence_result is required"
+                )
 
     claims = artifact.get("claims") or []
     if claims and (evidence_library is None or source_type_by_id is None):
