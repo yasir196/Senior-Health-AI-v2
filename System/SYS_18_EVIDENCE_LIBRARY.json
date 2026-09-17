@@ -15,6 +15,7 @@
   "evidence_applicability_types": {
     "precedence": ["outcome_study","guideline","descriptive_compositional"],
     "derivation": "Use the highest-precedence type among materially supporting sources.",
+	"precedence_order_semantics": "The precedence array is ordered strongest-first. Array order is semantic and must not be alphabetized or reordered.",
     "anti_downgrade_rule": "A lower-precedence type cannot be selected to relax population requirements.",
     "unmapped_source_type_action": "block"
   },
@@ -37,7 +38,7 @@
   },
   "null_semantics": "Nulls are type-governed; there is no generic null escape.",
   "metadata_incomplete_rule": "Population metadata must come from an explicit recorded source statement or a manually confirmed source record. Do not infer missing values from source type, topic, or claim wording. A metadata_incomplete claim must explicitly set usable_for_production=false in a Research artifact.",
-  "reuse_rule": "Reused claims inherit these fields from claim_registry.csv. Missing population metadata is not guessed.",
+  "reuse_rule": "Reused claims inherit evidence_applicability_type, material_source_ids, study_population, target_population, senior_specific, extrapolation_caveat, population_metadata_status, and source_identity_status from claim_registry.csv. usable_for_production is not inherited from the registry; Research must set it explicitly for the current project. It must not be used to infer, repair, or substitute for missing population metadata.",
   "approved_status_values": ["approved","needs_review","retired","do_not_use"],
   "claim_strength_values": ["strong","moderate","limited","preliminary"],
   "validation_rules": [

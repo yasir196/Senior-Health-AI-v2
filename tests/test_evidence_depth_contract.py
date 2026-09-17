@@ -8,6 +8,8 @@ from evidence_depth import (
     gate1_is_current,
     load_evidence_context,
     research_content_hash,
+    research_gate1_readiness,
+    validate_gate1_disposition,
     validate_research_artifact,
 )
 
@@ -220,3 +222,159 @@ def test_contract_contains_no_numeric_source_or_claim_floor():
     assert "minimum claim" not in text
     assert "min_sources" not in text
     assert "min_claims" not in text
+
+
+def gate1_artifact():
+    a = artifact()
+    a["claims"] = [outcome_claim()]
+    return finalize(a)
+
+
+def gate1_disposition(a, **item_overrides):
+    item = {
+        "claim_id": "C1",
+        "disposition": "approved",
+        "medical_notes": "Claim is medically usable within the Research boundary.",
+    }
+    item.update(item_overrides)
+    return {
+        "research_artifact_hash": research_content_hash(a, CONTRACT),
+        "canonicalization_version": CONTRACT["canonicalization"]["version"],
+        "claim_dispositions": [item],
+    }
+
+
+def test_valid_gate1_disposition_covers_current_research_claims():
+    a = gate1_artifact()
+    errors = validate_gate1_disposition(a, gate1_disposition(a), CONTRACT)
+    assert errors == []
+
+
+def test_gate1_disposition_rejects_stale_research_hash():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a)
+    disposition["research_artifact_hash"] = "sha256:stale"
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert any("stale" in e for e in errors)
+
+
+def test_gate1_disposition_requires_matching_canonicalization_version():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a)
+    disposition["canonicalization_version"] = "wrong-version"
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert any("canonicalization_version" in e for e in errors)
+
+
+def test_gate1_disposition_requires_every_research_claim():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a)
+    disposition["claim_dispositions"] = []
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert any("missing Research claim IDs" in e and "C1" in e for e in errors)
+
+
+def test_gate1_disposition_rejects_duplicate_and_unknown_claim_ids():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a)
+    disposition["claim_dispositions"] = [
+        {
+            "claim_id": "C1",
+            "disposition": "approved",
+            "medical_notes": "First disposition.",
+        },
+        {
+            "claim_id": "C1",
+            "disposition": "approved",
+            "medical_notes": "Duplicate disposition.",
+        },
+        {
+            "claim_id": "UNKNOWN",
+            "disposition": "rejected",
+            "medical_notes": "Unknown claim.",
+        },
+    ]
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert any("Duplicate" in e and "C1" in e for e in errors)
+    assert any("unknown claim_id UNKNOWN" in e for e in errors)
+
+
+def test_gate1_disposition_rejects_invalid_disposition_value():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a, disposition="needs_revision")
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert any("invalid disposition" in e for e in errors)
+
+
+def test_bounded_gate1_claim_requires_wording_or_boundary():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a, disposition="bounded")
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert any("requires bounded wording or boundary" in e for e in errors)
+
+
+def test_bounded_gate1_claim_accepts_explicit_boundary():
+    a = gate1_artifact()
+    disposition = gate1_disposition(
+        a,
+        disposition="bounded",
+        boundary="Use only the qualified Research wording.",
+    )
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert errors == []
+
+
+def test_gate1_claim_requires_medical_notes():
+    a = gate1_artifact()
+    disposition = gate1_disposition(a, medical_notes="")
+    errors = validate_gate1_disposition(a, disposition, CONTRACT)
+    assert any("requires concise medical notes" in e for e in errors)
+
+
+def test_research_gate1_readiness_rejects_empty_fact_check_log(tmp_path):
+    a = gate1_artifact()
+
+    (tmp_path / "02_research_sheet.md").write_text(
+        "Research sheet",
+        encoding="utf-8",
+    )
+    (tmp_path / "02_research_claims.json").write_text(
+        json.dumps(a),
+        encoding="utf-8",
+    )
+    (tmp_path / "13_gate1_disposition.json").write_text(
+        json.dumps(gate1_disposition(a)),
+        encoding="utf-8",
+    )
+    (tmp_path / "13_fact_check_log.md").write_text("", encoding="utf-8")
+
+    status, errors = research_gate1_readiness(tmp_path, ROOT)
+
+    assert status == "FAIL"
+    assert any("13_fact_check_log.md is empty" in e for e in errors)
+
+
+def test_research_gate1_readiness_passes_valid_structured_handoff(tmp_path):
+    a = gate1_artifact()
+
+    (tmp_path / "02_research_sheet.md").write_text(
+        "Research sheet",
+        encoding="utf-8",
+    )
+    (tmp_path / "02_research_claims.json").write_text(
+        json.dumps(a),
+        encoding="utf-8",
+    )
+    (tmp_path / "13_gate1_disposition.json").write_text(
+        json.dumps(gate1_disposition(a)),
+        encoding="utf-8",
+    )
+    (tmp_path / "13_fact_check_log.md").write_text(
+        "Gate reviewed: Gate 1\nOverall status: PASS\n",
+        encoding="utf-8",
+    )
+
+    status, errors = research_gate1_readiness(tmp_path, ROOT)
+
+    assert status == "PASS"
+    assert errors == []

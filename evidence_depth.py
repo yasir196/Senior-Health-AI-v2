@@ -247,3 +247,140 @@ def load_evidence_context(root: Path) -> tuple[dict[str, Any], dict[str, str]]:
     with (root / "Evidence" / "evidence_sources.csv").open(encoding="utf-8", newline="") as handle:
         source_type_by_id = {row["source_id"]: row["source_type"] for row in csv.DictReader(handle)}
     return evidence_library, source_type_by_id
+def validate_gate1_disposition(
+    research_artifact: dict[str, Any],
+    disposition: dict[str, Any],
+    contract: dict[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+
+    if not isinstance(disposition, dict):
+        return ["13_gate1_disposition.json must contain a JSON object."]
+
+    expected_hash = research_content_hash(research_artifact, contract)
+    if disposition.get("research_artifact_hash") != expected_hash:
+        errors.append(
+            "13_gate1_disposition.json is stale for the canonical Research artifact."
+        )
+
+    expected_canonicalization = contract["canonicalization"]["version"]
+    if disposition.get("canonicalization_version") != expected_canonicalization:
+        errors.append(
+            "13_gate1_disposition.json canonicalization_version does not match the Research contract."
+        )
+
+    claim_dispositions = disposition.get("claim_dispositions")
+    if not isinstance(claim_dispositions, list):
+        errors.append("13_gate1_disposition.json claim_dispositions must be a list.")
+        return errors
+
+    research_claims = research_artifact.get("claims")
+    if not isinstance(research_claims, list):
+        return errors
+
+    research_claim_ids: list[str] = []
+    for claim in research_claims:
+        if isinstance(claim, dict) and _nonempty(claim.get("claim_id")):
+            research_claim_ids.append(str(claim["claim_id"]))
+
+    seen: set[str] = set()
+    for item in claim_dispositions:
+        if not isinstance(item, dict):
+            errors.append("Each Gate-1 claim disposition must be an object.")
+            continue
+
+        claim_id = item.get("claim_id")
+        if not _nonempty(claim_id):
+            errors.append("Each Gate-1 claim disposition requires claim_id.")
+            continue
+
+        claim_id = str(claim_id)
+        if claim_id in seen:
+            errors.append(f"Duplicate Gate-1 disposition for claim_id {claim_id}.")
+        seen.add(claim_id)
+
+        if claim_id not in research_claim_ids:
+            errors.append(
+                f"Gate-1 disposition references unknown claim_id {claim_id}."
+            )
+
+        disposition_value = item.get("disposition")
+        if disposition_value not in {"approved", "bounded", "rejected"}:
+            errors.append(
+                f"Gate-1 claim {claim_id} has invalid disposition {disposition_value!r}."
+            )
+
+        if disposition_value == "bounded":
+            bounded_wording = item.get("bounded_wording")
+            boundary = item.get("boundary")
+            if not _nonempty(bounded_wording) and not _nonempty(boundary):
+                errors.append(
+                    f"Bounded Gate-1 claim {claim_id} requires bounded wording or boundary."
+                )
+
+        if not _nonempty(item.get("medical_notes")):
+            errors.append(
+                f"Gate-1 claim {claim_id} requires concise medical notes."
+            )
+
+    missing = [claim_id for claim_id in research_claim_ids if claim_id not in seen]
+    if missing:
+        errors.append(
+            "Gate-1 disposition is missing Research claim IDs: "
+            + ", ".join(missing)
+        )
+
+    return errors
+
+def research_gate1_readiness(project: Path, root: Path) -> tuple[str, list[str]]:
+    project = Path(project)
+    required = (
+        "02_research_sheet.md",
+        "02_research_claims.json",
+        "13_fact_check_log.md",
+        "13_gate1_disposition.json",
+    )
+    missing = [name for name in required if not (project / name).is_file()]
+    if missing:
+        return "FAIL", [f"{name} is missing." for name in missing]
+
+    try:
+        research_artifact = json.loads(
+            (project / "02_research_claims.json").read_text(encoding="utf-8")
+        )
+        disposition = json.loads(
+            (project / "13_gate1_disposition.json").read_text(encoding="utf-8")
+        )
+        contract = load_contract(root)
+        evidence_library, source_type_by_id = load_evidence_context(root)
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, csv.Error) as exc:
+        return "FAIL", [f"Research/Gate-1 structured artifact could not be loaded: {exc}"]
+
+    status, errors = validate_research_artifact(
+        research_artifact,
+        contract,
+        evidence_library,
+        source_type_by_id,
+    )
+
+    if status == HUMAN_DECISION_REQUIRED:
+        return status, errors
+
+    if status != "PASS":
+        return "FAIL", errors
+
+    gate1_errors = validate_gate1_disposition(
+        research_artifact,
+        disposition,
+        contract,
+    )
+    if gate1_errors:
+        return "FAIL", gate1_errors
+
+    fact_check_log = (project / "13_fact_check_log.md").read_text(
+        encoding="utf-8"
+    ).strip()
+    if not fact_check_log:
+        return "FAIL", ["13_fact_check_log.md is empty."]
+
+    return "PASS", []

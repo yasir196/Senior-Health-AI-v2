@@ -41,7 +41,7 @@
   },
   "saturation_requirement": {
     "fields": ["counterevidence_searched", "saturation_note"],
-    "rule": "Saturation may be declared only when further searching yields no materially new information for that proposition. No minimum source or claim count exists or may be added.",
+    "rule": "Saturation may be declared only when further searching yields no materially new information for that proposition. No numeric source or claim count floor exists or may be added.",
     "anti_fabrication_rule": "A proposition added without material support, or added merely to fill an otherwise empty dimension, is a validation failure."
   },
   "topic_extensions": {

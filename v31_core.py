@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv, hashlib, json, os, re, shlex, shutil, subprocess
+from evidence_depth import research_gate1_readiness
 from decimal import Decimal, ROUND_HALF_UP
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -2800,9 +2801,18 @@ def stage_ready(project:Path,stage:str,config:dict[str,Any])->tuple[bool,list[st
     if stage=="Thumbnail":
         anchor=resolve_title_anchor(project)
         reasons=[]
-        if not anchor: reasons.append("Authoritative project Anchor / Outlier Title is missing from project.json.")
-        for name in ("01_topic_validation.md","02_research_sheet.md","13_fact_check_log.md"):
-            if not (project/name).is_file(): reasons.append(f"{name} is missing.")
+        if not anchor:
+            reasons.append("Authoritative project Anchor / Outlier Title is missing from project.json.")
+        if not (project/"01_topic_validation.md").is_file():
+            reasons.append("01_topic_validation.md is missing.")
+
+        evidence_status, evidence_reasons = research_gate1_readiness(
+            project, Path(__file__).resolve().parent
+        )
+        if evidence_status != "PASS":
+            reasons.append(f"Research / Medical Gate 1 evidence contract: {evidence_status}.")
+            reasons.extend(evidence_reasons)
+
         return not reasons,reasons
     if stage=="Retention Structure Analysis": return retention_structure_ready(project,config)
     if stage=="Narrative QA": return narrative_qa_ready(project,config)
