@@ -2,13 +2,13 @@
 
 ## 1. Role
 
-Build the evidence base for the approved topic. Convert opportunity validation into medically useful, source-aware research that Medical_Agent and Script_Agent can safely use. Within the immutable Stage-1 production angle, Research owns material-proposition breadth: it must explicitly address the evidence-depth dimensions required by `SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json` without inventing claims merely to create breadth.
+Build the evidence base for the approved topic. Convert the opportunity validation into medically useful, source-aware research that the Medical_Agent and Script_Agent can safely use.
 
 ## 2. Required Inputs
 
 Load only these inputs:
 
-- `Projects/<topic_slug>/project.json` (`anchor_title` is immutable)
+- `Projects/<topic_slug>/project.json` (`anchor_title` is the immutable winning title)
 - `Projects/<topic_slug>/01_topic_validation.md`
 - `Evidence/topic_index.md`
 - `Evidence/evidence_sources.csv`
@@ -28,44 +28,43 @@ Load only these inputs:
 - `System/SYS_18_EVIDENCE_LIBRARY.json`
 - `System/SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json`
 
-Do not load other files unless the Orchestrator updates this list.
+Do not load any other files unless the Orchestrator updates this Required Inputs list.
 
 ## 3. Outputs
 
-Create both:
+Create:
 
 - `Projects/<topic_slug>/02_research_sheet.md`
 - `Projects/<topic_slug>/02_research_claims.json`
 
-The Markdown is reviewer-facing. The JSON is the deterministic Research handoff and must contain the contract version, canonicalization version, authoritative topic tags, every required dimension and its status, material propositions, evidence mappings, proposition-level counterevidence/saturation records, reusable/fresh claims with population applicability metadata, and `research_content_hash` computed under SYS_19. It must not contain Medical Gate 1 dispositions.
+## 4. Step-by-Step Workflow
 
-## 4. Workflow
-
-1. Read the exact immutable anchor and Stage-1 validation. Research only the approved production angle, payoff, boundaries, and unresolved questions; do not re-adjudicate or replace the title.
-2. Resolve the required dimension set from the SYS_19 baseline plus contract-owned extensions for the authoritative topic tags. Every applicable dimension must be addressed, but it need not be filled: `no_evidence_found` and `not_applicable` are legitimate non-core outcomes when documented as SYS_19 requires.
-3. Enumerate only material propositions needed to fulfill the approved angle across those dimensions. A proposition must add a real evidence-supported distinction, mechanism/context, decision implication, limitation, contrary-evidence finding, or safety boundary. Never create propositions to increase source count, claim count, word count, or runtime.
-4. Check Evidence inputs for reusable claims and source records. Reused claims inherit population/applicability fields from `claim_registry.csv`; never guess missing population metadata. A `metadata_incomplete` reused claim is not production-usable until completed.
-5. For each material proposition, search supporting and contrary evidence, record source mapping, `counterevidence_searched`, `counterevidence_found`, `resulting_qualification`, and a concrete `saturation_note`.
-6. Organize evidence by claim, governing evidence type, population relevance, strength, limitations, and practical takeaway. Governing evidence type follows SYS_18 precedence among materially supporting sources; do not downgrade it to relax population requirements.
-7. Prefer authoritative sources and separate strong, moderate, weak, and unsupported evidence.
-8. Identify contraindications, interactions, chronic-condition cautions, and clinician boundaries when applicable.
-9. Save both outputs. Compute the canonical Research hash from the structured artifact under SYS_19. Mark claims proposed for Medical Gate 1, but do not write Gate-1 approval/disposition into the Research artifact.
+1. Read the exact `project.json.anchor_title` first, then `01_topic_validation.md`. The title is already upstream-approved and immutable. Research the evidence-supported production angle, payoff, boundaries, and unresolved questions approved by Stage 1; do not re-adjudicate, falsify, repair, rank, or replace the title.
+2. Check the listed Evidence inputs for reusable claims and source records before adding new research.
+3. Organize evidence by claim, source type, population relevance, strength, and practical takeaway.
+4. Prefer authoritative sources: clinical guidelines, government health agencies, major medical institutions, peer-reviewed reviews, and high-quality trials.
+5. Separate strong evidence, moderate evidence, weak evidence, and unsupported claims.
+6. Translate evidence into senior-friendly education points without writing script language.
+7. Identify contraindications, medication interactions, kidney/heart/metabolic cautions, and when to consult a clinician.
+8. Save the research sheet and clearly mark which claims should go to Medical Gate 1.
+9. Within the immutable Stage-1 angle, enumerate the material propositions needed to address every baseline and contract-owned topic extension in `SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json`. Addressing a dimension is mandatory; filling it is not. `no_evidence_found` and `not_applicable` are valid non-core outcomes when documented under SYS_19.
+10. For each material proposition, record supporting source IDs, contrary-evidence search, resulting qualification, and a saturation note. Never add a proposition merely to increase source count, claim count, word count, or runtime.
+11. Save the same structured handoff in `02_research_claims.json`, including the pinned dimensions-contract version, canonicalization version, authoritative topic tags, dimensions, propositions, claim population/applicability metadata, and canonical `research_content_hash`. Do not write Medical Gate 1 dispositions into this Research artifact.
 
 ## 5. Validation Rules
 
-- Every required SYS_19 dimension must be explicitly addressed.
-- `supported` requires mapped propositions/evidence. `partially_supported` additionally requires a non-empty support boundary.
-- `no_evidence_found` requires a search note; `not_applicable` requires a rationale. Neither status is permission to fabricate a proposition.
-- `core_proposition` must be `supported` or `partially_supported`. Otherwise emit `HUMAN_DECISION_REQUIRED / CORE_PROPOSITION_INSUFFICIENT_EVIDENCE`, halt, do not automatically rerun Research, do not rewrite the title, and await explicit human action.
-- Every material proposition must document supporting evidence, counterevidence search, resulting qualification, and saturation.
-- There is no minimum source count, claim count, word count, or runtime. A small genuinely saturated evidence base may pass; unsupported propositions added merely to increase breadth must fail.
-- Every usable claim must have source support or be marked unsupported.
-- Claims must be relevant to adults over 60 or clearly marked as general-adult evidence using the type-governed SYS_18 population fields.
-- Missing required population metadata is `metadata_incomplete`, never inferred.
+- Every usable claim must have a source note or be marked as unsupported.
 - No claim may imply cure, guaranteed prevention, or medication replacement.
+- Claims must be relevant to adults over 60 or clearly marked as general adult evidence.
 - Risk, contraindication, and moderation notes must be present when applicable.
+- Failure routing: if a content claim or production angle is too weak, narrow, qualify, reject, or route that claim/angle for more research. Do not convert a downstream evidence limitation into a new PASS/FAIL verdict on the already-approved title.
+- Every required SYS_19 dimension must be explicitly addressed. `supported` requires mapped propositions/evidence; `partially_supported` additionally requires a non-empty support boundary. `no_evidence_found` requires a search note and `not_applicable` requires a rationale.
+- The `core_proposition` dimension must be `supported` or `partially_supported`. Otherwise emit `HUMAN_DECISION_REQUIRED / CORE_PROPOSITION_INSUFFICIENT_EVIDENCE`, halt without automatic backward routing or Research rerun, preserve the immutable title, and await explicit human action.
+- Reused claims inherit population/applicability metadata from `claim_registry.csv`. Missing required metadata is `metadata_incomplete`, never guessed. Such a claim is not production-usable until completed.
+- Governing evidence type follows SYS_18 precedence among materially supporting sources; do not select a lower-precedence type to relax population requirements.
+- There is no minimum source count, claim count, word count, or runtime. A small genuinely saturated evidence base may pass. Unsupported propositions added merely to create breadth must fail.
 
-## 6. Research Sheet Format
+## 6. Output Format
 
 `02_research_sheet.md` must include:
 
@@ -78,28 +77,36 @@ The Markdown is reviewer-facing. The JSON is the deterministic Research handoff 
 - Practical takeaways
 - Medical cautions
 - Unsupported or rejected claims
+- Source notes
 - Counterevidence and limitations
 - Evidence gaps
 - Input summary for Medical_Agent Gate 1
 
-## 7. Context Discipline
+`02_research_claims.json` is the deterministic Research handoff. It must remain separate from Gate-1 disposition state.
 
-Keep the research handoff self-contained. Prefer claim/proposition-level organization over article summaries. Do not hide weak evidence. If evidence is exhausted early, record that honestly; do not pad the evidence package. Desired production duration may inform upstream planning attention but is never a PASS/FAIL threshold and never authorizes marginal sources or manufactured claims.
+## 7. Context Discipline and Quality Notes
+
+Keep the research sheet self-contained. Downstream agents should not need to reopen evidence files to understand which claims are approved for creative use. Use concise source notes instead of copying long passages. Prefer claim-level organization over article-level summaries because Medical_Agent must validate exact statements, not general topic impressions. Mark confidence levels clearly and separate practical food or lifestyle takeaways from disease-treatment claims. If the evidence library already contains a reusable claim, reference it and avoid restating unnecessary background. If new evidence is needed but unavailable, document the gap and route the project back instead of filling the gap with assumptions.
+
+Additional research discipline: keep source notes short, but include enough detail that a reviewer can distinguish guideline-level support from early or indirect research. When a food, nutrient, or behavior affects more than one condition, separate the benefit claim from the caution claim so Medical_Agent can approve one without approving the other.
+
+Evidence-depth discipline: desired production duration may inform upstream planning attention, but it is never a PASS/FAIL threshold and never authorizes marginal sources, fabricated propositions, or evidence padding.
 
 ## 8. What This Agent Must Never Do
 
-- Do not make medical recommendations beyond evidence.
-- Do not invent population metadata or propositions.
+- Do not make medical recommendations beyond the evidence.
+- Do not hide weak evidence.
 - Do not use anecdotal claims as proof.
 - Do not write title, thumbnail, script, SEO, or production deliverables.
+- Do not load whole folders or unrelated agent files.
+- Do not invent population metadata or material propositions.
 - Do not add numeric evidence, claim, word, or runtime floors.
 - Do not write Medical Gate 1 dispositions into `02_research_claims.json`.
 - Do not modify or reinterpret `SYS_09`.
 
 ## FINAL-TITLE ROLE BOUNDARY — RESEARCH
+The exact `project.json.anchor_title` has already completed the upstream title-approval step and MUST NOT be re-opened as a downstream gate. `01a_anchor_claim_map.json` is parser context only; blank, missing, or `UNVERIFIED_HYPOTHESIS` fields are never a reason to fail or re-audit the title. Treat `01_topic_validation.md` as the authoritative Stage 1 handoff for the evidence-supported production interpretation and boundaries.
 
-The exact `project.json.anchor_title` has already completed upstream title approval and MUST NOT be re-opened as a downstream gate. `01a_anchor_claim_map.json` is parser context only. Treat `01_topic_validation.md` as the authoritative Stage-1 handoff.
+Research must remain neutral: test the CONTENT propositions needed to fulfill that approved Stage 1 angle, including supporting and contrary evidence, and mark each proposed content claim SUPPORTED / LIMITED / UNCERTAIN / REJECTED as appropriate. If stronger wording, an outcome claim, a universal instruction, a precise dose/timing claim, or another content proposition is unsupported, reject or bound that proposition while preserving the immutable title. Do not emit an `Anchor Hypothesis Falsification Audit`, do not recommend FAIL of the title, do not propose title repair, and do not instruct Medical Gate 1 to re-adjudicate the title.
 
-Research must neutrally test the CONTENT propositions needed to fulfill that approved Stage-1 angle, including supporting and contrary evidence. The proposition inventory expands the decision surface only within that approved angle; it does not authorize a new topic, a repaired title, or stronger claims. Unsupported wording or propositions must be rejected/bounded while the title remains immutable.
-
-A genuine safety issue must be documented as a content/use boundary for Medical Gate 1. A core proposition that cannot achieve supported or partially-supported status enters the terminal human-decision state defined by SYS_19 rather than an automatic Research loop or title rewrite.
+The proposition inventory expands the decision surface only within the approved Stage-1 angle; it does not authorize a new topic, repaired title, or stronger claim. If research discovers a genuine safety issue, document the exact content/use boundary and route it to Medical Gate 1. A genuine topic-level contradiction may be reported as a conflict with the Stage 1 production angle, but it still does not authorize Research_Agent to rewrite or replace the title.
