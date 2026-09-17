@@ -104,7 +104,7 @@
     },
     {
       "stage": "Research",
-      "authority_reference": "The authoritative validation rules for this stage are defined in the Research_Agent contract and research source requirements owned outside SYS_15."
+      "authority_reference": "The authoritative validation rules for this stage are defined in Agents/Research_Agent.md, System/SYS_18_EVIDENCE_LIBRARY.json, and System/SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json."
     },
     {
       "stage": "Medical Gates",

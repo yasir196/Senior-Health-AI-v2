@@ -1,0 +1,83 @@
+{
+  "contract_id": "evidence_depth_dimensions",
+  "version": "1.0",
+  "authority_boundary": "This contract owns evidence-depth completeness only. It does not assess medical validity, reinterpret SYS_09 severities, or override System/SYS_09_MEDICAL_RULE_ENGINE.json. Medical adjudication remains with Medical Gate 1 under SYS_09.",
+  "baseline_dimensions": [
+    "core_proposition",
+    "mechanism_context",
+    "alternatives_distinctions",
+    "decision_guidance",
+    "limitations_uncertainty",
+    "counterevidence",
+    "safety_boundaries"
+  ],
+  "dimension_status_values": ["supported", "partially_supported", "no_evidence_found", "not_applicable"],
+  "status_rules": {
+    "supported": "Requires at least one linked proposition with evidence mapping.",
+    "partially_supported": "Requires the same proposition-to-evidence traceability as supported plus a non-empty support_boundary naming what remains unsupported. A bare partially_supported is invalid.",
+    "no_evidence_found": "Valid non-core outcome. Requires a concise search note and must not be closed by adding an unsupported or invented proposition.",
+    "not_applicable": "Valid non-core outcome. Requires a concise rationale explaining why the dimension does not apply to the approved angle."
+  },
+  "core_proposition_invariant": {
+    "allowed_statuses": ["supported", "partially_supported"],
+    "partially_supported_requires": "support_boundary",
+    "on_violation": {
+      "state": "HUMAN_DECISION_REQUIRED",
+      "reason": "CORE_PROPOSITION_INSUFFICIENT_EVIDENCE",
+      "continue_downstream": false,
+      "automatic_backward_routing": false,
+      "automatic_research_rerun": false,
+      "automatic_title_rewrite": false,
+      "mark_pass": false,
+      "mark_fail": false,
+      "behavior": "halt_and_await_explicit_human_action"
+    },
+    "note": "This is an evidence floor, not a content-volume floor. Missing, malformed, no-evidence, or not-applicable core_proposition states all resolve to the same terminal human-decision state. No source, claim, word, or runtime count participates in it."
+  },
+  "counterevidence_requirement": {
+    "dimension_level": "Records whether the contrary-evidence space for the approved angle was searched and what was found.",
+    "proposition_level": ["counterevidence_searched", "counterevidence_found", "resulting_qualification"],
+    "note": "A single global counterevidence note cannot satisfy proposition-level requirements."
+  },
+  "saturation_requirement": {
+    "fields": ["counterevidence_searched", "saturation_note"],
+    "rule": "Saturation may be declared only when further searching yields no materially new information for that proposition. No numeric source or claim count floor exists or may be added.",
+    "anti_fabrication_rule": "A proposition added without material support, or added merely to fill an otherwise empty dimension, is a validation failure."
+  },
+  "topic_extensions": {
+    "sleep": ["sleep_hygiene_context", "medication_interaction_boundary"],
+    "blood_pressure": ["medication_interaction_boundary", "measurement_context"],
+    "kidney": ["electrolyte_restriction_boundary"],
+    "diabetes": ["carbohydrate_context"],
+    "allergy": ["reaction_severity_boundary"]
+  },
+  "extension_resolution": {
+    "owner": "contract",
+    "rule": "Applicable extensions are derived by this contract from the artifact's authoritative topic tags. A project may not voluntarily declare or omit its own extension set.",
+    "unmapped_topic_tag_action": "baseline_only"
+  },
+  "artifact_binding": {
+    "required_artifact_fields": ["dimensions_contract_version", "applicable_topic_tags", "research_content_hash", "canonicalization_version"],
+    "migration_rule": "Phase A validates artifacts only against the current contract version. A dimensions_contract_version mismatch must fail closed and requires explicit Research regeneration or migration before validation; it must never silently reinterpret the artifact under a different contract version."
+  },
+  "gate1_binding": {
+  "schema_version": "gate1-disposition-v1"
+},
+  "canonicalization": {
+    "version": "research-v1",
+    "steps": [
+      "drop fields classified volatile/non-semantic plus explicitly self-excluded hash fields",
+      "normalize all strings to Unicode NFC",
+      "recursively sort object keys",
+      "serialize UTF-8 with deterministic compact separators and no insignificant whitespace",
+      "preserve semantic array order unless schema declares the array set-like",
+      "deterministically normalize schema-declared set-like arrays",
+      "SHA-256 the resulting bytes"
+    ],
+    "volatile_fields": ["generated_at", "validated_at", "ui_metadata"],
+    "self_excluded_fields": ["research_content_hash"],
+    "self_excluded_fields_note": "research_content_hash is semantic binding metadata, not volatile decoration. It is excluded only because a digest cannot include itself; removing this exclusion breaks deterministic staleness detection.",
+    "set_like_arrays": ["applicable_topic_tags", "source_ids", "material_source_ids"],
+    "numeric_rule": "Avoid floats in the evidence contract. Where numeric evidence is required, constrain representation explicitly rather than relying on language-specific float serialization."
+  }
+}
