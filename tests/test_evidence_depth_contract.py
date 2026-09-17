@@ -563,3 +563,11 @@ def test_research_agent_pins_machine_schema_and_project_local_sources():
     assert "`source_catalog` is the project-local structured record" in text
     assert "MUST NOT modify `Evidence/evidence_sources.csv`" in text
     assert "`sha256:<hex>`" in text
+
+
+def test_material_propositions_alias_does_not_replace_canonical_propositions():
+    a = artifact()
+    a["material_propositions"] = a.pop("propositions")
+    status, errors = validate(finalize(a))
+    assert status == "FAIL"
+    assert any("proposition" in e.lower() for e in errors)
