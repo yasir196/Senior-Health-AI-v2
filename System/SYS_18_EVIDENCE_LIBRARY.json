@@ -1,6 +1,6 @@
 {
   "module": "evidence_library_manager",
-  "version": "1.1",
+  "version": "1.2",
   "storage_root": "Evidence/",
   "core_files": {
     "source_library": "Evidence/evidence_sources.csv",
@@ -11,11 +11,21 @@
   },
   "source_schema": ["source_id","topic_tags","condition_tags","source_title","authors_or_body","year","url","evidence_tier","source_type","key_finding","supports_claims","limitations","contraindications_or_cautions","last_checked","status","used_in_projects"],
   "claim_schema": ["claim_id","claim_text","approved_wording","topic_tags","source_ids","evidence_tier_floor","claim_strength","allowed_context","required_caveats","forbidden_wording","last_medical_review","status","evidence_applicability_type","material_source_ids","study_population","target_population","senior_specific","extrapolation_caveat","population_metadata_status","source_identity_status"],
+  "research_claim_required_fields": ["claim_id","evidence_applicability_type","material_source_ids","study_population","target_population","senior_specific","extrapolation_caveat","population_metadata_status","usable_for_production"],
   "evidence_applicability_types": {
     "precedence": ["outcome_study","guideline","descriptive_compositional"],
     "derivation": "Use the highest-precedence type among materially supporting sources.",
     "anti_downgrade_rule": "A lower-precedence type cannot be selected to relax population requirements.",
     "unmapped_source_type_action": "block"
+  },
+  "source_type_map": {
+    "small human intervention study": "outcome_study",
+    "observational allergy research": "outcome_study",
+    "randomized controlled feeding trial": "outcome_study",
+    "systematic review and meta-analysis": "outcome_study",
+    "clinical practice guideline": "guideline",
+    "major body guideline": "guideline",
+    "government nutrition database": "descriptive_compositional"
   },
   "population_metadata_status_values": ["complete","metadata_incomplete"],
   "source_identity_status_values": ["unresolved","manually_confirmed"],
@@ -26,7 +36,7 @@
     "descriptive_compositional": {"study_population":"null","target_population":"required","senior_specific":"null","extrapolation_caveat":"null"}
   },
   "null_semantics": "Nulls are type-governed; there is no generic null escape.",
-  "metadata_incomplete_rule": "Population metadata must come from an explicit recorded source statement or a manually confirmed source record. Do not infer missing values from source type, topic, or claim wording.",
+  "metadata_incomplete_rule": "Population metadata must come from an explicit recorded source statement or a manually confirmed source record. Do not infer missing values from source type, topic, or claim wording. A metadata_incomplete claim must explicitly set usable_for_production=false in a Research artifact.",
   "reuse_rule": "Reused claims inherit these fields from claim_registry.csv. Missing population metadata is not guessed.",
   "approved_status_values": ["approved","needs_review","retired","do_not_use"],
   "claim_strength_values": ["strong","moderate","limited","preliminary"],
@@ -39,7 +49,9 @@
     {"id":"EV6","rule":"library_reuse_cannot_bypass_project_research_or_fact_check","severity":"block"},
     {"id":"EV7","rule":"library_cannot_override_SYS_09","severity":"block"},
     {"id":"EV8","rule":"governing_evidence_type_follows_material_source_precedence","severity":"block"},
-    {"id":"EV9","rule":"population_nulls_follow_type_governed_rules","severity":"block"}
+    {"id":"EV9","rule":"population_nulls_follow_type_governed_rules","severity":"block"},
+    {"id":"EV10","rule":"unmapped_material_source_type_blocks_claim","severity":"block"},
+    {"id":"EV11","rule":"missing_population_safety_fields_are_not_permissive_defaults","severity":"block"}
   ],
   "agent_usage": {
     "research_agent": ["search topic_index before external research","reuse approved source_ids only after checking exact claim support","add new approved sources after project medical gate passes"],
