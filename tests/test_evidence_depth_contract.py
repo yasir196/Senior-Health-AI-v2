@@ -633,3 +633,16 @@ def test_keyed_dimensions_object_preserves_core_human_decision_semantics():
 
     assert status == HUMAN_DECISION_REQUIRED
     assert CORE_INSUFFICIENT in errors
+
+
+def test_research_agent_requires_non_blocking_long_form_fit_advisory():
+    text = Path("Agents/Research_Agent.md").read_text(encoding="utf-8")
+
+    assert "LONG-FORM FIT: SUPPORTED" in text
+    assert "LONG-FORM FIT: NOT RECOMMENDED" in text
+    assert "User choice: SKIP PROJECT or CONTINUE ANYWAY." in text
+    assert "20–30 minute production format" in text
+    assert "Do not decide from the title wording alone." in text
+    assert "The advisory is intentionally non-blocking." in text
+    assert "never authorizes Writer padding or a forced 20-minute script" in text
+    assert "never a medical/evidence PASS/FAIL threshold" in text
