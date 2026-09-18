@@ -597,3 +597,39 @@ def test_pipeline_dag_does_not_auto_route_medical_failures_to_research():
     assert "Do not automatically rerun Research" in semantics["medical_gate_1_fail"]
     assert "within the approved evidence package" in semantics["medical_gate_2_fail"]
     assert "Do not automatically rerun Research" in semantics["medical_gate_2_fail"]
+
+def test_keyed_dimensions_object_passes_research_validation():
+    a = artifact()
+    a["dimensions"] = {
+        item["dimension"]: {
+            key: value
+            for key, value in item.items()
+            if key != "dimension"
+        }
+        for item in a["dimensions"]
+    }
+
+    status, errors = validate(finalize(a))
+
+    assert status == "PASS", errors
+
+
+def test_keyed_dimensions_object_preserves_core_human_decision_semantics():
+    a = artifact()
+    a["dimensions"] = {
+        item["dimension"]: {
+            key: value
+            for key, value in item.items()
+            if key != "dimension"
+        }
+        for item in a["dimensions"]
+    }
+    a["dimensions"]["core_proposition"] = {
+        "status": "no_evidence_found",
+        "search_note": "Searched; no adequate support found.",
+    }
+
+    status, errors = validate(finalize(a))
+
+    assert status == HUMAN_DECISION_REQUIRED
+    assert CORE_INSUFFICIENT in errors
