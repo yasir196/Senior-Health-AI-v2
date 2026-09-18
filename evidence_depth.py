@@ -206,7 +206,22 @@ def validate_research_artifact(
         errors.append("canonicalization_version does not match the loaded contract")
 
     tags = artifact.get("applicable_topic_tags") or []
-    dims = {d.get("dimension"): d for d in artifact.get("dimensions", []) if isinstance(d, dict) and d.get("dimension")}
+    raw_dimensions = artifact.get("dimensions", [])
+    if isinstance(raw_dimensions, dict):
+        dims = {
+            name: {**value, "dimension": name}
+            for name, value in raw_dimensions.items()
+            if isinstance(value, dict)
+        }
+    elif isinstance(raw_dimensions, list):
+        dims = {
+            d.get("dimension"): d
+            for d in raw_dimensions
+            if isinstance(d, dict) and d.get("dimension")
+        }
+    else:
+        dims = {}
+        errors.append("dimensions must be an object keyed by dimension name or a list of dimension objects")
     missing = sorted(expected_dimensions(contract, tags) - set(dims))
     if missing:
         errors.append("missing required dimensions: " + ", ".join(missing))
