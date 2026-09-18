@@ -4,6 +4,16 @@ Write the final production-ready narration for the selected project using the ex
 
 Do not research again, add sources, add or strengthen medical claims, invent credentials, or imply the virtual host is a licensed clinician.
 
+## Full Evidence Development Lock
+
+Do not treat the anti-padding, Semantic Progression, Retention-First, or runtime-advisory rules as instructions to summarize or compress materially useful approved research. Fully develop every materially useful approved evidence module at legitimate explanatory depth before deciding the script is complete.
+
+For each materially distinct approved evidence module, use the depth that genuinely improves viewer understanding: explain what was studied, the relevant population and formulation, what the evidence means, what it does not mean, why the distinction matters for an adult over 60, and the practical viewer consequence when those elements are supported by the approved source of truth. Evidence interpretation, meaningful distinctions, limitations, comparisons, practical consequences, and explanations that add new viewer understanding are legitimate depth. Depth is not padding.
+
+Use earlier supplied deep research only for explanatory depth within the approved medical boundaries. The approved claims and Medical Gate boundaries remain authoritative for what may appear as medical substance in narration. Do not revive an unapproved proposition, source, mechanism, number, interaction, or claim merely because it appeared in earlier research or an outline.
+
+Do not compress an approved module merely for brevity. Do not repeat a point merely to create length, invent claims or mechanisms, strengthen evidence, add filler, or manufacture extra stories/recaps. Complete the fully developed production narration first; do not negotiate a shorter version beforehand. Runtime remains advisory metadata after drafting and is never a reason to pad or trim.
+
 ## Required Separate Outputs
 
 Create exactly these separate files:
@@ -27,7 +37,7 @@ Recaps, stories, curiosity loops, and pattern interrupts are adaptive tools, not
 
 Pay off the core title question progressively from the opening onward. Do not postpone the substantive answer behind long setup or qualification, and avoid late phrases such as "now we can finally answer" when the title answer should already be underway.
 
-Consolidate repeated safety/context boundaries while preserving every medically required warning and its meaning. Use all materially useful approved evidence at legitimate depth. Accept the strongest complete non-repetitive script supported by that evidence and report its actual length afterward as informational metadata; never restore repetition, expand, compress, or pad with another recap, disclaimer, analogy, hypothetical story, source, or claim because of runtime or word count.
+Consolidate repeated safety/context boundaries while preserving every medically required warning and its meaning. Use all materially useful approved evidence at legitimate depth. Fully develop the strongest complete non-repetitive script supported by that evidence and report its actual length afterward as informational metadata; never restore repetition, expand, compress, or pad with another recap, disclaimer, analogy, hypothetical story, source, or claim because of runtime or word count.
 
 ## Retention-First Drafting Lock
 
@@ -49,7 +59,7 @@ Before finalizing, do one silent retention-prevention pass over the draft: check
 
 ## Execution / No-Negotiation Lock
 
-Do not pre-negotiate the assignment. Do not tell the user that the approved research is insufficient, estimate in advance how many words the evidence can support, propose a shorter target, discuss whether the minimum runtime is achievable, or stop to explain a word-count conflict before drafting. First write the strongest complete production-ready script using all approved material at legitimate depth and following the Semantic Progression Lock.
+Do not pre-negotiate the assignment. Do not tell the user that the approved research is insufficient, estimate in advance how many words the evidence can support, propose a shorter target, discuss whether the minimum runtime is achievable, or stop to explain a word-count conflict before drafting. First write the strongest complete production-ready script using all approved material at legitimate depth and following both the Full Evidence Development Lock and the Semantic Progression Lock.
 
 Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. Do not pre-calculate or include an automatic runtime target, range, minimum, maximum, floor, WPM target, word-count target/range, numerical drafting constraint, or required word adjustment. Write the strongest complete script supported by approved evidence. Runtime is ADVISORY ONLY — NON-BLOCKING.
 
