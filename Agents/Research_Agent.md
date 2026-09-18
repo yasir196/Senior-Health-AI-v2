@@ -37,6 +37,25 @@ Create:
 - `Projects/<topic_slug>/02_research_sheet.md`
 - `Projects/<topic_slug>/02_research_claims.json`
 
+### Long-Form Fit Advisory
+
+At the very top of `02_research_sheet.md`, before the normal Research summary, print a short human-facing advisory for the channel's selected **20–30 minute production format**.
+
+Use exactly one of these headings:
+
+- `LONG-FORM FIT: SUPPORTED`
+- `LONG-FORM FIT: NOT RECOMMENDED`
+
+This is a planning advisory, not a medical verdict, title verdict, evidence gate, runtime gate, or automatic routing instruction. It must never rewrite, repair, replace, or fail the immutable title.
+
+Before choosing the advisory, perform enough normal Research discovery across reasonable evidence families to judge whether the exact approved title/angle has enough **materially distinct, evidence-supported educational substance** to plausibly sustain the selected long-form format without repetition, filler, title drift, unsupported claims, or individualized treatment advice. Do not decide from the title wording alone.
+
+For `LONG-FORM FIT: NOT RECOMMENDED`, add 1–3 concise sentences explaining that the exact title/angle appears too narrow for a clean 20–30 minute evidence-safe video and name the limiting reason (for example: semantic saturation, mostly boundary-only material, or further breadth requiring title drift/individualized care). Then state: `User choice: SKIP PROJECT or CONTINUE ANYWAY.`
+
+For `LONG-FORM FIT: SUPPORTED`, add 1–2 concise sentences naming the materially distinct evidence-backed module breadth that supports the assessment.
+
+The advisory is intentionally non-blocking. `CONTINUE ANYWAY` means downstream stages may proceed with the strongest complete evidence-supported material actually approved; it never authorizes Writer padding or a forced 20-minute script. `SKIP PROJECT` is a human workflow choice only. Research_Agent must not automatically delete, archive, reroute, expand, or rewrite the project based on this advisory.
+
 ## 4. Step-by-Step Workflow
 
 1. Read the exact `project.json.anchor_title` first, then `01_topic_validation.md`. The title is already upstream-approved and immutable. Research the evidence-supported production angle, payoff, boundaries, and unresolved questions approved by Stage 1; do not re-adjudicate, falsify, repair, rank, or replace the title.
@@ -46,7 +65,7 @@ Create:
 5. Separate strong evidence, moderate evidence, weak evidence, and unsupported claims.
 6. Translate evidence into senior-friendly education points without writing script language.
 7. Identify contraindications, medication interactions, kidney/heart/metabolic cautions, and when to consult a clinician.
-8. Save the research sheet and clearly mark which claims should go to Medical Gate 1.
+8. Save the research sheet and clearly mark which claims should go to Medical Gate 1. Place the Long-Form Fit Advisory required by Section 3 at the very top of the sheet. The advisory must be based on the discovered module breadth and saturation evidence, not a title-only guess or numeric claim/source count.
 9. Within the immutable Stage-1 angle, enumerate the material propositions needed to address every baseline and contract-owned topic extension in `SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json`. Addressing a dimension is mandatory; filling it is not. `no_evidence_found` and `not_applicable` are valid non-core outcomes when documented under SYS_19.
 10. For each material proposition, record supporting source IDs, contrary-evidence search, resulting qualification, saturation note, and `discovery_record` exactly as required by the current `SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json`. The machine field names are exact and MUST NOT be renamed, paraphrased, aliased, or substituted. `discovery_record` MUST contain exactly the required semantic fields `search_scope`, `evidence_families_checked`, and `materially_distinct_evidence_result`. Do not emit substitutes such as `materially_distinct_evidence_after_search`. `evidence_families_checked` must be a non-empty list of the relevant evidence families deliberately checked. Research must not stop merely because one credible guideline, review, or trial has already been found. Continue discovery while credible materially distinct evidence is still being found within the approved Stage-1 angle. Saturation means further reasonable searching is no longer yielding materially distinct evidence that changes support, qualification, limitations, alternatives, safety boundaries, or population applicability for the proposition; it does not mean every publication has been collected. Never add a proposition or source merely to increase source count, claim count, word count, or runtime.
 11. Save the same structured handoff in `02_research_claims.json`. Pin `dimensions_contract_version` to the exact current `SYS_19.version` and `canonicalization_version` to the exact current `SYS_19.canonicalization.version`; never reuse an older contract version or silently reinterpret an older artifact. The artifact must include authoritative topic tags, `dimensions`, the exact top-level key `propositions`, claim population/applicability metadata, `source_catalog`, and canonical `research_content_hash`. The top-level proposition collection MUST be named exactly `propositions`; do not rename, paraphrase, alias, or substitute it as `material_propositions` or any other key. Each supported or partially-supported dimension must map to its material propositions through `proposition_ids`, and each material proposition must identify its supporting evidence through `evidence_source_ids`. `source_catalog` is the project-local structured record for sources materially used by this Research run, including newly discovered sources that are not yet reusable entries in the global Evidence Library. Every such source must have a stable `source_id` and explicit `source_type`; use source-type vocabulary recognized by `SYS_18_EVIDENCE_LIBRARY.json` and never guess an unmapped type. A project-local source does not become globally reusable merely by appearing in `source_catalog`, and Research_Agent MUST NOT modify `Evidence/evidence_sources.csv`; promotion to the reusable Evidence Library follows the separate Evidence Library lifecycle after medical review. `research_content_hash` must use the canonical `sha256:<hex>` representation defined by SYS_19; never invent a decorative, shortened, prefix-less, or manually approximated hash. Do not write Medical Gate 1 dispositions into this Research artifact.
@@ -62,13 +81,14 @@ Create:
 - The `core_proposition` dimension must be `supported` or `partially_supported`. Otherwise emit `HUMAN_DECISION_REQUIRED / CORE_PROPOSITION_INSUFFICIENT_EVIDENCE`, halt without automatic backward routing or Research rerun, preserve the immutable title, and await explicit human action.
 - Reused claims inherit population/applicability metadata from `claim_registry.csv`. Missing required metadata is `metadata_incomplete`, never guessed. Such a claim is not production-usable until completed.
 - Governing evidence type follows SYS_18 precedence among materially supporting sources; do not select a lower-precedence type to relax population requirements.
-- There is no minimum source count, claim count, word count, or runtime. A small genuinely saturated evidence base may pass, but saturation must be supported by each proposition's `discovery_record`; a bare assertion such as "no additional source is needed" is not evidence of saturation. Relevant evidence families must be deliberately checked where applicable, including guidelines/consensus, systematic reviews/meta-analyses, primary studies, and government or major-institution guidance. A family may be documented as not applicable or as yielding no materially distinct evidence; do not fabricate or pad sources. Unsupported propositions added merely to create breadth must fail.
+- There is no minimum source count, claim count, word count, or runtime for evidence validity. The 20–30 minute Long-Form Fit Advisory is a separate human-facing production-planning assessment and must not alter evidence validity, Medical Gate eligibility, routing, or claim acceptance. A small genuinely saturated evidence base may pass evidence validation while still receiving `LONG-FORM FIT: NOT RECOMMENDED`. Conversely, `LONG-FORM FIT: SUPPORTED` never guarantees final runtime. A small genuinely saturated evidence base may pass, but saturation must be supported by each proposition's `discovery_record`; a bare assertion such as "no additional source is needed" is not evidence of saturation. Relevant evidence families must be deliberately checked where applicable, including guidelines/consensus, systematic reviews/meta-analyses, primary studies, and government or major-institution guidance. A family may be documented as not applicable or as yielding no materially distinct evidence; do not fabricate or pad sources. Unsupported propositions added merely to create breadth must fail.
 - `02_research_claims.json` is validated against the current SYS_19 contract literally. Required machine keys are schema, not prose: do not rename `proposition_ids`, `evidence_source_ids`, `discovery_record`, `search_scope`, `evidence_families_checked`, or `materially_distinct_evidence_result`. Newly discovered project-local sources may be represented in `source_catalog` without pre-registering them in `Evidence/evidence_sources.csv`, but their explicit `source_type` must map through SYS_18 and they remain project-local until separately admitted to the reusable library.
 
 ## 6. Output Format
 
-`02_research_sheet.md` must include:
+`02_research_sheet.md` must include, in this order:
 
+- Long-Form Fit Advisory as the first substantive section
 - Research summary
 - Approved angle from validation
 - Evidence-depth dimension summary
@@ -91,7 +111,7 @@ Keep the research sheet self-contained. Downstream agents should not need to reo
 
 Additional research discipline: keep source notes short, but include enough detail that a reviewer can distinguish guideline-level support from early or indirect research. When a food, nutrient, or behavior affects more than one condition, separate the benefit claim from the caution claim so Medical_Agent can approve one without approving the other.
 
-Evidence-depth discipline: desired production duration may inform upstream planning attention, but it is never a PASS/FAIL threshold and never authorizes marginal sources, fabricated propositions, or evidence padding.
+Evidence-depth discipline: the selected 20–30 minute production format must be surfaced through the Long-Form Fit Advisory, but it is never a medical/evidence PASS/FAIL threshold and never authorizes marginal sources, fabricated propositions, evidence padding, automatic research reruns, title changes, or Writer expansion. If the angle is too narrow, say so plainly and leave the skip/continue decision to the user.
 
 ## 8. What This Agent Must Never Do
 
