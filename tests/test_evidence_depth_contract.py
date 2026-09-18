@@ -646,3 +646,15 @@ def test_research_agent_requires_non_blocking_long_form_fit_advisory():
     assert "The advisory is intentionally non-blocking." in text
     assert "never authorizes Writer padding or a forced 20-minute script" in text
     assert "never a medical/evidence PASS/FAIL threshold" in text
+
+
+def test_research_agent_searches_broader_human_evidence_without_population_mislabeling():
+    text = Path("Agents/Research_Agent.md").read_text(encoding="utf-8")
+
+    assert "senior-specific / older-adult evidence where available AND broader relevant human/general-adult evidence" in text
+    assert "Do not exclude otherwise credible human evidence merely because the studied population is not specifically age 60+" in text
+    assert "General-adult evidence must never be rewritten, described, or implied as senior-specific evidence" in text
+    assert "Disease-specific or otherwise selected-population evidence may be used only for the proposition it actually supports" in text
+    assert "do not restrict discovery to publications matching the exact title wording or an exact `60+` exposure phrase" in text
+    assert "formulation/intervention distinctions remain mandatory" in text
+    assert "ensure discovery was not artificially narrowed to senior-only or exact-title population matching" in text
