@@ -213,7 +213,15 @@ def command_for_stage(project: Path, stage: str, anchor_outlier_pattern: str | N
     ref = f"Projects/{project.name}/"
     commands = {
         "Topic Validation": f"Run Stage 1 only for {ref}. Read project.json.anchor_title first and treat that exact Anchor / Outlier Title as the immutable, already-approved winning title and sole wording authority. Follow the Topic Validation policy in Agents/Outlier_Agent.md. Treat 01a_anchor_claim_map.json only as supporting parser context, never as the evidence verdict. Research the topic deeply enough to establish the evidence-supported production angle, payoff, boundaries, demand, and safety without reopening title generation or rewriting. Create only 01_topic_validation.md; preserve project.json and 01a_anchor_claim_map.json unchanged. Stop after validation.",
-        "Research + Medical Gate 1": f"For {ref}, run Research_Agent and Medical_Agent Gate 1 using the exact immutable, already-approved project.json.anchor_title and the Stage 1 handoff in 01_topic_validation.md. Follow the role-boundary policies in Agents/Research_Agent.md and Agents/Medical_Agent.md: research and medically validate the content claims, production angle, evidence limits, and safety boundaries without re-adjudicating, repairing, replacing, or failing the title itself. Treat 01a_anchor_claim_map.json only as parser context. Follow the evidence-depth contract in System/SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json. Create only 02_research_sheet.md, 02_research_claims.json, 13_fact_check_log.md, and 13_gate1_disposition.json, then stop before creative work.",
+        "Research + Medical Gate 1": (
+            f"For {ref}, use Projects/{project.name}/02_external_deep_research.md as the imported discovery base. "
+            "Do NOT rerun or replace broad topic discovery. Run Research_Agent in IMPORTED DEEP RESEARCH mode: preserve the imported report verbatim, extract every material proposition/source/population/formulation, positive/null/mixed/negative finding, limitation, warning, and materially distinct viewer-value module; verify cited material sources at source level where accessible; never invent a citation, silently strengthen a claim, or discard useful indirect/null/safety evidence merely because it is not a direct benefit claim. "
+            "Keep DISCOVERED evidence separate from APPROVED production claims. Preserve actual populations and raw-food/cooked-food/powder/extract/supplement distinctions. If a cited source cannot be verified, retain the discovery trace but mark it unverified/not production-usable rather than substituting a stronger claim. "
+            "Then create the canonical 02_research_sheet.md and 02_research_claims.json under System/SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json, and run Medical_Agent Gate 1 to create 13_fact_check_log.md and 13_gate1_disposition.json. Reassess LONG-FORM FIT only after source verification and the surviving materially distinct viewer-value modules are known; do not copy the imported report's fit verdict blindly. "
+            "Use the exact immutable project.json.anchor_title and 01_topic_validation.md boundaries; do not re-adjudicate, repair, replace, or fail the title. Treat 01a_anchor_claim_map.json only as parser context. Do not modify 02_external_deep_research.md. Create/update only 02_research_sheet.md, 02_research_claims.json, 13_fact_check_log.md, and 13_gate1_disposition.json, then stop before creative work."
+            if (project / "02_external_deep_research.md").is_file()
+            else f"For {ref}, run Research_Agent and Medical_Agent Gate 1 using the exact immutable, already-approved project.json.anchor_title and the Stage 1 handoff in 01_topic_validation.md. Follow the role-boundary policies in Agents/Research_Agent.md and Agents/Medical_Agent.md: research and medically validate the content claims, production angle, evidence limits, and safety boundaries without re-adjudicating, repairing, replacing, or failing the title itself. Treat 01a_anchor_claim_map.json only as parser context. Follow the evidence-depth contract in System/SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json. Create only 02_research_sheet.md, 02_research_claims.json, 13_fact_check_log.md, and 13_gate1_disposition.json, then stop before creative work."
+        ),
         "Thumbnail": f"For {ref}, run Thumbnail_Agent only using approved upstream files. Use project.json.anchor_title EXACTLY as the winning title; do not generate, rank, rewrite, repair, or replace the title. BEFORE generating concepts, read Analytics/active_channel_packaging_rules.md when present and apply every ACTIVE packaging rule that is contextually applicable to this project. When that artifact contains matching historical channel examples, derive thumbnail text structure/hierarchy AND visual/color packaging from those real channel patterns BEFORE inventing generic concepts; adapt the pattern to this topic and never copy old wording verbatim. In 04_thumbnail_concepts.md, include a mandatory `Historical Channel Examples Used` audit section listing 3-5 actual consumed examples per applicable ACTIVE rule (or all if fewer), with exact historical thumbnail text, source video/title, CTR, impressions, relevant text structure/hierarchy, relevant visual/color traits, and what was adapted. If no examples exist, state `NO MATCHING HISTORICAL EXAMPLES AVAILABLE` and do not claim an example-derived historical pattern. Treat learned packaging rules as impression-aware historical associations, never causal guarantees. They may guide thumbnail text/visual packaging only and must never override the immutable title promise, approved research/evidence, Medical Gate requirements, medical safety, or project-specific creative fit. Ignore CANDIDATE, REJECTED, and RETIRED rules; only the ACTIVE rules artifact may be injected. If an ACTIVE rule is not applicable to the current hero/category/context, mark it N/A rather than forcing it. For any digestion/anatomy visual, preserve one physiologically coherent continuous route; never render multiple colored internal pathways, branching arrows through organs, glowing nutrient streams, or magic-path effects unless explicitly supported by approved evidence. Create only 04_thumbnail_concepts.md and 11_thumbnail_prompt.md.",
         "Script Outline": f"For {ref}, run Script_Agent in outline_to_script mode. Use project.json.anchor_title EXACTLY as the immutable winning title and align the complete outline to its promise; do not generate or substitute another title. BEFORE outlining, read Analytics/active_channel_script_rules.md when present and apply every ACTIVE learned writing rule that does not conflict with the immutable title, approved evidence/research, Medical Gate requirements, or necessary safety language. Learned rules control pacing/structure only and may never override medical accuracy. Create only 05_script_outline.md. Do not create 06_final_script.md.",
         "Prepare Opus Package": f"For {ref}, prepare a fresh per-project opus_writer_package.md from the current writing templates and 05_script_outline.md. BEFORE building the package, read Analytics/active_channel_script_rules.md when present. Read Templates/Writing/opus_writer_prompt.md in full. HARD PRESERVATION RULE: copy the complete `## Semantic Progression Lock`, `## Retention-First Drafting Lock`, and `## Execution / No-Negotiation Lock` sections from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md without summarizing, weakening, paraphrasing, or omitting their rules. Also preserve the Execution / No-Negotiation rule that the writer must draft first without pre-negotiating research sufficiency, predicted word capacity, target feasibility, or asking for more research merely to reach runtime. RUNTIME PACKAGE LOCK: do not place any automatic runtime target, runtime range, WPM target, word-count target/range, minimum, maximum, floor, validation boundary, required word adjustment, or numeric drafting target in opus_writer_package.md. Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. The writer must write the strongest complete script supported by approved evidence, then report actual word count/runtime afterward as informational metadata only with `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. In particular, preserve the full material-delta semantics: a different example/food/section, new wording, another hypothetical, or repeated safety/scope reminder is not sufficient new value; if no concrete material delta exists, omit or merge the recurrence; allow at most one concise final recap that compresses rather than reteaches. Include a clearly labeled ACTIVE CHANNEL SCRIPT RULES section in opus_writer_package.md and require the writer to apply those rules unless they conflict with the immutable winning title, approved research/evidence, Medical Gate requirements, or necessary safety language. Learned retention rules may improve pacing/structure but may never override medical accuracy. Create or update only opus_writer_package.md.",
@@ -875,6 +883,47 @@ def render_workflow() -> None:
         st.error(f"{stage} is blocked. " + " ".join(stage_reasons))
     elif stage == "Writer Workspace":
         st.info("Writer Workspace is a manual Claude handoff stage. Use the dedicated page to download the package and upload the final script.")
+    if stage == "Research + Medical Gate 1":
+        st.markdown("### Optional External Deep Research Import")
+        st.caption("Paste the final Genspark/Opus research report here. The app preserves it verbatim as 02_external_deep_research.md; Codex then normalizes and source-verifies it before Medical Gate 1.")
+        external_path = project / "02_external_deep_research.md"
+        if external_path.is_file():
+            st.success("Imported deep research is READY. Direct Codex Run will use IMPORTED DEEP RESEARCH mode.")
+            with st.expander("Show imported research"):
+                st.text(safe_read_text(external_path))
+        pasted_research = st.text_area(
+            "Paste final deep research report",
+            height=260,
+            key=f"external_deep_research_{project.name}",
+            placeholder="Paste the complete final Genspark/Opus research report here...",
+        )
+        save_external = st.button(
+            "Save Imported Deep Research",
+            disabled=not pasted_research.strip(),
+            key=f"save_external_deep_research_{project.name}",
+        )
+        if save_external:
+            if external_path.is_file():
+                backup_dir = project / "Backups"
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                shutil.copy2(external_path, backup_dir / f"02_external_deep_research_{stamp}.md")
+            if safe_write_text(external_path, pasted_research):
+                st.session_state.pop("workflow_agent_prompt", None)
+                st.session_state.pop("workflow_agent_prompt_context", None)
+                st.rerun()
+        if external_path.is_file() and st.button(
+            "Remove Imported Deep Research",
+            key=f"remove_external_deep_research_{project.name}",
+        ):
+            backup_dir = project / "Backups"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            shutil.copy2(external_path, backup_dir / f"02_external_deep_research_{stamp}.md")
+            external_path.unlink()
+            st.session_state.pop("workflow_agent_prompt", None)
+            st.session_state.pop("workflow_agent_prompt_context", None)
+            st.rerun()
     prompt = st.text_area("Agent instruction", height=230, key="workflow_agent_prompt")
     c1, c2, c3 = st.columns(3)
     c1.download_button("Download Instruction", prompt, file_name=f"{project.name}_{slugify_topic(stage)}.txt")

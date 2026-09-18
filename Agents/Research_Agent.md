@@ -10,6 +10,7 @@ Load only these inputs:
 
 - `Projects/<topic_slug>/project.json` (`anchor_title` is the immutable winning title)
 - `Projects/<topic_slug>/01_topic_validation.md`
+- `Projects/<topic_slug>/02_external_deep_research.md` when present (optional imported discovery base; see Imported Deep Research Mode below)
 - `Evidence/topic_index.md`
 - `Evidence/evidence_sources.csv`
 - `Evidence/claim_registry.csv`
@@ -29,6 +30,21 @@ Load only these inputs:
 - `System/SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json`
 
 Do not load any other files unless the Orchestrator updates this Required Inputs list.
+
+## 2A. Imported Deep Research Mode
+
+When `02_external_deep_research.md` is present and the Orchestrator explicitly selects imported deep research, treat that file as the discovery base rather than rerunning broad topic discovery.
+
+- Preserve `02_external_deep_research.md` verbatim. Never rewrite, truncate, or overwrite it.
+- Extract and retain every material proposition, cited source, actual study population, formulation/intervention, positive/null/mixed/negative finding, limitation, warning, and materially distinct viewer-value module that is relevant to the immutable approved angle.
+- Verify cited material sources at source level where accessible before making them production-usable. Never invent a citation or silently strengthen the imported wording.
+- Keep `DISCOVERED` evidence conceptually separate from `APPROVED` production claims. Indirect, observational, null, mixed, safety, or formulation-distinction evidence may remain valuable educational context even when it cannot support a direct benefit claim.
+- If a cited source cannot be verified, preserve its discovery trace and mark it unverified/not production-usable; do not replace it with an invented or stronger proposition.
+- Preserve actual populations and applicability limits. Preserve food versus cooked food, powder, extract, supplement, isolated-compound, dose, and exposure distinctions.
+- Do not collapse a substantive evidence-backed warning, null finding, formulation distinction, applicability lesson, or counterevidence module merely because it is not a direct outcome benefit.
+- Apply the normal SYS_19 structured evidence contract to the normalized canonical outputs. Medical_Agent Gate 1 remains the approval authority.
+- Reassess Long-Form Fit only after verification and the surviving materially distinct viewer-value modules are known. The imported report's own Long-Form Fit verdict is evidence-planning context, not an authoritative pipeline verdict.
+- Imported mode does not authorize title drift, new title generation, padding, individualized treatment advice, weaker medical boundaries, or runtime-driven research expansion.
 
 ## 3. Outputs
 
