@@ -847,6 +847,83 @@ def render_new_project() -> None:
         st.code(command_for_stage(path, "Topic Validation"), language="text")
 
 
+
+def build_deep_research_package(project: Path) -> str:
+    """Build the manual Opus/Genspark deep-research handoff from Stage 1."""
+    title = resolve_title_anchor(project) or ""
+    validation = safe_read_text(project / "01_topic_validation.md").strip()
+    return f"""# Deep Research Handover Package
+
+## Immutable Anchor / Outlier Title
+{title}
+
+## Stage 1 Approved Production Angle and Boundaries
+{validation}
+
+## Assignment
+Conduct deep research for the immutable title above for a senior-health audience, primarily adults 60+. The goal is broad, evidence-disciplined discovery that can support a complete long-form educational video without padding. Do not rewrite, repair, replace, rank, or re-adjudicate the title. Stay inside the approved Stage 1 angle and boundaries.
+
+Be conservative about CLAIM STRENGTH, not about SEARCH BREADTH.
+
+Research the viewer's full question rather than benefits only. Search for materially distinct evidence and viewer-value modules that are genuinely relevant to this topic, including as applicable:
+- direct outcomes and the closest relevant human evidence;
+- potential benefits and positive findings;
+- null, mixed, negative, contradictory, and counterevidence;
+- mechanism and physiological context;
+- nutrition/composition or exposure context;
+- alternatives and meaningful distinctions;
+- harms, side effects, tolerance, warnings, contraindications, and medication/special-population considerations;
+- practical decision guidance and limitations/uncertainty;
+- preparation/formulation distinctions such as raw vs cooked and whole food vs powder/extract/supplement when relevant.
+
+## Population / Applicability Hierarchy
+Prefer senior-specific or older-adult evidence when available, but do not exclude credible relevant human evidence merely because it is not specifically 60+. Search broader adult evidence as well. Disease-specific, selected-population, or younger-adult evidence may be useful only with its actual population preserved and transferability limits made explicit. Never relabel general-adult evidence as senior-specific. Give senior-specific evidence greater applicability weight where aging materially changes physiology, risk, medication use, contraindications, safety, or interpretation.
+
+## Evidence Discipline
+Preserve the actual studied population, exposure, formulation, comparator, outcome, duration, and major limitations. Food is not automatically equivalent to a supplement, extract, powder, isolated compound, or another preparation. Association is not causation. Adjacent or indirect evidence may add viewer understanding, but label it clearly and do not present it as direct proof of the title proposition.
+
+Search broadly enough that semantic saturation is credible. Do not stop because an exact-title query or a senior-only query is sparse. Continue until additional searches are no longer yielding materially distinct evidence, limitations, safety findings, or viewer-value modules. Do not invent/stretch categories merely to create breadth.
+
+## Viewer-Value Module Inventory
+After discovery, organize the surviving evidence into materially distinct modules. For each module explain:
+1. the viewer question it answers;
+2. what was studied and in whom;
+3. what the evidence suggests;
+4. what it does NOT establish;
+5. why it matters for an adult over 60;
+6. practical viewer understanding or decision consequence;
+7. source links/citations and verification notes.
+
+Keep materially useful indirect, null, safety, limitation, and formulation evidence visible rather than dropping it because it is not a direct benefit claim.
+
+## Long-Form Fit
+Only after the research and module inventory are complete, assess whether the topic has enough materially distinct, evidence-supported viewer value for a clean long-form educational treatment. Do not create filler, repetition, invented mechanisms, unsupported claims, or generic caution blocks to manufacture breadth.
+
+Use exactly one advisory label:
+LONG-FORM FIT: SUPPORTED
+or
+LONG-FORM FIT: NOT RECOMMENDED
+
+For NOT RECOMMENDED, explain the evidence limitation briefly. This is an advisory research judgment, not permission to rewrite the immutable title.
+
+## Final Report
+Return one complete research report suitable for direct paste into the Senior Health AI "Imported Deep Research" box. Include:
+- immutable title and Stage 1 boundary acknowledgment;
+- search/discovery summary and semantic-saturation note;
+- viewer-value module inventory;
+- proposition/evidence table with population, formulation/exposure, finding direction, limitations, and source;
+- positive, null/mixed/negative, counterevidence, and safety findings where found;
+- formulation/population transferability notes;
+- unsupported or commonly overclaimed propositions to avoid;
+- source list with direct URLs/citations where available;
+- unverified/uncertain source traces clearly marked;
+- final LONG-FORM FIT advisory.
+
+Do not write the video script. Do not medically approve claims for production; the imported report will be normalized and source-verified by Codex, and Medical Gate 1 remains the authority for approved narration claims.
+"""
+
+
+
 def render_workflow() -> None:
     st.subheader(f"V{system_version()} Workflow Control")
     project = project_selector("workflow")
@@ -884,6 +961,28 @@ def render_workflow() -> None:
     elif stage == "Writer Workspace":
         st.info("Writer Workspace is a manual Claude handoff stage. Use the dedicated page to download the package and upload the final script.")
     if stage == "Research + Medical Gate 1":
+        st.markdown("### Prepare Deep Research Package")
+        stage1_path = project / "01_topic_validation.md"
+        if stage1_path.is_file() and resolve_title_anchor(project):
+            research_package = build_deep_research_package(project)
+            package_path = project / "opus_research_package.md"
+            if st.button("Prepare Deep Research Package", key=f"prepare_deep_research_{project.name}"):
+                if safe_write_text(package_path, research_package):
+                    st.success("opus_research_package.md is ready for Genspark/Opus Deep Research.")
+            if package_path.is_file():
+                current_package = safe_read_text(package_path)
+                st.download_button(
+                    "Download Deep Research Package",
+                    current_package.encode("utf-8"),
+                    file_name=f"{project.name}_opus_research_package.md",
+                    mime="text/markdown",
+                    key=f"download_deep_research_{project.name}",
+                )
+                with st.expander("Show Deep Research Package"):
+                    st.text(current_package)
+        else:
+            st.warning("Complete Topic Validation first. The Deep Research Package requires the immutable title and 01_topic_validation.md.")
+
         st.markdown("### Optional External Deep Research Import")
         st.caption("Paste the final Genspark/Opus research report here. The app preserves it verbatim as 02_external_deep_research.md; Codex then normalizes and source-verifies it before Medical Gate 1.")
         external_path = project / "02_external_deep_research.md"
