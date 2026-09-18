@@ -571,3 +571,10 @@ def test_material_propositions_alias_does_not_replace_canonical_propositions():
     status, errors = validate(finalize(a))
     assert status == "FAIL"
     assert any("proposition" in e.lower() for e in errors)
+
+def test_medical_agent_keeps_overall_status_out_of_structured_gate1_disposition():
+    text = (ROOT / "Agents" / "Medical_Agent.md").read_text(encoding="utf-8")
+
+    assert "Do not add `overall_status`" in text
+    assert "Overall Gate 1 status belongs only in `13_fact_check_log.md`" in text
+    assert "structured binding artifact, not the human-readable gate summary" in text
