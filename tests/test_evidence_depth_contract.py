@@ -578,3 +578,11 @@ def test_medical_agent_keeps_overall_status_out_of_structured_gate1_disposition(
     assert "Do not add `overall_status`" in text
     assert "Overall Gate 1 status belongs only in `13_fact_check_log.md`" in text
     assert "structured binding artifact, not the human-readable gate summary" in text
+
+def test_medical_agent_does_not_auto_route_downstream_defects_to_research():
+    text = (ROOT / "Agents" / "Medical_Agent.md").read_text(encoding="utf-8")
+
+    assert "Do not automatically route downstream Script or Gate-2 defects back to Research_Agent" in text
+    assert "Downstream wording/content defects return to Script_Agent" in text
+    assert "halt for explicit human decision" in text
+    assert "Do not automatically request additional Research, sources, claims" in text
