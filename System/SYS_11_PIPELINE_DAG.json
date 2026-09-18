@@ -1,6 +1,6 @@
 {
   "module": "production_pipeline_dag",
-  "version": "1.2",
+  "version": "1.3",
   "nodes": [
     {
       "id": "n1",
@@ -200,14 +200,18 @@
     ],
     "failure_routes": {
       "research_fail": "research_agent",
-      "medical_gate_1_fail": "research_agent",
+      "medical_gate_1_fail": "human_decision_required",
       "thumbnail_fail": "thumbnail_agent",
       "script_fail": "script_agent",
-      "medical_gate_2_fail": "script_agent_or_research_agent",
+      "medical_gate_2_fail": "script_agent_or_human_decision_required",
       "talking_head_production_fail": "production_talkinghead_agent",
       "documentary_production_fail": "production_agent",
       "seo_fail": "seo_agent",
       "final_qa_fail": "specific_failed_agent"
+    },
+    "failure_route_semantics": {
+      "medical_gate_1_fail": "Do not automatically rerun Research. If the approved evidence package cannot support the required production lane, halt for explicit human decision.",
+      "medical_gate_2_fail": "Return wording/content defects to Script_Agent within the approved evidence package. If a required proposition cannot be expressed within those boundaries, halt for explicit human decision. Do not automatically rerun Research."
     }
   },
   "parallelism": {
