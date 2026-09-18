@@ -586,3 +586,14 @@ def test_medical_agent_does_not_auto_route_downstream_defects_to_research():
     assert "Downstream wording/content defects return to Script_Agent" in text
     assert "halt for explicit human decision" in text
     assert "Do not automatically request additional Research, sources, claims" in text
+
+def test_pipeline_dag_does_not_auto_route_medical_failures_to_research():
+    dag = json.loads((ROOT / "System" / "SYS_11_PIPELINE_DAG.json").read_text(encoding="utf-8"))
+    routes = dag["gate_policy"]["failure_routes"]
+    semantics = dag["gate_policy"]["failure_route_semantics"]
+
+    assert routes["medical_gate_1_fail"] == "human_decision_required"
+    assert routes["medical_gate_2_fail"] == "script_agent_or_human_decision_required"
+    assert "Do not automatically rerun Research" in semantics["medical_gate_1_fail"]
+    assert "within the approved evidence package" in semantics["medical_gate_2_fail"]
+    assert "Do not automatically rerun Research" in semantics["medical_gate_2_fail"]
