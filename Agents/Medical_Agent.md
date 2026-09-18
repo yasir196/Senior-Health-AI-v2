@@ -87,12 +87,14 @@ Medical decisions from these files become required inputs for downstream agents.
 - Failure routing if applicable
 - Next agent input summary
 
-For Gate 1, `13_gate1_disposition.json` must additionally include:
+For Gate 1, `13_gate1_disposition.json` is a structured binding artifact, not the human-readable gate summary. Its top-level fields must be limited to:
 
 - `schema_version`
 - `research_artifact_hash`
 - `canonicalization_version`
 - `claim_dispositions[]`, each with `claim_id`, `disposition`, bounded wording/boundary where applicable, and concise medical notes
+
+Do not add `overall_status`, gate-level PASS/FAIL fields, title status, downstream summary fields, or other human-readable summary metadata to `13_gate1_disposition.json`. Overall Gate 1 status belongs only in `13_fact_check_log.md`.
 
 ## 7. Context Discipline and Quality Notes
 
