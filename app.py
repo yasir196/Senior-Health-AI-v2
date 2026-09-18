@@ -224,7 +224,7 @@ def command_for_stage(project: Path, stage: str, anchor_outlier_pattern: str | N
         ),
         "Thumbnail": f"For {ref}, run Thumbnail_Agent only using approved upstream files. Use project.json.anchor_title EXACTLY as the winning title; do not generate, rank, rewrite, repair, or replace the title. BEFORE generating concepts, read Analytics/active_channel_packaging_rules.md when present and apply every ACTIVE packaging rule that is contextually applicable to this project. When that artifact contains matching historical channel examples, derive thumbnail text structure/hierarchy AND visual/color packaging from those real channel patterns BEFORE inventing generic concepts; adapt the pattern to this topic and never copy old wording verbatim. In 04_thumbnail_concepts.md, include a mandatory `Historical Channel Examples Used` audit section listing 3-5 actual consumed examples per applicable ACTIVE rule (or all if fewer), with exact historical thumbnail text, source video/title, CTR, impressions, relevant text structure/hierarchy, relevant visual/color traits, and what was adapted. If no examples exist, state `NO MATCHING HISTORICAL EXAMPLES AVAILABLE` and do not claim an example-derived historical pattern. Treat learned packaging rules as impression-aware historical associations, never causal guarantees. They may guide thumbnail text/visual packaging only and must never override the immutable title promise, approved research/evidence, Medical Gate requirements, medical safety, or project-specific creative fit. Ignore CANDIDATE, REJECTED, and RETIRED rules; only the ACTIVE rules artifact may be injected. If an ACTIVE rule is not applicable to the current hero/category/context, mark it N/A rather than forcing it. For any digestion/anatomy visual, preserve one physiologically coherent continuous route; never render multiple colored internal pathways, branching arrows through organs, glowing nutrient streams, or magic-path effects unless explicitly supported by approved evidence. Create only 04_thumbnail_concepts.md and 11_thumbnail_prompt.md.",
         "Script Outline": f"For {ref}, run Script_Agent in outline_to_script mode. Use project.json.anchor_title EXACTLY as the immutable winning title and align the complete outline to its promise; do not generate or substitute another title. BEFORE outlining, read Analytics/active_channel_script_rules.md when present and apply every ACTIVE learned writing rule that does not conflict with the immutable title, approved evidence/research, Medical Gate requirements, or necessary safety language. Learned rules control pacing/structure only and may never override medical accuracy. Create only 05_script_outline.md. Do not create 06_final_script.md.",
-        "Prepare Opus Package": f"For {ref}, prepare a fresh per-project opus_writer_package.md from the current writing templates and 05_script_outline.md. BEFORE building the package, read Analytics/active_channel_script_rules.md when present. Read Templates/Writing/opus_writer_prompt.md in full. HARD PRESERVATION RULE: copy the complete `## Semantic Progression Lock`, `## Retention-First Drafting Lock`, and `## Execution / No-Negotiation Lock` sections from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md without summarizing, weakening, paraphrasing, or omitting their rules. Also preserve the Execution / No-Negotiation rule that the writer must draft first without pre-negotiating research sufficiency, predicted word capacity, target feasibility, or asking for more research merely to reach runtime. RUNTIME PACKAGE LOCK: do not place any automatic runtime target, runtime range, WPM target, word-count target/range, minimum, maximum, floor, validation boundary, required word adjustment, or numeric drafting target in opus_writer_package.md. Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. The writer must write the strongest complete script supported by approved evidence, then report actual word count/runtime afterward as informational metadata only with `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. In particular, preserve the full material-delta semantics: a different example/food/section, new wording, another hypothetical, or repeated safety/scope reminder is not sufficient new value; if no concrete material delta exists, omit or merge the recurrence; allow at most one concise final recap that compresses rather than reteaches. Include a clearly labeled ACTIVE CHANNEL SCRIPT RULES section in opus_writer_package.md and require the writer to apply those rules unless they conflict with the immutable winning title, approved research/evidence, Medical Gate requirements, or necessary safety language. Learned retention rules may improve pacing/structure but may never override medical accuracy. Create or update only opus_writer_package.md.",
+        "Prepare Opus Package": f"For {ref}, prepare a fresh per-project opus_writer_package.md from the current writing templates and 05_script_outline.md. BEFORE building the package, read Analytics/active_channel_script_rules.md when present. Read Templates/Writing/opus_writer_prompt.md in full. HARD PRESERVATION RULE: copy the complete `## Full Evidence Development Lock`, `## Semantic Progression Lock`, `## Retention-First Drafting Lock`, and `## Execution / No-Negotiation Lock` sections from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md without summarizing, weakening, paraphrasing, or omitting their rules. Also preserve the Execution / No-Negotiation rule that the writer must draft first without pre-negotiating research sufficiency, predicted word capacity, target feasibility, or asking for more research merely to reach runtime. RUNTIME PACKAGE LOCK: do not place any automatic runtime target, runtime range, WPM target, word-count target/range, minimum, maximum, floor, validation boundary, required word adjustment, or numeric drafting target in opus_writer_package.md. Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. The writer must fully develop every materially useful approved evidence module at legitimate explanatory depth rather than summarize or compress it for brevity, while never reviving unapproved material from research or the outline. Evidence interpretation, meaningful distinctions, limitations, comparisons, practical consequences, and explanations that add new viewer understanding are legitimate depth, not padding. The writer must write the strongest fully developed complete script supported by approved evidence, then report actual word count/runtime afterward as informational metadata only with `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. In particular, preserve the full material-delta semantics: a different example/food/section, new wording, another hypothetical, or repeated safety/scope reminder is not sufficient new value; if no concrete material delta exists, omit or merge the recurrence; allow at most one concise final recap that compresses rather than reteaches. Include a clearly labeled ACTIVE CHANNEL SCRIPT RULES section in opus_writer_package.md and require the writer to apply those rules unless they conflict with the immutable winning title, approved research/evidence, Medical Gate requirements, or necessary safety language. Learned retention rules may improve pacing/structure but may never override medical accuracy. Create or update only opus_writer_package.md.",
         "Writer Workspace": f"Manual stage for {ref}. Download opus_writer_package.md, write the full script in Claude, then upload the result through Writer Workspace as 06_final_script.md. Direct Codex Run is intentionally disabled for this manual stage.",
         "Retention Structure Analysis": f"For {ref}, run ONLY the Retention Structure Analyzer. Read the complete current 06_final_script.md and project.json.anchor_title. Read Templates/Writing/retention_structure_analyzer.md and obey it exactly. Also read Analytics/active_channel_script_rules.md when present and verify EACH currently ACTIVE rule against the actual current 06_final_script.md. Include the required ACTIVE CHANNEL RULE COMPLIANCE table with PASS/FAIL/N/A, a 5–8+ word verbatim script anchor, concise reason, and corrective H/O/P/R/C/B patch IDs for failures when safely fixable. Do not count rule injection into the writer package as implementation evidence. Analyze structure and pacing only; do not judge medical correctness and do not modify 06_final_script.md, facts, evidence, numbers, medical claims, required safety language, or the immutable winning title. Create or replace ONLY retention_structure_analysis.md in the selected project root. The report must use Status: READY or Status: NEEDS REVISION, include the one-line Retention Risk Reason, unique H/O/P/R/C/B patch IDs, 5–8+ word verbatim anchors, relevant timestamp/word-position estimates, adaptive pacing signals, execution sequence, verification table, copy-ready Script Chat Revision Prompt, and the required unchanged-substance footer. Stop after writing retention_structure_analysis.md.",
         "Narrative QA": f"For {ref}, run Narrative_QA_Agent using 05_script_outline.md, 02_research_sheet.md when present, 13_fact_check_log.md when present, retention_structure_analysis.md when present, 06_final_script.md, config.json, the Narrative QA templates, and Analytics/active_channel_script_rules.md when present. Independently audit the CURRENT final script for storytelling, pacing, semantic repetition, whole-script recurrence, information progression, title-payoff timing, redundant recap/ending cycles, safety-boundary consolidation, transitions, tone, CTA placement, non-blocking evidence-review flags, and approved blueprint order. Treat the Retention Structure report as prior context, not proof; do not treat writer-package injection or the earlier Retention report as proof of implementation. Verify EACH currently ACTIVE rule against the current script with PASS/FAIL/N/A, a verbatim anchor, reason, and revision-required status; a learned-rule FAIL is evidence to inspect, not automatically an overall FAIL. Keep density separate from progression: paragraph length or several sourced facts alone are not a hard failure when the beat adds concrete new viewer value. MATERIAL-DELTA TEST: apply a MATERIAL-DELTA TEST to every post-primary occurrence for repeated core ideas; later occurrences must add exact new viewer knowledge/decision/mechanism/consequence/evidence/action, except one concise final recap; any post-primary occurrence with no concrete material delta must be CUT/MERGED. EVIDENCE REVIEW HANDOFF — NON-BLOCKING: classify factual additions as Type A material factual claims, Type B source-faithful explanatory paraphrases, or Type C narrative connectives for auditability. If a Type A proposition lacks an explicit approved trace, mark EVIDENCE REVIEW FLAG — SOURCE TRACE: NONE and KEEP — MG2 REVIEW. Missing provenance alone MUST NOT cause CUT/MERGE, Revision Patch, PASS WITH REVISIONS, or FAIL in Narrative QA; Medical Gate 2 / Fact Check owns that evidence decision. Narrative QA may revise the same sentence only for an independent narrative defect and must name that narrative defect. Type B may use EXPLANATORY PARAPHRASE — TRACE: <source>; Type C may use NARRATIVE CONNECTIVE — NO SOURCE REQUIRED. BLUEPRINT ORDER GATE: compare the current major sequence with 05_script_outline.md and authorized retention changes; unresolved unapproved major reorder cannot PASS. RUNTIME ADVISORY-ONLY LOCK: runtime, word count, configured minimum/target/maximum, WPM, and runtime tolerance MUST NOT determine PASS / PASS WITH REVISIONS / FAIL. Runtime must never cause a revision, expansion, compression, source-pool audit, redevelopment route, or another QA cycle. Count spoken narration only and include one compact ## Runtime Advisory with current narration words, estimated runtime at config.json WPM, preferred configured range, BELOW/INSIDE/ABOVE position, and the exact statement 'QA effect: NONE — runtime is advisory and cannot change the Narrative QA verdict.' Do not output Runtime Shortfall Cause, Remaining Approved Material Audit, Runtime Prediction, Convergence Check, required word adjustment, or runtime-driven patch. Every Revision Patch must identify a concrete narrative or safety-placement defect that would still exist if runtime and missing source provenance were ignored, and use the minimum necessary correction. Missing source provenance alone can never be a patch reason. Create 14_narrative_qa.md with Status: PASS / PASS WITH REVISIONS / FAIL based ONLY on narrative-quality, structure, repetition/progression, payoff, and safety-placement gates; evidence-review flags are handed to Medical Gate 2 and are non-blocking here. Include required Semantic Progression Gate with Material delta vs primary and Approved source trace columns, Approved Blueprint Order Audit, Active Channel Rule Compliance, Issue List, Revision Patch when needed, and Runtime Advisory. Repetition Risk HIGH, unresolved semantic recurrence above threshold, unresolved redundant endings/recaps, materially delayed title payoff, unresolved 2+ consecutive low-progression beats, or unresolved blueprint-order defects cannot PASS. Evidence Review Flags never block Narrative QA and proceed to Medical Gate 2 / Fact Check. Do not estimate AVD percentages. Do not directly rewrite 06_final_script.md.",
@@ -847,6 +847,83 @@ def render_new_project() -> None:
         st.code(command_for_stage(path, "Topic Validation"), language="text")
 
 
+
+def build_deep_research_package(project: Path) -> str:
+    """Build the manual Opus/Genspark deep-research handoff from Stage 1."""
+    title = resolve_title_anchor(project) or ""
+    validation = safe_read_text(project / "01_topic_validation.md").strip()
+    return f"""# Deep Research Handover Package
+
+## Immutable Anchor / Outlier Title
+{title}
+
+## Stage 1 Approved Production Angle and Boundaries
+{validation}
+
+## Assignment
+Conduct deep research for the immutable title above for a senior-health audience, primarily adults 60+. The goal is broad, evidence-disciplined discovery that can support a complete long-form educational video without padding. Do not rewrite, repair, replace, rank, or re-adjudicate the title. Stay inside the approved Stage 1 angle and boundaries.
+
+Be conservative about CLAIM STRENGTH, not about SEARCH BREADTH.
+
+Research the viewer's full question rather than benefits only. Search for materially distinct evidence and viewer-value modules that are genuinely relevant to this topic, including as applicable:
+- direct outcomes and the closest relevant human evidence;
+- potential benefits and positive findings;
+- null, mixed, negative, contradictory, and counterevidence;
+- mechanism and physiological context;
+- nutrition/composition or exposure context;
+- alternatives and meaningful distinctions;
+- harms, side effects, tolerance, warnings, contraindications, and medication/special-population considerations;
+- practical decision guidance and limitations/uncertainty;
+- preparation/formulation distinctions such as raw vs cooked and whole food vs powder/extract/supplement when relevant.
+
+## Population / Applicability Hierarchy
+Prefer senior-specific or older-adult evidence when available, but do not exclude credible relevant human evidence merely because it is not specifically 60+. Search broader adult evidence as well. Disease-specific, selected-population, or younger-adult evidence may be useful only with its actual population preserved and transferability limits made explicit. Never relabel general-adult evidence as senior-specific. Give senior-specific evidence greater applicability weight where aging materially changes physiology, risk, medication use, contraindications, safety, or interpretation.
+
+## Evidence Discipline
+Preserve the actual studied population, exposure, formulation, comparator, outcome, duration, and major limitations. Food is not automatically equivalent to a supplement, extract, powder, isolated compound, or another preparation. Association is not causation. Adjacent or indirect evidence may add viewer understanding, but label it clearly and do not present it as direct proof of the title proposition.
+
+Search broadly enough that semantic saturation is credible. Do not stop because an exact-title query or a senior-only query is sparse. Continue until additional searches are no longer yielding materially distinct evidence, limitations, safety findings, or viewer-value modules. Do not invent/stretch categories merely to create breadth.
+
+## Viewer-Value Module Inventory
+After discovery, organize the surviving evidence into materially distinct modules. For each module explain:
+1. the viewer question it answers;
+2. what was studied and in whom;
+3. what the evidence suggests;
+4. what it does NOT establish;
+5. why it matters for an adult over 60;
+6. practical viewer understanding or decision consequence;
+7. source links/citations and verification notes.
+
+Keep materially useful indirect, null, safety, limitation, and formulation evidence visible rather than dropping it because it is not a direct benefit claim.
+
+## Long-Form Fit
+Only after the research and module inventory are complete, assess whether the topic has enough materially distinct, evidence-supported viewer value for a clean long-form educational treatment. Do not create filler, repetition, invented mechanisms, unsupported claims, or generic caution blocks to manufacture breadth.
+
+Use exactly one advisory label:
+LONG-FORM FIT: SUPPORTED
+or
+LONG-FORM FIT: NOT RECOMMENDED
+
+For NOT RECOMMENDED, explain the evidence limitation briefly. This is an advisory research judgment, not permission to rewrite the immutable title.
+
+## Final Report
+Return one complete research report suitable for direct paste into the Senior Health AI "Imported Deep Research" box. Include:
+- immutable title and Stage 1 boundary acknowledgment;
+- search/discovery summary and semantic-saturation note;
+- viewer-value module inventory;
+- proposition/evidence table with population, formulation/exposure, finding direction, limitations, and source;
+- positive, null/mixed/negative, counterevidence, and safety findings where found;
+- formulation/population transferability notes;
+- unsupported or commonly overclaimed propositions to avoid;
+- source list with direct URLs/citations where available;
+- unverified/uncertain source traces clearly marked;
+- final LONG-FORM FIT advisory.
+
+Do not write the video script. Do not medically approve claims for production; the imported report will be normalized and source-verified by Codex, and Medical Gate 1 remains the authority for approved narration claims.
+"""
+
+
+
 def render_workflow() -> None:
     st.subheader(f"V{system_version()} Workflow Control")
     project = project_selector("workflow")
@@ -884,6 +961,28 @@ def render_workflow() -> None:
     elif stage == "Writer Workspace":
         st.info("Writer Workspace is a manual Claude handoff stage. Use the dedicated page to download the package and upload the final script.")
     if stage == "Research + Medical Gate 1":
+        st.markdown("### Prepare Deep Research Package")
+        stage1_path = project / "01_topic_validation.md"
+        if stage1_path.is_file() and resolve_title_anchor(project):
+            research_package = build_deep_research_package(project)
+            package_path = project / "opus_research_package.md"
+            if st.button("Prepare Deep Research Package", key=f"prepare_deep_research_{project.name}"):
+                if safe_write_text(package_path, research_package):
+                    st.success("opus_research_package.md is ready for Genspark/Opus Deep Research.")
+            if package_path.is_file():
+                current_package = safe_read_text(package_path)
+                st.download_button(
+                    "Download Deep Research Package",
+                    current_package.encode("utf-8"),
+                    file_name=f"{project.name}_opus_research_package.md",
+                    mime="text/markdown",
+                    key=f"download_deep_research_{project.name}",
+                )
+                with st.expander("Show Deep Research Package"):
+                    st.text(current_package)
+        else:
+            st.warning("Complete Topic Validation first. The Deep Research Package requires the immutable title and 01_topic_validation.md.")
+
         st.markdown("### Optional External Deep Research Import")
         st.caption("Paste the final Genspark/Opus research report here. The app preserves it verbatim as 02_external_deep_research.md; Codex then normalizes and source-verifies it before Medical Gate 1.")
         external_path = project / "02_external_deep_research.md"

@@ -27,3 +27,28 @@ def test_research_agent_preserves_import_and_separates_discovery_from_approval()
     assert "mark it unverified/not production-usable" in text
     assert "Medical_Agent Gate 1 remains the approval authority" in text
     assert "The imported report's own Long-Form Fit verdict" in text
+
+
+def test_deep_research_handover_package_is_available_from_research_stage():
+    text = APP.read_text(encoding="utf-8")
+
+    assert "def build_deep_research_package" in text
+    assert "Prepare Deep Research Package" in text
+    assert "opus_research_package.md" in text
+    assert "Download Deep Research Package" in text
+    assert "Be conservative about CLAIM STRENGTH, not about SEARCH BREADTH." in text
+    assert "Prefer senior-specific or older-adult evidence when available" in text
+    assert "positive, null/mixed/negative, counterevidence, and safety findings" in text
+    assert "semantic-saturation note" in text
+    assert "LONG-FORM FIT: SUPPORTED" in text
+    assert "LONG-FORM FIT: NOT RECOMMENDED" in text
+    assert "Medical Gate 1 remains the authority for approved narration claims" in text
+
+
+def test_deep_research_handover_embeds_stage1_and_immutable_title():
+    text = APP.read_text(encoding="utf-8")
+
+    assert 'resolve_title_anchor(project)' in text
+    assert 'safe_read_text(project / "01_topic_validation.md")' in text
+    assert "Do not rewrite, repair, replace, rank, or re-adjudicate the title." in text
+    assert "Return one complete research report suitable for direct paste" in text
