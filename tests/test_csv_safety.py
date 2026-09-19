@@ -8,6 +8,8 @@ from csv_safety import (
     SPREADSHEET_ERROR_VALUES,
     protect_spreadsheet_text,
     recover_spreadsheet_text,
+    recover_utf8_mojibake,
+    sanitize_csv_file,
     validate_script_text,
 )
 from timeline_builder import TimelineBuildError, build_timeline_manifest
@@ -72,3 +74,48 @@ def test_timeline_reader_recovers_quote_and_rejects_errors(tmp_path: Path):
         writer = csv.DictWriter(handle, fieldnames=fields); writer.writeheader(); writer.writerows(rows)
     with pytest.raises(TimelineBuildError, match=r"Scene S064 contains spreadsheet-corrupted script text: #VALUE!"):
         build_timeline_manifest(project)
+
+
+
+@pytest.mark.parametrize(
+    ("corrupted", "expected"),
+    [
+        ("tell usâ€”not proof", "tell us—not proof"),
+        ("seniorâ€™s choice", "senior’s choice"),
+        ("â€œcarefulâ€", "“careful”"),
+        ("item â€¢ item", "item • item"),
+        ("â‰ˆ20 minutes", "≈20 minutes"),
+    ],
+)
+def test_recover_utf8_mojibake_repairs_common_production_punctuation(corrupted, expected):
+    assert recover_utf8_mojibake(corrupted) == expected
+
+
+def test_recover_utf8_mojibake_leaves_normal_unicode_unchanged():
+    text = "Normal — senior’s “voice” • approximately ≈20 minutes"
+    assert recover_utf8_mojibake(text) == text
+
+
+def test_production_csv_sanitizer_repairs_mojibake_and_preserves_utf8(tmp_path: Path):
+    sheet = tmp_path / "07_production_sheet.csv"
+    original = "It is a boundary on what the study can tell usâ€”not proof of a raw-onion brain benefit."
+    with sheet.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["scene_id", "script_excerpt"])
+        writer.writeheader()
+        writer.writerow({"scene_id": "SC055", "script_excerpt": original})
+
+    sanitize_csv_file(sheet, required_text_columns=("script_excerpt",))
+
+    with sheet.open("r", encoding="utf-8-sig", newline="") as handle:
+        row = next(csv.DictReader(handle))
+    assert row["script_excerpt"] == "It is a boundary on what the study can tell us—not proof of a raw-onion brain benefit."
+    assert "â€”" not in sheet.read_text(encoding="utf-8-sig")
+
+
+def test_avatar_production_reader_repairs_mojibake_defensively(tmp_path: Path):
+    sheet = tmp_path / "07_production_sheet.csv"
+    with sheet.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["scene_id", "script_excerpt"])
+        writer.writeheader()
+        writer.writerow({"scene_id": "SC055", "script_excerpt": "tell usâ€”not proof"})
+    assert load_production_scenes(sheet)[0]["script_text"] == "tell us—not proof"
