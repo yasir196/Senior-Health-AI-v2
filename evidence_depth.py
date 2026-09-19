@@ -214,11 +214,13 @@ def validate_research_artifact(
             if isinstance(value, dict)
         }
     elif isinstance(raw_dimensions, list):
-        dims = {
-            d.get("dimension"): d
-            for d in raw_dimensions
-            if isinstance(d, dict) and d.get("dimension")
-        }
+        dims = {}
+        for d in raw_dimensions:
+            if not isinstance(d, dict):
+                continue
+            name = d.get("dimension") or d.get("dimension_id")
+            if name:
+                dims[name] = {**d, "dimension": name}
     else:
         dims = {}
         errors.append("dimensions must be an object keyed by dimension name or a list of dimension objects")
