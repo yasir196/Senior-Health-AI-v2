@@ -54,7 +54,7 @@ from thumbnail_assets import download_thumbnail_snapshot, download_missing_thumb
 from thumbnail_learning_sync import auto_sync_thumbnail_learning
 from thumbnail_analysis import analyze_thumbnail_snapshot, analyze_pending_thumbnails
 from thumbnail_concept_validation import validate_thumbnail_concepts
-from evidence_depth import research_gate1_readiness
+from evidence_depth import finalize_research_gate1_binding, research_gate1_readiness
 from youtube_api_sync import (
     YouTubeAPIError, connection_status as youtube_connection_status,
     start_manual_oauth, sync_youtube_channel,
@@ -313,6 +313,16 @@ def run_external_command(command_template: str, prompt: str, project: Path, titl
         stage is None and "run Research_Agent and Medical_Agent Gate 1" in prompt
     )
     if result.returncode == 0 and is_research_gate1_run:
+        try:
+            finalize_research_gate1_binding(project, ROOT)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            result.returncode = 2
+            result.output = (
+                result.output
+                + f"\n\nResearch / Medical Gate 1 canonical binding finalization failed: {exc}"
+            )[-20000:]
+        if result.returncode != 0:
+            return result
         evidence_status, evidence_issues = research_gate1_readiness(project, ROOT)
         if evidence_status != "PASS":
             result.returncode = 2

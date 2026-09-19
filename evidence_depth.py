@@ -311,6 +311,46 @@ def gate1_is_current(research_artifact: dict[str, Any], disposition: dict[str, A
     return disposition.get("research_artifact_hash") == research_content_hash(research_artifact, contract)
 
 
+def finalize_research_gate1_binding(project: Path, root: Path) -> str:
+    """Write the deterministic canonical Research hash and bind Gate 1 to it.
+
+    This is a post-generation finalizer. Call it only immediately after a successful
+    combined Research + Medical Gate 1 run, before readiness validation.
+    """
+    project = Path(project)
+    contract = load_contract(root)
+    research_path = project / "02_research_claims.json"
+    disposition_path = project / "13_gate1_disposition.json"
+
+    research_artifact = json.loads(research_path.read_text(encoding="utf-8"))
+    disposition = json.loads(disposition_path.read_text(encoding="utf-8"))
+
+    if research_artifact.get("dimensions_contract_version") != contract.get("version"):
+        raise ValueError("cannot finalize hash under a mismatched dimensions contract")
+    canonical_version = contract.get("canonicalization", {}).get("version")
+    if research_artifact.get("canonicalization_version") != canonical_version:
+        raise ValueError("cannot finalize hash under a mismatched canonicalization version")
+    if disposition.get("canonicalization_version") != canonical_version:
+        raise ValueError("cannot bind Gate 1 under a mismatched canonicalization version")
+    expected_schema = contract.get("gate1_binding", {}).get("schema_version")
+    if disposition.get("schema_version") != expected_schema:
+        raise ValueError("cannot bind Gate 1 under a mismatched disposition schema")
+
+    canonical_hash = research_content_hash(research_artifact, contract)
+    research_artifact["research_content_hash"] = canonical_hash
+    disposition["research_artifact_hash"] = canonical_hash
+
+    research_path.write_text(
+        json.dumps(research_artifact, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    disposition_path.write_text(
+        json.dumps(disposition, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return canonical_hash
+
+
 def load_contract(root: Path) -> dict[str, Any]:
     return json.loads((Path(root) / "System" / "SYS_19_EVIDENCE_DEPTH_DIMENSIONS.json").read_text(encoding="utf-8"))
 

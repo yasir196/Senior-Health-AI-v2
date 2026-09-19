@@ -5,6 +5,7 @@ from pathlib import Path
 from evidence_depth import (
     CORE_INSUFFICIENT,
     HUMAN_DECISION_REQUIRED,
+    finalize_research_gate1_binding,
     gate1_is_current,
     load_evidence_context,
     research_content_hash,
@@ -461,6 +462,30 @@ def test_research_gate1_readiness_rejects_empty_fact_check_log(tmp_path):
 
     assert status == "FAIL"
     assert any("13_fact_check_log.md is empty" in e for e in errors)
+
+
+def test_post_generation_finalizer_replaces_agent_hashes_with_canonical_binding(tmp_path):
+    a = gate1_artifact()
+    a["research_content_hash"] = "sha256:agent-computed-wrong"
+    disposition = gate1_disposition(a)
+    disposition["research_artifact_hash"] = "sha256:agent-computed-wrong"
+
+    (tmp_path / "02_research_claims.json").write_text(
+        json.dumps(a),
+        encoding="utf-8",
+    )
+    (tmp_path / "13_gate1_disposition.json").write_text(
+        json.dumps(disposition),
+        encoding="utf-8",
+    )
+
+    canonical_hash = finalize_research_gate1_binding(tmp_path, ROOT)
+
+    saved_research = json.loads((tmp_path / "02_research_claims.json").read_text(encoding="utf-8"))
+    saved_disposition = json.loads((tmp_path / "13_gate1_disposition.json").read_text(encoding="utf-8"))
+    assert canonical_hash == research_content_hash(saved_research, CONTRACT)
+    assert saved_research["research_content_hash"] == canonical_hash
+    assert saved_disposition["research_artifact_hash"] == canonical_hash
 
 
 def test_research_gate1_readiness_passes_valid_structured_handoff(tmp_path):
