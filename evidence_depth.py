@@ -253,8 +253,11 @@ def validate_research_artifact(
         evidence_ids = prop.get("evidence_source_ids") or []
         if not evidence_ids:
             errors.append(f"{pid}: material proposition requires evidence_source_ids")
-        if prop.get("counterevidence_searched") is not True:
-            errors.append(f"{pid}: counterevidence_searched must be true")
+        counterevidence_searched = prop.get("counterevidence_searched")
+        if counterevidence_searched is not True and not _nonempty(counterevidence_searched):
+            errors.append(
+                f"{pid}: counterevidence_searched must record that counterevidence was searched"
+            )
         if "counterevidence_found" not in prop:
             errors.append(f"{pid}: counterevidence_found must be recorded")
         if not _nonempty(prop.get("resulting_qualification")):
