@@ -14,7 +14,18 @@ For each materially distinct approved evidence module, use the depth that genuin
 
 Do not let “one main idea per paragraph,” concise delivery, anti-repetition, retention rules, or the material-delta test collapse this module-completion check into “state it once and move on.” Those rules remove redundant wording; they do not remove new interpretation, distinctions, limitations, or consequences that pass the material-delta test. A module may use multiple concise paragraphs when each paragraph contributes a different supported viewer takeaway.
 
-**Silent pre-finalization evidence-depth audit:** Before declaring the narration complete, revisit every materially useful approved evidence module and ask whether any still has an unused supported explanatory dimension that would add new viewer understanding without new research, a stronger claim, repetition, filler, or a manufactured story. If yes, develop that dimension in the most relevant existing section before finalizing. If no such dimension remains, leave the module as written. Do not report this audit in the narration or use it to chase a runtime/word-count target.
+**Mandatory pre-finalization evidence-depth completion gate:** This is an execution gate, not an optional reflection. Before declaring the narration complete, build a silent internal completion ledger for EVERY materially useful approved evidence module. For each module, check each applicable source-supported explanatory dimension: study/population/formulation context; permitted mechanism or task distinction; interpretation of the finding; null/mixed/uncertain-result meaning; limitation/non-transfer boundary; relevance to an adult over 60; scope-clarifying comparison; and practical consequence.
+
+For every applicable dimension, silently assign exactly one disposition:
+- `DEVELOPED` — the narration already teaches this dimension with a material viewer-understanding delta;
+- `DEVELOP_NOW` — it is supported and materially useful but not yet developed;
+- `SKIP_SUPPORTED_REASON` — only when it is unsupported by the approved source of truth, redundant with an already-developed material delta, trivial to viewer understanding, or would require a new/stronger claim.
+
+A claim plus its boundary being present is never sufficient reason to mark other dimensions `DEVELOPED` or `SKIP_SUPPORTED_REASON`. Labels such as “mixed,” “null,” “low-certainty,” “proxy,” “selected population,” or “conflicting” are not self-explanatory: when the approved package supports the interpretation or practical consequence of that label, teach that meaning rather than merely naming it.
+
+**Finalization prohibition:** If ANY module has a `DEVELOP_NOW` dimension, the script is NOT complete. Return to the most relevant existing section, develop that dimension without adding new research or strengthening the claim, then rebuild/recheck the ledger. Finalize only when zero `DEVELOP_NOW` dimensions remain. Do not substitute a structural/retention pass, boundary-compliance pass, or general “looks complete” judgment for this module-by-module gate.
+
+The ledger is silent working process: do not print it in `06_final_script.md`, do not turn it into narration, and do not use it to chase a runtime/word-count target. It exists only to prevent premature stopping while approved, non-repetitive explanatory depth remains.
 
 Use earlier supplied deep research only for explanatory depth within the approved medical boundaries. The approved claims and Medical Gate boundaries remain authoritative for what may appear as medical substance in narration. Do not revive an unapproved proposition, source, mechanism, number, interaction, or claim merely because it appeared in earlier research or an outline.
 
