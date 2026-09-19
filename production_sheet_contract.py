@@ -124,6 +124,69 @@ def validate_scene_segmentation(rows: list[dict[str, str]]) -> list[str]:
                 )
     return issues
 
+def validate_asset_distribution(rows: list[dict[str, str]], settings: dict[str, object], *, tolerance_points: float = 5.0) -> list[str]:
+    """Validate the SAVED per-project mix as a timeline distribution, not quota blocks.
+
+    Scene boundaries stay semantic. STOCK_VIDEO and STOCK_IMAGE share the stock lane.
+    Consecutive-run limits adapt to the user's current saved percentages: a 100% single-lane
+    project is valid, while multi-lane projects must actually interleave their active lanes.
+    """
+    if not rows:
+        return []
+    lane_for_asset = {
+        "AVATAR": "avatar", "AI_IMAGE": "ai_images", "STOCK_VIDEO": "stock",
+        "STOCK_IMAGE": "stock", "OVERLAY": "overlays",
+    }
+    lanes = [lane_for_asset.get(_clean(row.get("recommended_asset_type")).upper()) for row in rows]
+    configured = {
+        "avatar": float(settings.get("avatar", 0) or 0),
+        "ai_images": float(settings.get("ai_images", 0) or 0),
+        "stock": float(settings.get("stock", 0) or 0),
+        "overlays": float(settings.get("overlays", 0) or 0),
+    }
+    active = {lane: pct for lane, pct in configured.items() if pct > 0}
+    issues: list[str] = []
+
+    # Shares are always checked against the CURRENT project production_settings.json.
+    total_rows = len(rows)
+    for lane, target in active.items():
+        count = sum(1 for value in lanes if value == lane)
+        actual = (count / total_rows) * 100.0
+        if count == 0:
+            issues.append(f"Configured {lane} lane is {target:g}% but no {lane} scenes were assigned.")
+        elif abs(actual - target) > tolerance_points:
+            issues.append(
+                f"{lane} distribution is {actual:.1f}% ({count}/{total_rows}) vs saved setting {target:g}%; "
+                f"keep the approximate mix within ±{tolerance_points:g} percentage points after semantic scene boundaries are frozen."
+            )
+
+    # With 2+ active lanes, reject quota blocks. The allowed run adapts to the lane share:
+    # ordinary mixes retain the four-scene ceiling; highly dominant user-selected lanes get
+    # enough room to make their requested percentage mathematically practical.
+    if len(active) >= 2:
+        run_lane = None
+        run_start = 0
+        for idx, lane in enumerate(lanes + [None]):
+            if idx == 0:
+                run_lane = lane
+                continue
+            if lane != run_lane:
+                run_len = idx - run_start
+                if run_lane in active:
+                    pct = active[run_lane]
+                    adaptive_max = max(4, int((pct / max(1.0, 100.0 - pct)) * 2.0 + 0.9999))
+                    if run_len > adaptive_max:
+                        first = _clean(rows[run_start].get("scene_id")) or f"row {run_start + 1}"
+                        last = _clean(rows[idx - 1].get("scene_id")) or f"row {idx}"
+                        issues.append(
+                            f"{first}-{last}: {run_len} consecutive {run_lane} scenes; saved mix is {pct:g}% for this lane. "
+                            f"Interleave the other active lanes across the timeline (adaptive maximum {adaptive_max} consecutive here)."
+                        )
+                run_lane = lane
+                run_start = idx
+    return issues
+
+
 def validate_canonical_rows(rows: list[dict[str,str]], fieldnames: list[str] | None, *, check_segmentation: bool = True) -> list[str]:
     issues=[]
     if fieldnames != PRODUCTION_SHEET_COLUMNS:

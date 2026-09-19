@@ -78,3 +78,21 @@ def test_prepare_package_requires_module_ledger_not_generic_silent_audit():
     assert "any `DEVELOP_NOW` means the script is NOT complete" in text
     assert "A structural/retention pass or boundary-compliance pass cannot substitute" in text
     assert "must never appear in narration or be used to chase runtime/word count" in text
+
+
+def test_writer_depth_gate_requires_discrete_exhaustive_matrix_not_module_impression():
+    text = TEMPLATE.read_text(encoding="utf-8")
+    assert "Ledger execution protocol — mandatory, discrete pass" in text
+    assert "full module × dimension matrix" in text
+    assert "all nine dimensions explicitly" in text
+    assert "qualifier" in text and "does not qualify" in text
+    assert "borderline between `DEVELOPED` and `DEVELOP_NOW`" in text
+    assert "rebuild the ENTIRE matrix" in text
+
+
+def test_prepare_package_preserves_discrete_exhaustive_matrix_protocol():
+    text = APP.read_text(encoding="utf-8")
+    assert "separate post-draft module × dimension matrix pass" in text
+    assert "explicitly disposition all nine dimensions" in text
+    assert "qualifier label by itself as NOT developed" in text
+    assert "rebuild the ENTIRE matrix" in text

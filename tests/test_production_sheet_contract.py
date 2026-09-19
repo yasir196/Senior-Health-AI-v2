@@ -77,3 +77,90 @@ def test_production_agent_requires_zero_validator_equivalent_issues_before_write
     assert "ordinary excerpts under 4 words = 0" in agent
     assert "narration-duration plausibility violations = 0" in agent
     assert "validate again" in agent
+
+
+def test_production_agent_requires_final_exact_narration_provenance_gate():
+    agent = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
+    assert "FINAL NARRATION-PROVENANCE GATE" in agent
+    assert "re-read the current `06a_voice_script.md` from disk" in agent
+    assert "every final `script_excerpt` must be found as one contiguous excerpt" in agent
+    assert "provenance issues = 0 and segmentation/timing issues = 0" in agent
+    assert "Never weaken or bypass downstream Avatar Timing source validation" in agent
+
+
+def test_app_runs_deterministic_provenance_gate_immediately_after_production():
+    app = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert "source_ok, source_issues = validate_production_sheet_against_voice(project)" in app
+    assert "segmentation_issues = production_sheet_segmentation_issues(project)" in app
+    assert "Production final deterministic gate: FAIL" in app
+    assert "07_production_sheet.csv is NOT PRODUCTION READY" in app
+
+
+def test_asset_distribution_rejects_quota_blocks_and_missing_configured_lane():
+    from production_sheet_contract import validate_asset_distribution
+    rows = (
+        [{"scene_id": f"S{i:03d}", "recommended_asset_type": "AVATAR"} for i in range(1, 11)]
+        + [{"scene_id": f"S{i:03d}", "recommended_asset_type": "AI_IMAGE"} for i in range(11, 18)]
+        + [{"scene_id": f"S{i:03d}", "recommended_asset_type": "OVERLAY"} for i in range(18, 26)]
+    )
+    issues = validate_asset_distribution(
+        rows, {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20}
+    )
+    assert any("consecutive avatar scenes" in issue for issue in issues)
+    assert any("consecutive ai_images scenes" in issue for issue in issues)
+    assert any("no stock scenes were assigned" in issue for issue in issues)
+
+
+def test_asset_distribution_accepts_interleaved_approximate_mix():
+    from production_sheet_contract import validate_asset_distribution
+    pattern = ["AVATAR", "AI_IMAGE", "AVATAR", "OVERLAY", "STOCK_VIDEO",
+               "AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR", "AI_IMAGE"]
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": pattern[(i - 1) % len(pattern)]}
+        for i in range(1, 101)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20}
+    ) == []
+
+
+def test_app_final_production_gate_checks_asset_distribution():
+    app = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert "production_sheet_asset_distribution_issues(project)" in app
+    assert "Asset distribution:" in app
+    assert "distribution_issues" in app
+
+
+def test_production_agent_forbids_block_allocated_asset_mix():
+    agent = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
+    assert "TIMELINE distribution, not a quota-block allocation" in agent
+    assert "all AVATAR scenes first" in agent
+    assert "CURRENT saved `production_settings.json`" in agent
+    assert "0% lane must not be forced" in agent
+    assert "within ±5 percentage points" in agent
+
+
+def test_asset_distribution_respects_user_zero_percent_lane():
+    from production_sheet_contract import validate_asset_distribution
+    pattern = ["AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR", "AI_IMAGE",
+               "OVERLAY", "AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR",
+               "AI_IMAGE", "OVERLAY", "AVATAR", "AI_IMAGE", "AVATAR",
+               "OVERLAY", "AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR"]
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": pattern[(i - 1) % len(pattern)]}
+        for i in range(1, 101)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 40, "ai_images": 35, "stock": 0, "overlays": 25}
+    ) == []
+
+
+def test_asset_distribution_allows_user_selected_single_lane_100_percent():
+    from production_sheet_contract import validate_asset_distribution
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": "AVATAR"}
+        for i in range(1, 51)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 100, "ai_images": 0, "stock": 0, "overlays": 0}
+    ) == []
