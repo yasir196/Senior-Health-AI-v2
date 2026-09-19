@@ -39,10 +39,12 @@ def test_writer_module_completion_is_not_first_correct_coverage():
     assert "Module-completion rule" in text
     assert "NOT complete merely because its claim and boundary have each been stated once" in text
     assert "First correct coverage is the minimum for inclusion, not the completion criterion." in text
-    assert "Silent pre-finalization evidence-depth audit" in text
-    assert "unused supported explanatory dimension" in text
+    assert "Mandatory pre-finalization evidence-depth completion gate" in text
+    assert "`DEVELOP_NOW`" in text
+    assert "Finalization prohibition" in text
+    assert "zero `DEVELOP_NOW` dimensions remain" in text
     assert "do not remove new interpretation, distinctions, limitations, or consequences" in text
-    assert "Do not report this audit in the narration or use it to chase a runtime/word-count target." in text
+    assert "do not use it to chase a runtime/word-count target" in text
 
 
 def test_prepare_opus_package_preserves_operational_module_completion_rule():
@@ -52,4 +54,27 @@ def test_prepare_opus_package_preserves_operational_module_completion_rule():
     assert "study/population/formulation context" in text
     assert "null/mixed/uncertain-result meaning" in text
     assert "state it once and move on" in text
-    assert "silent pre-finalization evidence-depth audit" in text
+    assert "mandatory pre-finalization evidence-depth completion gate" in text
+    assert "`DEVELOPED`, `DEVELOP_NOW`, or `SKIP_SUPPORTED_REASON`" in text
+    assert "zero `DEVELOP_NOW` dimensions remain" in text
+
+
+
+def test_writer_depth_gate_cannot_be_satisfied_by_claim_plus_boundary_or_generic_qa():
+    text = TEMPLATE.read_text(encoding="utf-8")
+
+    assert "execution gate, not an optional reflection" in text
+    assert "A claim plus its boundary being present is never sufficient reason" in text
+    assert "are not self-explanatory" in text
+    assert "If ANY module has a `DEVELOP_NOW` dimension, the script is NOT complete." in text
+    assert "Do not substitute a structural/retention pass, boundary-compliance pass" in text
+    assert "do not print it in `06_final_script.md`" in text
+
+
+def test_prepare_package_requires_module_ledger_not_generic_silent_audit():
+    text = APP.read_text(encoding="utf-8")
+
+    assert "silently build a module-by-module completion ledger" in text
+    assert "any `DEVELOP_NOW` means the script is NOT complete" in text
+    assert "A structural/retention pass or boundary-compliance pass cannot substitute" in text
+    assert "must never appear in narration or be used to chase runtime/word count" in text
