@@ -8,6 +8,26 @@ SPREADSHEET_ERROR_VALUES = frozenset({
 })
 
 
+# Typical UTF-8 bytes mis-decoded as Windows-1252. Production CSVs can be
+# emitted by an external CLI/model process before this module sanitizes them.
+# Repair only strings that carry these strong mojibake signatures and only when
+# the round-trip is reversible; ordinary Unicode text is left untouched.
+_MOJIBAKE_MARKERS = ("â€", "â€™", "â€œ", "â€˜", "â€¢", "â‰", "Â")
+
+
+def recover_utf8_mojibake(value: Any) -> Any:
+    """Repair reversible UTF-8-as-cp1252 mojibake without altering normal Unicode."""
+    if not isinstance(value, str) or not any(marker in value for marker in _MOJIBAKE_MARKERS):
+        return value
+    try:
+        repaired = value.encode("cp1252").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return value
+    before = sum(value.count(marker) for marker in _MOJIBAKE_MARKERS)
+    after = sum(repaired.count(marker) for marker in _MOJIBAKE_MARKERS)
+    return repaired if after < before else value
+
+
 def protect_spreadsheet_text(value: Any) -> Any:
     """Return a spreadsheet-safe CSV value while preserving visible text.
 
@@ -39,7 +59,7 @@ def spreadsheet_error_value(value: Any) -> str | None:
 
 
 def validate_script_text(value: Any, scene_id: str) -> str:
-    text = str(recover_spreadsheet_text(value))
+    text = str(recover_utf8_mojibake(recover_spreadsheet_text(value)))
     error = spreadsheet_error_value(text)
     if error:
         raise ValueError(f"Scene {scene_id} contains spreadsheet-corrupted script text: {error}")
@@ -74,6 +94,12 @@ def sanitize_csv_file(path, *, text_columns=None, scene_columns=("scene_id", "Sc
         for column in required:
             if column in row:
                 validate_script_text(row.get(column, ""), scene_id)
+                # Repair reversible mojibake before spreadsheet protection. This keeps
+        # script_excerpt byte-faithful to the UTF-8 voice script and also prevents
+        # corrupted punctuation from leaking into downstream production text.
+        for column in selected:
+            if column in row:
+                row[column] = recover_utf8_mojibake(row.get(column))
         output.append(protect_csv_row(row, text_columns=selected))
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
