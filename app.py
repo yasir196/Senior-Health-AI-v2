@@ -18,7 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
-from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_scene_segmentation
+from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
     canonical_runtime,
@@ -158,7 +158,7 @@ def production_sheet_asset_distribution_issues(project: Path) -> list[str]:
         settings = json.loads(safe_read_text(settings_path)) if settings_path.is_file() else load_config().get("production_defaults", {})
     except (OSError, json.JSONDecodeError) as exc:
         return [f"Could not validate Production asset distribution: {exc}"]
-    return validate_asset_distribution(rows, settings)
+    return validate_asset_distribution(rows, settings) + validate_asset_sequence_naturalness(rows)
 
 def clear_stale_production_outputs(project: Path) -> list[str]:
     """Remove only regenerated Production-package outputs before a fresh run."""
@@ -1831,7 +1831,8 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
         else:
             segmentation_issues = production_sheet_segmentation_issues(project)
             if segmentation_issues:
-                st.warning("Production sheet narration matches 06a_voice_script.md, but scene segmentation/timing has QA warnings. Avatar timing may continue because real transcript timing will replace provisional scene timing.")
+                scenes = []
+                st.error("Production sheet narration matches 06a_voice_script.md, but scene segmentation/timing FAILED. Regenerate Production before Avatar Timing; transcript timing cannot repair invalid scene boundaries.")
                 for issue in segmentation_issues[:6]:
                     st.caption(f"• {issue}")
     sequence = chunk_sequence_info(discovery)
