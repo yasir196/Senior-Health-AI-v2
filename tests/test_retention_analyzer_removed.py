@@ -34,3 +34,17 @@ def test_narrative_workflow_has_no_retention_analyzer_dependency():
 
 def test_retention_analyzer_template_is_removed():
     assert not (ROOT / "Templates" / "Writing" / "retention_structure_analyzer.md").exists()
+
+
+def test_opus_writer_has_no_forced_retention_lock_or_report():
+    writer = (ROOT / "Templates" / "Writing" / "opus_writer_prompt.md").read_text(encoding="utf-8")
+    app = (ROOT / "app.py").read_text(encoding="utf-8")
+
+    forbidden = (
+        "## Retention-First Drafting Lock",
+        "retention-prevention pass",
+        "06_retention_report.md",
+    )
+    for token in forbidden:
+        assert token not in writer
+        assert token not in app
