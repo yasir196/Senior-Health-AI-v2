@@ -39,8 +39,8 @@ Create exactly these separate files:
 
 1. `06_final_script.md` — narration only, with title, section headings, spoken narration, `[Visual Cue: ...]` blocks, cautions, and CTA. Do not include QA reports, scorecards, runtime tables, configuration notes, or process commentary.
 2. `06_runtime_report.md` — `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`, actual word count, estimated narration runtime, section runtimes, and actual assumed WPM. This report is informational metadata only and must not contain a runtime PASS/FAIL verdict, target, range, minimum, maximum, floor, required word adjustment, or runtime-driven revision/research instruction.
-4. `06_medical_review.md` — claims-preserved check, safety language, cautions, and unsupported-claim check. This is an editorial review, not a replacement for Medical Gate 2.
-5. `06_humanization_report.md` — conversational score, host-voice score, emotional connection, repeated phrasing, contractions, rhetorical questions, and largest humanization changes.
+3. `06_medical_review.md` — claims-preserved check, safety language, cautions, and unsupported-claim check. This is an editorial review, not a replacement for Medical Gate 2.
+4. `06_humanization_report.md` — conversational score, host-voice score, emotional connection, repeated phrasing, contractions, rhetorical questions, and largest humanization changes.
 
 Only narration may remain in `06_final_script.md`.
 
