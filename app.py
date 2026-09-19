@@ -48,7 +48,7 @@ from image_generation import (
 from opus_image_prompt_import import load_production_ai_image_slots, validate_import, write_image_prompts
 from text_overlay import ARTIFACT_NAME, parse_opus_csv, validate_rows, write_artifact
 from analytics_db import (
-    AnalyticsDBError, init_db, ensure_project_record, register_youtube_only_video, update_video_identity, snapshot_actual_timeline, snapshot_timestamped_transcript, import_youtube_csv, list_videos, get_video, latest_performance, scene_snapshot_df, mark_missing_project_folders, bulk_import_channel_content_csv, auto_link_existing_projects, link_youtube_record_to_project, needs_transcript_upload, weekday_performance_summary, channel_dashboard_data, winner_loser_learning_data, import_retention_curve, retention_points_df, scene_retention_mapping, retention_drop_summary, script_retention_learning, cross_video_script_pattern_learning, active_channel_script_rules, all_channel_script_rules, sync_active_channel_script_rules, render_active_channel_rules_markdown, write_active_channel_rules_file, repair_reconstructed_transcript_overlaps, production_learning_scene_df, production_learning_summary, production_provenance, bind_youtube_video_id_to_project, thumbnail_inventory_df, thumbnail_analysis_df, join_thumbnail_ctr_evidence, join_all_thumbnail_ctr_evidence, thumbnail_ctr_evidence_df, build_thumbnail_packaging_comparisons, thumbnail_packaging_associations_df, sync_packaging_rule_candidates, all_channel_packaging_rules, set_packaging_rule_status, write_active_packaging_rules_file, packaging_rule_promotion_audit, promote_packaging_signal_cluster,
+    AnalyticsDBError, init_db, ensure_project_record, register_youtube_only_video, update_video_identity, snapshot_actual_timeline, snapshot_timestamped_transcript, import_youtube_csv, list_videos, get_video, latest_performance, scene_snapshot_df, mark_missing_project_folders, bulk_import_channel_content_csv, auto_link_existing_projects, link_youtube_record_to_project, needs_transcript_upload, weekday_performance_summary, channel_dashboard_data, winner_loser_learning_data, import_retention_curve, retention_points_df, scene_retention_mapping, retention_drop_summary, script_retention_learning, cross_video_script_pattern_learning, all_channel_script_rules, repair_reconstructed_transcript_overlaps, production_learning_scene_df, production_learning_summary, production_provenance, bind_youtube_video_id_to_project, thumbnail_inventory_df, thumbnail_analysis_df, join_thumbnail_ctr_evidence, join_all_thumbnail_ctr_evidence, thumbnail_ctr_evidence_df, build_thumbnail_packaging_comparisons, thumbnail_packaging_associations_df, sync_packaging_rule_candidates, all_channel_packaging_rules, set_packaging_rule_status, write_active_packaging_rules_file, packaging_rule_promotion_audit, promote_packaging_signal_cluster,
 )
 from thumbnail_assets import download_thumbnail_snapshot, download_missing_thumbnails
 from thumbnail_learning_sync import auto_sync_thumbnail_learning
@@ -65,7 +65,6 @@ CONFIG_PATH = ROOT / "config.json"
 PROJECTS_DIR = ROOT / "Projects"
 ANALYTICS_DIR = ROOT / "Analytics"
 ANALYTICS_DB_PATH = ANALYTICS_DIR / "senior_health_analytics.db"
-ACTIVE_CHANNEL_RULES_PATH = ANALYTICS_DIR / "active_channel_script_rules.md"
 ACTIVE_CHANNEL_PACKAGING_RULES_PATH = ANALYTICS_DIR / "active_channel_packaging_rules.md"
 YOUTUBE_OAUTH_CLIENT_PATH = ANALYTICS_DIR / "youtube_oauth_credentials.json"
 YOUTUBE_OAUTH_TOKEN_PATH = ANALYTICS_DIR / "youtube_oauth_token.json"
@@ -2230,12 +2229,9 @@ def render_analytics() -> None:
     ANALYTICS_DIR.mkdir(exist_ok=True)
     init_db(ANALYTICS_DB_PATH)
     try:
-        cleanup = repair_reconstructed_transcript_overlaps(ANALYTICS_DB_PATH)
-        if cleanup.get("videos"):
-            sync_active_channel_script_rules(ANALYTICS_DB_PATH)
-        write_active_channel_rules_file(ANALYTICS_DB_PATH, ACTIVE_CHANNEL_RULES_PATH)
+        repair_reconstructed_transcript_overlaps(ANALYTICS_DB_PATH)
     except Exception as exc:
-        st.warning(f"Active channel script rules could not sync: {exc}")
+        st.warning(f"Analytics transcript cleanup could not run: {exc}")
 
     with st.expander("YouTube API Connection", expanded=not YOUTUBE_OAUTH_TOKEN_PATH.is_file()):
         st.caption(
