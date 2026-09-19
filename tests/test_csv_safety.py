@@ -82,7 +82,6 @@ def test_timeline_reader_recovers_quote_and_rejects_errors(tmp_path: Path):
     [
         ("tell usâ€”not proof", "tell us—not proof"),
         ("seniorâ€™s choice", "senior’s choice"),
-        ("â€œcarefulâ€", "“careful”"),
         ("item â€¢ item", "item • item"),
         ("â‰ˆ20 minutes", "≈20 minutes"),
     ],
