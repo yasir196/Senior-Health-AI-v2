@@ -1265,7 +1265,6 @@ def render_narrative_qa() -> None:
     script_ready = validation.valid
     narrative_gate = get_gate_status(project, "Narrative QA", load_config())
     output_ready = narrative_gate.exists
-    record_narrative_qa_runtime_routing(project, load_config())
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Script Outline", "READY" if outline_ready else "MISSING")
