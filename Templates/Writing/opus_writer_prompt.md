@@ -60,7 +60,7 @@ Consolidate repeated safety/context boundaries while preserving every medically 
 
 ## Retention-First Drafting Lock
 
-Write the first draft so the downstream Retention Structure Analyzer should need as few structural patches as possible, while leaving that analyzer fully independent. Apply only writing-relevant prevention rules here; do not imitate its scoring/report format or claim that the script has passed retention review.
+Write the first draft for clear viewer comprehension, natural pacing, and semantic progression. Apply these writing-quality rules directly; there is no separate Retention Structure Analyzer stage.
 
 - Deliver concrete promised value early. Do not bury the title payoff behind avoidable preamble, generic setup, repeated qualification, or a long safety block. Preserve any warning that genuinely must precede the action or claim.
 - Keep hook promises and later payoffs continuous. If the opening promises a specific answer, example, comparison, mistake, number, or reveal, make sure the later script clearly delivers that exact promise without changing approved factual or medical substance.
@@ -74,7 +74,7 @@ Write the first draft so the downstream Retention Structure Analyzer should need
 - Runtime never protects weak structure. Do not retain repetition, delayed payoff, redundant caution, filler examples, extra hypotheticals, or recap material merely to satisfy the configured duration. If meaningful evidence-approved NEW value is unavailable, do not manufacture it.
 - Apply every currently supplied ACTIVE CHANNEL SCRIPT RULE during drafting when it is contextually applicable. Do not hardcode historical rule names, counts, retention deltas, or thresholds into the script; use the current rules supplied in the project package. If an ACTIVE rule conflicts with approved evidence, medical accuracy, required safety language, or the immutable title, preserve the protected substance.
 
-Before finalizing, do one silent retention-prevention pass over the draft: check early payoff, hook/payoff continuity, information density, list fatigue/monotony, safety/qualification momentum, semantic repetition/material delta, transitions, recap/ending cycles, and CTA placement. Revise only defects you can fix without changing approved facts, evidence, numbers, medical claims, required safety meaning, or the immutable title. The downstream Retention Structure Analyzer and Narrative QA remain the independent verification gates.
+Before finalizing, do one silent retention-prevention pass over the draft: check early payoff, hook/payoff continuity, information density, list fatigue/monotony, safety/qualification momentum, semantic repetition/material delta, transitions, recap/ending cycles, and CTA placement. Revise only defects you can fix without changing approved facts, evidence, numbers, medical claims, required safety meaning, or the immutable title. Narrative QA remains the independent narrative-quality verification gate.
 
 ## Execution / No-Negotiation Lock
 
