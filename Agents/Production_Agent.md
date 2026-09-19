@@ -77,7 +77,7 @@ Required invariants:
 - `start_time` / `end_time` must be elapsed `M:SS` or `MM:SS`; never serialize elapsed minutes as `HH:MM:SS`.
 - First freeze semantic scene boundaries. Then assign AVATAR / AI_IMAGE / STOCK / OVERLAY according to `production_settings.json` as an approximate distribution over those existing scenes. Do not create, split, or merge narration scenes to hit exact percentages.
 
-Before writing the CSV, perform a segmentation self-check: tiny orphan fragments = 0 (except marked intentional emphasis), multi-idea oversized excerpts = 0, fixed-duration padding = 0, and source-order coverage = PASS.
+Before writing the CSV, perform a segmentation self-check: tiny orphan fragments = 0 (except marked intentional emphasis), multi-idea oversized excerpts = 0, fixed-duration padding = 0, and source-order coverage = PASS. Treat this as a generation hard gate, not a downstream warning: if the same final rows would produce any issue from `production_sheet_contract.validate_scene_segmentation`, repair and revalidate them before emitting `07_production_sheet.csv`.
 
 ## 4. Step-by-Step Workflow
 
@@ -135,7 +135,7 @@ Optimize performance without changing outputs:
 - Generate asset-specific fields in grouped passes after the recommended asset type is known: stock rows together, AI-image rows together, avatar rows together, overlay rows together, and split-screen rows together. The content must remain scene-specific and must still follow the narrative-context rules.
 - Track visual-variety state incrementally while assigning asset types instead of performing a separate full-plan rewrite. Validation may still fail a row, but fixes must be row-local and must not change narration, timing, scene order, prompt IDs, or approved medical meaning.
 - Reuse repeated safety text, avatar identity text, negative prompt text, and status mappings as constants. Do not regenerate those boilerplate phrases independently for each scene.
-- Validate once against the final in-memory rows before writing files, then write each output file once. Avoid write-read-write loops unless validation fails.
+- Run the same final segmentation checks enforced by `production_sheet_contract.validate_scene_segmentation` against the final in-memory rows before writing files: ordinary excerpts under 4 words = 0; ordinary excerpts over 32 words = 0; elapsed-time format violations = 0; narration-duration plausibility violations = 0. If any check fails, repair the scene ledger locally, renumber scenes and prompt IDs as needed, recalculate provisional timing, and validate again. Write each output file once only after this final validation reaches zero segmentation/timing issues. Avoid write-read-write loops unless validation fails.
 - These optimizations are performance-only. They must not remove required columns, change allowed values, relax validation, skip narrative context, weaken medical safety, alter scene timing, or change the final outputs expected by this agent.
 
 ## 4A. Narrative Context Visual Planning Layer
