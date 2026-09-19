@@ -18,7 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
-from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_scene_segmentation
+from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_scene_segmentation
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
     canonical_runtime,
@@ -146,6 +146,19 @@ def production_sheet_segmentation_issues(project: Path) -> list[str]:
     except OSError as exc:
         return [f"Could not read 07_production_sheet.csv: {exc}"]
     return validate_scene_segmentation(rows)
+
+def production_sheet_asset_distribution_issues(project: Path) -> list[str]:
+    """Return configured whole-video mix/interleaving issues after semantic scenes are frozen."""
+    sheet_path = project / "07_production_sheet.csv"
+    settings_path = project / "production_settings.json"
+    if not sheet_path.is_file():
+        return ["07_production_sheet.csv is missing."]
+    try:
+        rows, _fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(sheet_path)
+        settings = json.loads(safe_read_text(settings_path)) if settings_path.is_file() else load_config().get("production_defaults", {})
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"Could not validate Production asset distribution: {exc}"]
+    return validate_asset_distribution(rows, settings)
 
 def clear_stale_production_outputs(project: Path) -> list[str]:
     """Remove only regenerated Production-package outputs before a fresh run."""
@@ -1055,12 +1068,14 @@ def render_workflow() -> None:
                     )
                     source_ok, source_issues = validate_production_sheet_against_voice(project)
                     segmentation_issues = production_sheet_segmentation_issues(project)
-                    if not source_ok or segmentation_issues:
+                    distribution_issues = production_sheet_asset_distribution_issues(project)
+                    if not source_ok or segmentation_issues or distribution_issues:
                         result.returncode = 2
                         diagnostics = []
                         if not source_ok:
                             diagnostics.extend(f"Narration provenance: {issue}" for issue in source_issues)
                         diagnostics.extend(f"Segmentation/timing: {issue}" for issue in segmentation_issues)
+                        diagnostics.extend(f"Asset distribution: {issue}" for issue in distribution_issues)
                         result.output = (
                             result.output
                             + "\n\nProduction final deterministic gate: FAIL\n"
