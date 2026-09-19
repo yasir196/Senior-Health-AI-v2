@@ -135,5 +135,32 @@ def test_production_agent_forbids_block_allocated_asset_mix():
     agent = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
     assert "TIMELINE distribution, not a quota-block allocation" in agent
     assert "all AVATAR scenes first" in agent
-    assert "more than 4 consecutive scenes" in agent
+    assert "CURRENT saved `production_settings.json`" in agent
+    assert "0% lane must not be forced" in agent
     assert "within ±5 percentage points" in agent
+
+
+def test_asset_distribution_respects_user_zero_percent_lane():
+    from production_sheet_contract import validate_asset_distribution
+    pattern = ["AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR", "AI_IMAGE",
+               "OVERLAY", "AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR",
+               "AI_IMAGE", "OVERLAY", "AVATAR", "AI_IMAGE", "AVATAR",
+               "OVERLAY", "AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR"]
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": pattern[(i - 1) % len(pattern)]}
+        for i in range(1, 101)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 40, "ai_images": 35, "stock": 0, "overlays": 25}
+    ) == []
+
+
+def test_asset_distribution_allows_user_selected_single_lane_100_percent():
+    from production_sheet_contract import validate_asset_distribution
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": "AVATAR"}
+        for i in range(1, 51)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 100, "ai_images": 0, "stock": 0, "overlays": 0}
+    ) == []
