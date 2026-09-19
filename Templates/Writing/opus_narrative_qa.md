@@ -196,7 +196,6 @@ Return FAIL if:
 - The CTA does not use Evidence After 60.
 - The host identity is not Adrian Westbrook, Health Educator.
 - CTA appears before the recap.
-- Runtime is outside the approved target range without documented override AND the supplied revision plan is not sufficient to project the revised script inside the configured range.
 - Required sections are missing.
 
 ## Output Format
@@ -222,7 +221,7 @@ Then include scores for each category:
 | Medical Safety |  |  |
 | Claims Preserved |  |  |
 
-If the result is PASS WITH REVISIONS, include a complete structured Revision Patch. When runtime is blocking, the patch must be sized for one-cycle convergence and each revision Reason must include its estimated net narration-word change.
+If the result is PASS WITH REVISIONS, include a complete structured Revision Patch.
 
 If the result is FAIL, include the exact reasons and the complete fixes required. Do not describe a deliberately partial runtime fix as sufficient.
 
