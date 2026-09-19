@@ -260,7 +260,7 @@ Required invariant: AI_IMAGE assignments in `07_production_sheet.csv` = entries 
 ## 5. Validation Rules
 
 - `07_production_sheet.csv` must include exactly these columns in this order: scene_id, start_time, end_time, duration_sec, scene_purpose, script_excerpt, visual_mode, avatar_required, avatar_style, background_style, image_prompt_id, broll_prompt_id, narrative_context, visual_intent, filmable, asset_decision_reason, asset_search_query, alternative_search_query_1, alternative_search_query_2, ai_image_prompt, overlay_instruction, recommended_asset_type, recommended_shot, manual_search_notes, avoid_results, asset_source, selected_asset_path, asset_status, motion, transition, on_screen_text, notes.
-- Scene durations should usually be 5 to 8 seconds.
+- Provisional scene duration must be derived from the narration contained in that scene and any deliberate pause, never from a fixed 5–8 second bucket or other duration quota. Real transcript timing may later replace provisional timing, but it does not excuse invalid scene boundaries.
 - No medical misinformation visuals.
 - No misleading before/after transformations.
 - No fake medical charts unless clearly described as generic and illustrative.
@@ -275,6 +275,7 @@ Required invariant: AI_IMAGE assignments in `07_production_sheet.csv` = entries 
 - Stock-search rows fail validation if `asset_search_query` lacks a concrete subject and action, `manual_search_notes` is missing, or `avoid_results` is blank.
 - AI prompts fail validation if they only repeat narration without visual interpretation.
 - `asset_status` must match `recommended_asset_type` defaults unless a selected asset path justifies a later status.
+- **Final scene-segmentation hard gate before writing `07_production_sheet.csv`:** rescan the complete final row set after all visual/asset decisions. Merge every <4-word orphan into an adjacent semantic beat unless its notes explicitly contain `INTENTIONAL_EMPHASIS`; split every >32-word normal scene at a natural narration/visual idea boundary unless an AVATAR row is explicitly documented `INTENTIONAL_LONG_AVATAR`; then renumber scene IDs and recalculate all provisional start/end/duration values from narration length. Re-run the scan after repair. Do not finalize the CSV while any ordinary tiny-fragment, >32-word, or narration-duration plausibility violation remains. Do not mark an ordinary violation intentional merely to make validation pass.
 - Regression check: for the script excerpt `You lace up, you get your steps in...`, the visual direction must be ordinary older-adult walking. It must not become stairs, chair rise, physical therapist, or unrelated exercise.
 
 ## 6. Output Format

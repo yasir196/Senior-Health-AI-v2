@@ -63,3 +63,22 @@ def test_explicit_long_avatar_exception_allows_over_32_words():
     excerpt = " ".join(["word"] * 36)
     issues = validate_canonical_rows([_row(excerpt, duration="10", end="0:10", notes="INTENTIONAL_LONG_AVATAR: one indivisible caution")], PRODUCTION_SHEET_COLUMNS)
     assert not any("36 words" in x and "split" in x for x in issues)
+
+
+def test_production_agent_has_no_fixed_5_to_8_second_scene_rule():
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
+    assert "Scene durations should usually be 5 to 8 seconds." not in text
+    assert "never from a fixed 5–8 second bucket" in text
+
+
+def test_production_agent_requires_zero_violation_final_segmentation_scan():
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
+    assert "Final scene-segmentation hard gate before writing `07_production_sheet.csv`" in text
+    assert "Merge every <4-word orphan" in text
+    assert "split every >32-word normal scene" in text
+    assert "renumber scene IDs and recalculate all provisional start/end/duration values from narration length" in text
+    assert "Do not finalize the CSV while any ordinary tiny-fragment, >32-word, or narration-duration plausibility violation remains." in text
