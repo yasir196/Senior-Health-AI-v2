@@ -11,7 +11,6 @@ Read:
 - The final script
 - The project outline, if provided
 - Every file inside `Templates/Writing/`
-- `Analytics/active_channel_script_rules.md` when present
 
 Use the outline as the source of truth for claims, safety boundaries, structure, and required sections. Use `config.json` as the source of truth for `target_runtime_minutes`, `target_runtime_range_minutes`, and `narration_words_per_minute`.
 
@@ -137,7 +136,6 @@ Check:
 - No new statistics or mechanisms appear
 
 
-Verify EACH currently ACTIVE rule from `Analytics/active_channel_script_rules.md` against the CURRENT `06_final_script.md`; writer-package injection or an earlier Retention report is not proof of implementation.
 
 Density must remain separate from information progression. A long paragraph or several sourced facts is not automatically a hard failure when the beat adds concrete new viewer value.
 
@@ -171,7 +169,7 @@ Narrative QA may identify factual propositions whose approved project trace is u
 
 ## Approved Blueprint Order Audit
 
-Compare the current major section/beat sequence against `05_script_outline.md` and `retention_structure_analysis.md` when present. The outline is the default sequence authority. A changed sequence is allowed only when the approved Retention Structure report explicitly authorizes that specific reorder, or when Narrative QA explicitly requires a safe reorder to fix a current-script defect. Output expected order, current order, authorization/source, and PASS/FAIL. Correct order inside a list does not prove the overall blueprint order is correct. An unresolved misplaced Introduction, safety/qualification block, assessment block, practical section, conclusion, or other major beat cannot PASS.
+Compare the current major section/beat sequence against `05_script_outline.md`. The outline is the default sequence authority. A changed sequence is allowed only when Narrative QA explicitly requires a safe reorder to fix a current-script defect. Output expected order, current order, authorization/source, and PASS/FAIL. Correct order inside a list does not prove the overall blueprint order is correct. An unresolved misplaced Introduction, safety/qualification block, assessment block, practical section, conclusion, or other major beat cannot PASS.
 
 ## Required Semantic Progression Audit
 

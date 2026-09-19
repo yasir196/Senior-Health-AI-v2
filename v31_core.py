@@ -10,7 +10,7 @@ from typing import Any
 
 WORKFLOW_STAGES = [
     "Topic Validation", "Research + Medical Gate 1", "Thumbnail",
-    "Script Outline", "Prepare Opus Package", "Writer Workspace", "Retention Structure Analysis", "Narrative QA",
+    "Script Outline", "Prepare Opus Package", "Writer Workspace", "Narrative QA",
     "Medical Gate 2", "Speech Optimizer", "Production Package", "SEO", "Final QA + Summary",
 ]
 PIPELINE = [
@@ -2765,24 +2765,6 @@ def production_lock(project: Path, config: dict[str,Any]) -> ProductionLock:
     active=bool(override.get("enabled")) and bool(config.get("allow_production_override",False))
     return ProductionLock(bool(reasons) and not active,reasons,[voice])
 
-def retention_revision_applied(project: Path) -> bool:
-    """One-pass completion: retention report exists and final script was revised afterward."""
-    script_path = Path(project) / "06_final_script.md"
-    report_path = Path(project) / "retention_structure_analysis.md"
-    if not script_path.is_file() or not report_path.is_file():
-        return False
-    try:
-        return script_path.stat().st_mtime > report_path.stat().st_mtime
-    except OSError:
-        return False
-
-
-def retention_structure_ready(project:Path,config:dict[str,Any])->tuple[bool,list[str]]:
-    reasons=[]
-    v=validate_final_script(project,config)
-    if not v.valid: reasons.extend(v.issues)
-    return not reasons,reasons
-
 def narrative_qa_ready(project:Path,config:dict[str,Any])->tuple[bool,list[str]]:
     reasons=[]
     if not (project/"05_script_outline.md").is_file(): reasons.append("05_script_outline.md is missing.")
@@ -2814,7 +2796,6 @@ def stage_ready(project:Path,stage:str,config:dict[str,Any])->tuple[bool,list[st
             reasons.extend(evidence_reasons)
 
         return not reasons,reasons
-    if stage=="Retention Structure Analysis": return retention_structure_ready(project,config)
     if stage=="Narrative QA": return narrative_qa_ready(project,config)
     if stage=="Medical Gate 2":
         g=get_gate_status(project,"Narrative QA",config); ready=g.status=="PASS"; return ready,([] if ready else [g.reason])
