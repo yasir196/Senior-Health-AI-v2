@@ -77,3 +77,20 @@ def test_production_agent_requires_zero_validator_equivalent_issues_before_write
     assert "ordinary excerpts under 4 words = 0" in agent
     assert "narration-duration plausibility violations = 0" in agent
     assert "validate again" in agent
+
+
+def test_production_agent_requires_final_exact_narration_provenance_gate():
+    agent = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
+    assert "FINAL NARRATION-PROVENANCE GATE" in agent
+    assert "re-read the current `06a_voice_script.md` from disk" in agent
+    assert "every final `script_excerpt` must be found as one contiguous excerpt" in agent
+    assert "provenance issues = 0 and segmentation/timing issues = 0" in agent
+    assert "Never weaken or bypass downstream Avatar Timing source validation" in agent
+
+
+def test_app_runs_deterministic_provenance_gate_immediately_after_production():
+    app = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert "source_ok, source_issues = validate_production_sheet_against_voice(project)" in app
+    assert "segmentation_issues = production_sheet_segmentation_issues(project)" in app
+    assert "Production final deterministic gate: FAIL" in app
+    assert "07_production_sheet.csv is NOT PRODUCTION READY" in app
