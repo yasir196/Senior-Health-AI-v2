@@ -48,3 +48,16 @@ def test_opus_writer_has_no_forced_retention_lock_or_report():
     for token in forbidden:
         assert token not in writer
         assert token not in app
+
+
+def test_learned_retention_rules_are_not_injected_into_writing_path():
+    app = (ROOT / "app.py").read_text(encoding="utf-8")
+    narrative = (ROOT / "Agents" / "Narrative_QA_Agent.md").read_text(encoding="utf-8")
+    opus_qa = (ROOT / "Templates" / "Writing" / "opus_narrative_qa.md").read_text(encoding="utf-8")
+
+    assert "active_channel_script_rules.md" not in app
+    assert "ACTIVE CHANNEL SCRIPT RULES" not in app
+    assert "auto-injected into the downloaded Opus package" not in app
+    assert "active_channel_script_rules.md" not in narrative
+    assert "ACTIVE CHANNEL SCRIPT RULES" not in narrative
+    assert "active_channel_script_rules.md" not in opus_qa
