@@ -94,3 +94,46 @@ def test_app_runs_deterministic_provenance_gate_immediately_after_production():
     assert "segmentation_issues = production_sheet_segmentation_issues(project)" in app
     assert "Production final deterministic gate: FAIL" in app
     assert "07_production_sheet.csv is NOT PRODUCTION READY" in app
+
+
+def test_asset_distribution_rejects_quota_blocks_and_missing_configured_lane():
+    from production_sheet_contract import validate_asset_distribution
+    rows = (
+        [{"scene_id": f"S{i:03d}", "recommended_asset_type": "AVATAR"} for i in range(1, 11)]
+        + [{"scene_id": f"S{i:03d}", "recommended_asset_type": "AI_IMAGE"} for i in range(11, 18)]
+        + [{"scene_id": f"S{i:03d}", "recommended_asset_type": "OVERLAY"} for i in range(18, 26)]
+    )
+    issues = validate_asset_distribution(
+        rows, {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20}
+    )
+    assert any("consecutive avatar scenes" in issue for issue in issues)
+    assert any("consecutive ai_images scenes" in issue for issue in issues)
+    assert any("no stock scenes were assigned" in issue for issue in issues)
+
+
+def test_asset_distribution_accepts_interleaved_approximate_mix():
+    from production_sheet_contract import validate_asset_distribution
+    pattern = ["AVATAR", "AI_IMAGE", "AVATAR", "OVERLAY", "STOCK_VIDEO",
+               "AVATAR", "AI_IMAGE", "OVERLAY", "AVATAR", "AI_IMAGE"]
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": pattern[(i - 1) % len(pattern)]}
+        for i in range(1, 101)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20}
+    ) == []
+
+
+def test_app_final_production_gate_checks_asset_distribution():
+    app = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert "production_sheet_asset_distribution_issues(project)" in app
+    assert "Asset distribution:" in app
+    assert "distribution_issues" in app
+
+
+def test_production_agent_forbids_block_allocated_asset_mix():
+    agent = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
+    assert "TIMELINE distribution, not a quota-block allocation" in agent
+    assert "all AVATAR scenes first" in agent
+    assert "more than 4 consecutive scenes" in agent
+    assert "within ±5 percentage points" in agent
