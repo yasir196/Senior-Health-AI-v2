@@ -14,7 +14,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from csv_safety import protect_csv_row, validate_script_text
+from csv_safety import protect_csv_row, read_csv_rows_with_legacy_encoding_fallback, validate_script_text
 
 SUPPORTED_AVATAR_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".mp3", ".m4a", ".wav"}
 SCENE_FILE_RE = re.compile(r"^S(?P<scene>\d+)(?:[_-]avatar)?$", re.I)
@@ -670,8 +670,7 @@ def transcript_cache_is_current(chunk: AvatarChunk, transcript_dir: Path, config
 def load_production_scenes(sheet_path: Path) -> list[dict[str, str]]:
     if not sheet_path.is_file():
         return []
-    with sheet_path.open(encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle))
+    rows, _fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(sheet_path)
     scenes: list[dict[str, str]] = []
     for index, row in enumerate(rows, 1):
         scene_id = str(row.get("scene_id") or row.get("Scene ID") or f"S{index:03d}").strip()
@@ -688,8 +687,7 @@ def load_production_scenes(sheet_path: Path) -> list[dict[str, str]]:
 def expected_avatar_chunks(scenes: list[dict[str, str]], sheet_path: Path) -> list[str]:
     if not sheet_path.is_file():
         return []
-    with sheet_path.open(encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle))
+    rows, _fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(sheet_path)
     expected: list[str] = []
     for index, row in enumerate(rows, 1):
         avatar_value = str(row.get("avatar_required") or "").strip().upper()

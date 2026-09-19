@@ -17,7 +17,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-from csv_safety import sanitize_csv_file
+from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
 from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_scene_segmentation
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -114,8 +114,7 @@ def validate_production_sheet_against_voice(project: Path) -> tuple[bool, list[s
     voice_norm = normalize(voice)
     cursor = 0
     issues: list[str] = []
-    with sheet_path.open(encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle))
+    rows, _fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(sheet_path)
     if not rows:
         return False, ["07_production_sheet.csv has no production scenes."]
     for index, row in enumerate(rows, 1):

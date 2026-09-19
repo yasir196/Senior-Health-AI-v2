@@ -118,3 +118,20 @@ def test_avatar_production_reader_repairs_mojibake_defensively(tmp_path: Path):
         writer.writeheader()
         writer.writerow({"scene_id": "SC055", "script_excerpt": "tell usâ€”not proof"})
     assert load_production_scenes(sheet)[0]["script_text"] == "tell us—not proof"
+
+
+
+def test_cp1252_production_csv_is_read_and_sanitized_to_utf8(tmp_path: Path):
+    sheet = tmp_path / "07_production_sheet.csv"
+    # 0x97 is a Windows-1252 em dash and is invalid as standalone UTF-8.
+    sheet.write_bytes(
+        b"scene_id,script_excerpt\r\n"
+        b'SC074,"This is a legacy cp1252 dash \x97 not UTF-8."\r\n'
+    )
+
+    rows = load_production_scenes(sheet)
+    assert rows[0]["script_text"] == "This is a legacy cp1252 dash — not UTF-8."
+
+    sanitize_csv_file(sheet, required_text_columns=("script_excerpt",))
+    text = sheet.read_text(encoding="utf-8-sig")
+    assert "legacy cp1252 dash — not UTF-8" in text

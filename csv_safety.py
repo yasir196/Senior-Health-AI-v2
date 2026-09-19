@@ -74,16 +74,37 @@ def protect_csv_row(row: dict[str, Any], *, text_columns: Iterable[str] | None =
     }
 
 
+def read_csv_rows_with_legacy_encoding_fallback(path):
+    """Read a CSV as UTF-8, falling back to Windows-1252 for legacy external outputs.
+
+    Some external Production generators can emit cp1252 bytes such as 0x97 for an
+    em dash. Decode those files explicitly, then let the existing text-level
+    mojibake repair/sanitizer normalize content before downstream validation.
+    """
+    import csv
+    from pathlib import Path
+
+    path = Path(path)
+    last_error = None
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            with path.open("r", encoding=encoding, newline="") as handle:
+                reader = csv.DictReader(handle)
+                return list(reader), list(reader.fieldnames or []), encoding
+        except UnicodeDecodeError as exc:
+            last_error = exc
+    if last_error is not None:
+        raise last_error
+    return [], [], "utf-8-sig"
+
+
 def sanitize_csv_file(path, *, text_columns=None, scene_columns=("scene_id", "Scene ID"), required_text_columns=()):
     import csv
     from pathlib import Path
     path = Path(path)
     if not path.is_file():
         return
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
-        fieldnames = reader.fieldnames
-        rows = list(reader)
+    rows, fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(path)
     if not fieldnames:
         return
     selected = set(text_columns or fieldnames)
