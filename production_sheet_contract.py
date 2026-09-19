@@ -187,6 +187,44 @@ def validate_asset_distribution(rows: list[dict[str, str]], settings: dict[str, 
     return issues
 
 
+
+def _asset_lane(row: dict[str, str]) -> str | None:
+    return {
+        "AVATAR": "avatar", "AI_IMAGE": "ai_images", "STOCK_VIDEO": "stock",
+        "STOCK_IMAGE": "stock", "OVERLAY": "overlays",
+    }.get(_clean(row.get("recommended_asset_type")).upper())
+
+
+def _minimal_period(values: list[str | None]) -> int | None:
+    """Return a short exact repeating period when a sequence is mechanically tiled."""
+    n = len(values)
+    for period in range(2, min(12, n // 3 + 1)):
+        if n >= period * 3 and all(values[i] == values[i % period] for i in range(n)):
+            return period
+    return None
+
+
+def validate_asset_sequence_naturalness(rows: list[dict[str, str]], *, window: int = 30) -> list[str]:
+    """Reject obvious percentage-tiling patterns while allowing semantic local runs.
+
+    This does not prescribe an ideal order. It only detects repeated short templates that
+    indicate the mix percentages were converted into a mechanical sequence.
+    """
+    lanes = [_asset_lane(row) for row in rows if _asset_lane(row)]
+    issues: list[str] = []
+    if len(set(lanes)) < 2:
+        return issues
+    for start in range(0, len(lanes) - window + 1, max(1, window // 2)):
+        chunk = lanes[start:start + window]
+        period = _minimal_period(chunk)
+        if period is not None:
+            issues.append(
+                f"Scenes {start + 1}-{start + window}: recommended_asset_type repeats a mechanical "
+                f"{period}-scene template; choose assets from scene purpose/visual fit first, then balance the saved mix."
+            )
+            break
+    return issues
+
 def validate_canonical_rows(rows: list[dict[str,str]], fieldnames: list[str] | None, *, check_segmentation: bool = True) -> list[str]:
     issues=[]
     if fieldnames != PRODUCTION_SHEET_COLUMNS:
