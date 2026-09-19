@@ -52,3 +52,23 @@ def test_deep_research_handover_embeds_stage1_and_immutable_title():
     assert 'safe_read_text(project / "01_topic_validation.md")' in text
     assert "Do not rewrite, repair, replace, rank, or re-adjudicate the title." in text
     assert "Return one complete research report suitable for direct paste" in text
+
+
+def test_imported_source_verification_uses_authoritative_fallbacks_before_unverified():
+    text = (ROOT / "Agents" / "Research_Agent.md").read_text(encoding="utf-8")
+
+    assert "Imported-source verification fallback ladder" in text
+    assert "a failed or blocked first URL is not, by itself, an unverified source" in text
+    assert "PubMed/PMC" in text
+    assert "DOI resolution/metadata" in text
+    assert "Search by exact title plus author/year" in text
+    assert "identity-only" in text
+    assert "search-result snippets, AI summaries, blogs, or secondary paraphrases" in text
+
+
+def test_imported_workflow_command_requires_verification_fallback_ladder():
+    text = (ROOT / "app.py").read_text(encoding="utf-8")
+
+    assert "a blocked/dead first URL is not enough to mark a source unverified" in text
+    assert "title/author/year/DOI/PMID/PMCID" in text
+    assert "full-text/source-level, abstract/metadata-level, or identity-only" in text
