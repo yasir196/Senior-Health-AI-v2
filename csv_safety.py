@@ -94,8 +94,8 @@ def sanitize_csv_file(path, *, text_columns=None, scene_columns=("scene_id", "Sc
         for column in required:
             if column in row:
                 validate_script_text(row.get(column, ""), scene_id)
-                # Repair reversible mojibake before spreadsheet protection. This keeps
-        # script_excerpt byte-faithful to the UTF-8 voice script and also prevents
+        # Repair reversible mojibake before spreadsheet protection. This keeps
+        # script_excerpt faithful to the UTF-8 voice script and also prevents
         # corrupted punctuation from leaking into downstream production text.
         for column in selected:
             if column in row:
