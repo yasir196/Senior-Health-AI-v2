@@ -1053,15 +1053,34 @@ def render_workflow() -> None:
                         project / "07_production_sheet.csv",
                         required_text_columns=("script_excerpt", "Script Text", "narration"),
                     )
+                    source_ok, source_issues = validate_production_sheet_against_voice(project)
+                    segmentation_issues = production_sheet_segmentation_issues(project)
+                    if not source_ok or segmentation_issues:
+                        result.returncode = 2
+                        diagnostics = []
+                        if not source_ok:
+                            diagnostics.extend(f"Narration provenance: {issue}" for issue in source_issues)
+                        diagnostics.extend(f"Segmentation/timing: {issue}" for issue in segmentation_issues)
+                        result.output = (
+                            result.output
+                            + "\n\nProduction final deterministic gate: FAIL\n"
+                            + "\n".join(f"- {issue}" for issue in diagnostics)
+                        )[-20000:]
+                        st.error(
+                            "Production generated files, but the final deterministic narration/segmentation gate FAILED. "
+                            "07_production_sheet.csv is NOT PRODUCTION READY; regenerate Production before Avatar Timing."
+                        )
+                        for issue in diagnostics[:12]:
+                            st.write(f"- {issue}")
                     prompt_output = project / "10_image_prompts.md"
-                    if prompt_output.is_file():
+                    if prompt_output.is_file() and result.returncode == 0:
                         semantic_audit = enforce_final_semantic_report(prompt_output)
                         if semantic_audit.passed:
                             st.success(f"{stage} completed. Log: {Path(result.log_path).name}")
                         else:
                             ids = ", ".join(f"IMAGE {x.image_number:03d}" for x in semantic_audit.issues)
                             st.error(f"{stage} generated diagnostic output but Semantic Coherence verification failed ({ids}). 10_image_prompts.md is NOT PRODUCTION READY.")
-                    else:
+                    elif result.returncode == 0:
                         st.success(f"{stage} completed. Log: {Path(result.log_path).name}")
                 elif stage == "Thumbnail":
                     thumbnail_validation = validate_thumbnail_concepts(project)
