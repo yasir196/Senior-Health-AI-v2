@@ -164,3 +164,41 @@ def test_asset_distribution_allows_user_selected_single_lane_100_percent():
     assert validate_asset_distribution(
         rows, {"avatar": 100, "ai_images": 0, "stock": 0, "overlays": 0}
     ) == []
+
+
+def test_asset_sequence_rejects_mechanical_short_template_tiling():
+    from production_sheet_contract import validate_asset_sequence_naturalness
+    pattern = ["AVATAR", "AVATAR", "AI_IMAGE", "OVERLAY", "OVERLAY"]
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": pattern[(i - 1) % len(pattern)]}
+        for i in range(1, 61)
+    ]
+    issues = validate_asset_sequence_naturalness(rows)
+    assert any("mechanical" in issue and "5-scene template" in issue for issue in issues)
+
+
+def test_asset_sequence_allows_nonperiodic_semantic_mix():
+    from production_sheet_contract import validate_asset_sequence_naturalness
+    sequence = [
+        "AVATAR","AI_IMAGE","OVERLAY","AVATAR","AVATAR","OVERLAY","AI_IMAGE","AVATAR",
+        "OVERLAY","AI_IMAGE","AVATAR","OVERLAY","AVATAR","AI_IMAGE","AI_IMAGE","OVERLAY",
+        "AVATAR","AI_IMAGE","OVERLAY","OVERLAY","AVATAR","AI_IMAGE","AVATAR","OVERLAY",
+        "AI_IMAGE","AVATAR","OVERLAY","AI_IMAGE","AVATAR","AVATAR",
+    ]
+    rows = [{"scene_id": f"S{i:03d}", "recommended_asset_type": asset} for i, asset in enumerate(sequence, 1)]
+    assert validate_asset_sequence_naturalness(rows) == []
+
+
+def test_avatar_timing_no_longer_treats_bad_segmentation_as_timing_only_warning():
+    app = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert "scene segmentation/timing FAILED" in app
+    assert "transcript timing cannot repair invalid scene boundaries" in app
+    assert "Avatar timing may continue because real transcript timing" not in app
+
+
+def test_production_agent_requires_final_literal_row_segmentation_validation():
+    agent = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
+    assert "POST-ASSET SEGMENTATION GATE" in agent
+    assert "FINAL literal `script_excerpt` strings" in agent
+    assert "deterministic validator itself returns an empty issue list" in agent
+    assert "repeating percentage template" in agent
