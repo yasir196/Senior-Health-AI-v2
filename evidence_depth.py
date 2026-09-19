@@ -227,7 +227,11 @@ def validate_research_artifact(
         errors.append("missing required dimensions: " + ", ".join(missing))
 
     allowed_status = set(contract.get("dimension_status_values", []))
-    propositions = {\n        (p.get("proposition_id") or p.get("claim_id")): p\n        for p in artifact.get("propositions", [])\n        if isinstance(p, dict) and (p.get("proposition_id") or p.get("claim_id"))\n    }
+    propositions = {
+        (p.get("proposition_id") or p.get("claim_id")): p
+        for p in artifact.get("propositions", [])
+        if isinstance(p, dict) and (p.get("proposition_id") or p.get("claim_id"))
+    }
     for name, dim in dims.items():
         status = dim.get("status")
         if status not in allowed_status:
