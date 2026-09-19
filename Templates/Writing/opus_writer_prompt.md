@@ -60,7 +60,7 @@ Consolidate repeated safety/context boundaries while preserving every medically 
 
 ## Retention-First Drafting Lock
 
-Write the first draft for clear viewer comprehension, natural pacing, and semantic progression. Apply these writing-quality rules directly; there is no separate Retention Structure Analyzer stage.
+Write the first draft for clear viewer comprehension, natural pacing, and semantic progression. Apply these writing-quality rules directly in the draft.
 
 - Deliver concrete promised value early. Do not bury the title payoff behind avoidable preamble, generic setup, repeated qualification, or a long safety block. Preserve any warning that genuinely must precede the action or claim.
 - Keep hook promises and later payoffs continuous. If the opening promises a specific answer, example, comparison, mistake, number, or reveal, make sure the later script clearly delivers that exact promise without changing approved factual or medical substance.
