@@ -79,6 +79,8 @@ Required invariants:
 
 Before writing the CSV, perform a segmentation self-check: tiny orphan fragments = 0 (except marked intentional emphasis), multi-idea oversized excerpts = 0, fixed-duration padding = 0, and source-order coverage = PASS. Treat this as a generation hard gate, not a downstream warning: if the same final rows would produce any issue from `production_sheet_contract.validate_scene_segmentation`, repair and revalidate them before emitting `07_production_sheet.csv`.
 
+**FINAL NARRATION-PROVENANCE GATE — mandatory after every scene repair:** Immediately before writing the final CSV, re-read the current `06a_voice_script.md` from disk and validate the FINAL scene rows against that exact source, not against an earlier scene ledger or remembered text. Normalize whitespace only for matching; do not normalize, rewrite, smarten, paraphrase, or substitute punctuation/words inside `script_excerpt`. Starting at the beginning of the voice script, every final `script_excerpt` must be found as one contiguous excerpt at or after the previous scene's end. Any missing excerpt, changed punctuation/word, or out-of-order match is a hard generation failure. Repair it by re-slicing the exact characters/words from `06a_voice_script.md` (and locally re-merge/re-split adjacent scenes if necessary), then rerun BOTH narration-provenance and segmentation/timing validation. Finalize only when provenance issues = 0 and segmentation/timing issues = 0. Never weaken or bypass downstream Avatar Timing source validation.
+
 ## 4. Step-by-Step Workflow
 
 1. Confirm `06a_voice_script.md` exists and contains usable narration. Do not check or require any prior editorial workflow stage or gate.
