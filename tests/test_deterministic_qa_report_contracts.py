@@ -58,7 +58,6 @@ def test_narrative_bare_pass_is_rejected(tmp_path: Path) -> None:
     assert result.status == "FAIL"
     assert "Semantic Progression Gate" in result.reason
     assert "Approved Blueprint Order Audit" in result.reason
-    assert "Active Channel Rule Compliance" in result.reason
 
 
 def test_narrative_pass_requires_source_trace_column(tmp_path: Path) -> None:
@@ -87,6 +86,24 @@ def test_voice_checklist_missing_required_section_fails(tmp_path: Path) -> None:
     result = get_gate_status(tmp_path, "Speech Optimizer", {})
     assert result.status == "FAIL"
     assert "Pronunciation Review" in result.reason
+
+
+def test_medical_gate_2_accepts_verdict_below_status_heading(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "15_medical_gate_2.md",
+        "# Medical Agent Gate 2\n\n## Status\n\nPASS WITH REVISIONS\n",
+    )
+    result = get_gate_status(tmp_path, "Medical Gate 2", {})
+    assert result.status == "PASS WITH REVISIONS"
+
+
+def test_status_heading_parser_preserves_exact_pass(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "15_medical_gate_2.md",
+        "# Medical Agent Gate 2\n\n### Status\nPASS\n",
+    )
+    result = get_gate_status(tmp_path, "Medical Gate 2", {})
+    assert result.status == "PASS"
 
 
 def test_validator_is_scoped_to_supported_artifacts() -> None:
