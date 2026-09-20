@@ -123,3 +123,7 @@ For every issue include:
 - Any suggested wording must preserve the medical meaning and be rechecked by Medical Gate 2.
 - For a pure deletion patch, write `Replace With: [DELETE]`. The Auto Revision Engine treats this token as deletion.
 - Do not unlock Medical Gate 2 for `PASS WITH REVISIONS`; revisions must be applied and Narrative QA rerun to PASS.
+
+## Active Channel Rule Boundary
+
+Narrative QA must not read, apply, reproduce, score, or report automatically learned channel script rules. Do not output an `Active Channel Rule Compliance` section or equivalent learned-rule compliance table. Channel analytics are observational only at this gate; any future channel-specific writing rule must be deliberately added through the approved manual rule path rather than inferred or enforced automatically. This does not disable the normal Hook, retention, semantic-progression, repetition, transition, safety, blueprint, or CTA checks defined above.
