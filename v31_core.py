@@ -2390,6 +2390,30 @@ def extract_gate_status(text: str) -> str:
         if match:
             candidates.append(re.sub(r"\s+", " ", match.group(1)).strip(" #.:-").upper())
     if not candidates:
+        # Some gate reports render the label as a Markdown heading and place the
+        # verdict on the next non-empty line, e.g. "## Status" then
+        # "PASS WITH REVISIONS". Accept that documented presentation without
+        # weakening the recognized verdict vocabulary below.
+        lines = text.splitlines()
+        heading_pattern = re.compile(
+            r"^\s{0,3}#{1,6}\s+(?:overall\s+)?"
+            r"(?:status|result|(?:final\s+)?verdict|gate(?:\s+(?:result|status))?)"
+            r"\s*#*\s*$",
+            re.I,
+        )
+        for index, raw_line in enumerate(lines):
+            line = re.sub(r"[\`*_~]", "", raw_line).strip()
+            if not heading_pattern.match(line):
+                continue
+            for following in lines[index + 1:]:
+                value_line = re.sub(r"[\`*_~]", "", following).strip()
+                if not value_line:
+                    continue
+                candidates.append(re.sub(r"\s+", " ", value_line).strip(" #.:-").upper())
+                break
+            if candidates:
+                break
+    if not candidates:
         return "UNKNOWN"
     value = candidates[0]
     if re.search(r"\bPASS\s+WITH\s+SUGGESTIONS\b", value):
