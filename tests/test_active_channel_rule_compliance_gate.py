@@ -1,29 +1,55 @@
 from pathlib import Path
 
+from v31_core import validate_qa_report_sections
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_retention_analyzer_requires_rule_by_rule_compliance():
-    text = (ROOT / "Templates/Writing/retention_structure_analyzer.md").read_text(encoding="utf-8")
-    assert "ACTIVE CHANNEL RULE COMPLIANCE" in text
-    assert "Evaluate EACH currently ACTIVE rule" in text
-    assert "Script Evidence (5–8+ word verbatim anchor)" in text
-    assert "Corrective Patch ID(s)" in text
-    assert "do not merely confirm that the rule was injected" in text
+def test_narrative_qa_pass_does_not_require_removed_active_channel_section():
+    report = """# 14 Narrative QA
+
+Status: PASS
+
+## Semantic Progression Gate
+
+| Beat | Approved source trace |
+|---|---|
+| Example | C01 |
+
+## Approved Blueprint Order Audit
+
+| Expected | Current | Status |
+|---|---|---|
+| Hook | Hook | PASS |
+"""
+    ok, issues = validate_qa_report_sections("Narrative QA", report)
+
+    assert ok
+    assert issues == []
 
 
-def test_narrative_qa_requires_downstream_final_rule_verification():
+def test_narrative_qa_still_requires_current_audit_sections():
+    report = """# 14 Narrative QA
+
+Status: PASS
+
+## Semantic Progression Gate
+
+| Beat | Approved source trace |
+|---|---|
+| Example | C01 |
+"""
+    ok, issues = validate_qa_report_sections("Narrative QA", report)
+
+    assert not ok
+    assert "missing required section: Approved Blueprint Order Audit" in issues
+
+
+def test_active_channel_rule_output_is_silent_in_current_narrative_prompts():
     agent = (ROOT / "Agents/Narrative_QA_Agent.md").read_text(encoding="utf-8")
-    template = (ROOT / "Templates/Writing/narrative_qa_output_template.md").read_text(encoding="utf-8")
     opus = (ROOT / "Templates/Writing/opus_narrative_qa.md").read_text(encoding="utf-8")
-    assert "FINAL ACTIVE-RULE VERIFICATION" in agent
-    assert "## Active Channel Rule Compliance" in template
-    assert "Final Script Evidence (5–8+ word verbatim anchor)" in template
-    assert "Verify EACH currently ACTIVE rule" in opus
 
-
-def test_app_commands_request_actual_script_compliance_not_just_injection():
-    app = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert "verify EACH currently ACTIVE rule against the actual current 06_final_script.md" in app
-    assert "Do not count rule injection into the writer package as implementation evidence" in app
-    assert "do not treat writer-package injection or the earlier Retention report as proof of implementation" in app
+    assert "Active Channel Rule Compliance" not in agent
+    assert "Active Channel Rule Compliance" not in opus
+    assert "No ACTIVE channel script rules" not in agent
+    assert "No ACTIVE channel script rules" not in opus
