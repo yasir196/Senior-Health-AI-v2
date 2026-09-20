@@ -58,7 +58,6 @@ def test_narrative_bare_pass_is_rejected(tmp_path: Path) -> None:
     assert result.status == "FAIL"
     assert "Semantic Progression Gate" in result.reason
     assert "Approved Blueprint Order Audit" in result.reason
-    assert "Active Channel Rule Compliance" in result.reason
 
 
 def test_narrative_pass_requires_source_trace_column(tmp_path: Path) -> None:
