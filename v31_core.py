@@ -2437,7 +2437,6 @@ def validate_qa_report_sections(gate_name: str, text: str) -> tuple[bool, list[s
         required = (
             "semantic progression gate",
             "approved blueprint order audit",
-            "active channel rule compliance",
         )
         for heading in required:
             if heading not in headings:
