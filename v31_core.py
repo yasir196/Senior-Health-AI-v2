@@ -2402,11 +2402,11 @@ def extract_gate_status(text: str) -> str:
             re.I,
         )
         for index, raw_line in enumerate(lines):
-            line = re.sub(r"[\`*_~]", "", raw_line).strip()
+            line = re.sub(r"[`*_~]", "", raw_line).strip()
             if not heading_pattern.match(line):
                 continue
             for following in lines[index + 1:]:
-                value_line = re.sub(r"[\`*_~]", "", following).strip()
+                value_line = re.sub(r"[`*_~]", "", following).strip()
                 if not value_line:
                     continue
                 candidates.append(re.sub(r"\s+", " ", value_line).strip(" #.:-").upper())
