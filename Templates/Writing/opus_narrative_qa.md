@@ -230,3 +230,7 @@ Do not rewrite the full script.
 Do not add new research.
 
 Do not modify medical claims.
+
+## Active Channel Rule Boundary
+
+Do not read, apply, reproduce, score, or report automatically learned channel script rules. Do not output an `Active Channel Rule Compliance` section or any equivalent learned-rule compliance table. Channel analytics are observational only for Narrative QA. Channel-specific writing rules may affect this gate only when they have been deliberately added through the approved manual rule path. Continue to apply the normal Hook, retention, semantic-progression, repetition, transition, safety, blueprint, and CTA checks in this prompt.
