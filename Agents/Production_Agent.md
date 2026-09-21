@@ -8,7 +8,9 @@ Convert the medically approved script into a professional video production packa
 
 Load only these inputs:
 
-- `Projects/<topic_slug>/06a_voice_script.md` — final approved narration\n- `Projects/<topic_slug>/06c_scene_ledger.csv` — Python-owned immutable narration units for this Production run\n- `Projects/<topic_slug>/06c_scene_ledger.meta.json` — Python-owned freshness metadata for the ledger
+- `Projects/<topic_slug>/06a_voice_script.md` — final approved narration
+- `Projects/<topic_slug>/06c_scene_ledger.csv` — Python-owned immutable narration units for this Production run
+- `Projects/<topic_slug>/06c_scene_ledger.meta.json` — Python-owned freshness metadata for the ledger
 - `Projects/<topic_slug>/08_actual_timeline.csv` when it already exists (authoritative for actual AI-image timing)
 - `Projects/<topic_slug>/production_settings.json`
 - `VIDEO_PROMPT_TEMPLATE_ULTIMATE.md`
