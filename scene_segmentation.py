@@ -63,7 +63,7 @@ def _sentence_spans(text: str) -> list[str]:
         return []
     spans: list[str] = []
     start = 0
-    for match in re.finditer(r"[.!?]+(?:[\\"')\]]+)?(?=\s+|$)", text):
+    for match in re.finditer(r"[.!?]+(?:[\\x22\\x27)\\]]+)?(?=\\s+|$)", text):
         end = match.end()
         candidate = text[start:end].strip()
         last_token = candidate.lower().split()[-1] if candidate.split() else ""
