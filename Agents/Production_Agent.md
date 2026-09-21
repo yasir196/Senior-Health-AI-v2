@@ -83,6 +83,22 @@ Required invariants:
 
 Before writing the CSV, perform a segmentation self-check: tiny orphan fragments = 0 (except marked intentional emphasis), multi-idea oversized excerpts = 0, fixed-duration padding = 0, and source-order coverage = PASS. Treat this as a generation hard gate, not a downstream warning: if the same final rows would produce any issue from `production_sheet_contract.validate_scene_segmentation`, repair and revalidate them before emitting `07_production_sheet.csv`.
 
+### 3B.1 Mechanical Segmentation Procedure — mandatory
+
+Do not begin from paragraphs or large semantic blocks and then try to split them. Start small and merge:
+
+1. Read `06a_voice_script.md` in source order and build a sentence-level ledger before any asset planning.
+2. Preserve each sentence exactly. If a sentence itself cannot fit the segmentation contract, divide it only at a natural clause/punctuation boundary while retaining the boundary punctuation with the preceding slice.
+3. From those exact source units, merge only adjacent units into coherent 10–24-word visual beats. A 25–32-word merge is allowed only when it remains one indivisible coherent visual idea. Never merge merely to reduce scene count.
+4. Verify that concatenating the ledger excerpts in order reconstructs the usable narration after whitespace normalization only. No punctuation, word, qualifier, or source-order change is allowed.
+5. Only after this ledger passes segmentation validation may asset types, provisional timing, prompts, or production-mix balancing be assigned.
+
+Paragraph boundaries are not scene boundaries. A 60–120-word paragraph must normally become multiple scenes.
+
+**Escape-marker anti-bypass rule:** `INTENTIONAL_EMPHASIS` and `INTENTIONAL_LONG_AVATAR` are exceptional annotations, not validator bypasses. Use either only when the narration genuinely requires that exception and the scene is still one indivisible visual/narrative idea. Across the entire sheet, allow at most two escape-marked scenes total, and at most one may be `INTENTIONAL_LONG_AVATAR`. Never add an escape marker merely to make `validate_scene_segmentation` return no issue. If ordinary exact slicing can satisfy the contract, ordinary slicing is mandatory.
+
+**Observable segmentation audit:** Before finalizing Production, append a compact `SEGMENTATION_LEDGER` block inside the existing `notes` field of the first CSV row. It must report: source sentence units, final scene count, ordinary >32-word scenes, ordinary <4-word scenes, escape-marker count, long-avatar escape count, provenance reconstruction PASS/FAIL, and segmentation-validator issue count. This is audit metadata only; it must not alter narration or create an additional output file. Finalization requires ordinary >32 = 0, ordinary <4 = 0, provenance reconstruction = PASS, and validator issue count = 0. The ledger must never contain the literal strings `INTENTIONAL_EMPHASIS` or `INTENTIONAL_LONG_AVATAR`, because segmentation validation matches those tokens as substrings of `notes`; use non-colliding ledger labels such as `ESCAPE_MARKED=0` and `LONG_AVATAR_ESCAPE=0` instead.
+
 **FINAL NARRATION-PROVENANCE GATE — mandatory after every scene repair:** Immediately before writing the final CSV, re-read the current `06a_voice_script.md` from disk and validate the FINAL scene rows against that exact source, not against an earlier scene ledger or remembered text. Normalize whitespace only for matching; do not normalize, rewrite, smarten, paraphrase, or substitute punctuation/words inside `script_excerpt`. Starting at the beginning of the voice script, every final `script_excerpt` must be found as one contiguous excerpt at or after the previous scene's end. Any missing excerpt, changed punctuation/word, or out-of-order match is a hard generation failure. Repair it by re-slicing the exact characters/words from `06a_voice_script.md` (and locally re-merge/re-split adjacent scenes if necessary), then rerun BOTH narration-provenance and segmentation/timing validation. Finalize only when provenance issues = 0, segmentation/timing issues = 0, AND asset-distribution issues = 0. Recheck the final `recommended_asset_type` sequence after every repair: configured lanes must remain interleaved according to the CURRENT saved project percentages, consecutive runs must satisfy the percentage-adaptive mixing limit, and non-zero configured shares must remain within the allowed approximate tolerance; 0% lanes are not required. Never weaken or bypass downstream Avatar Timing source validation.
 
 ## 4. Step-by-Step Workflow
