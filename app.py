@@ -144,7 +144,10 @@ def production_sheet_segmentation_issues(project: Path) -> list[str]:
             rows = list(csv.DictReader(handle))
     except OSError as exc:
         return [f"Could not read 07_production_sheet.csv: {exc}"]
-    return validate_scene_segmentation(rows)
+    issues = validate_scene_segmentation(rows)
+    if issues:
+        return [f"{issue} [canonical word count: production_sheet_contract._word_count]" for issue in issues]
+    return []
 
 def production_sheet_asset_distribution_issues(project: Path) -> list[str]:
     """Return configured whole-video mix/interleaving issues after semantic scenes are frozen."""
@@ -1622,11 +1625,17 @@ def render_production() -> None:
                             project / "07_production_sheet.csv",
                             required_text_columns=("script_excerpt",),
                         )
-                        source_ok, source_issues = validate_production_sheet_against_voice(project)
+                        # Acceptance gate runs AFTER canonical/legacy normalization and CSV
+                        # sanitization, so it validates the same final bytes downstream stages read.
+                        # Call the segmentation validator directly rather than relying on
+                        # validate_canonical_rows(check_segmentation=...), so compatibility
+                        # normalization cannot bypass Production-stage scene validity.
                         segmentation_issues = production_sheet_segmentation_issues(project)
                         if segmentation_issues:
                             source_ok = False
                             source_issues = ["SCENE_SEGMENTATION_QA_FAILED"] + segmentation_issues
+                        else:
+                            source_ok, source_issues = validate_production_sheet_against_voice(project)
                     else:
                         source_ok = False
                         source_issues = list(contract_issues)

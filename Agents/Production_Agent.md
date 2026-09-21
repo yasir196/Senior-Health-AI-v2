@@ -89,7 +89,7 @@ Do not begin from paragraphs or large semantic blocks and then try to split them
 
 1. Read `06a_voice_script.md` in source order and build a sentence-level ledger before any asset planning.
 2. Preserve each sentence exactly. If a sentence itself cannot fit the segmentation contract, divide it only at a natural clause/punctuation boundary while retaining the boundary punctuation with the preceding slice.
-3. From those exact source units, merge only adjacent units into coherent 10–24-word visual beats. A 25–32-word merge is allowed only when it remains one indivisible coherent visual idea. Never merge merely to reduce scene count.
+3. From those exact source units, merge only adjacent units into coherent 10–24-word visual beats. **10–24 is the normal working target. The 25–32 band is an exception, not a target or budget to fill**, and is allowed only when the excerpt remains one indivisible coherent visual idea. Never merge merely to reduce scene count. Word counts must match the validator's canonical `production_sheet_contract._word_count` semantics (including hyphenated words and straight/curly apostrophe forms); do not rely on an independent approximate count.
 4. Verify that concatenating the ledger excerpts in order reconstructs the usable narration after whitespace normalization only. No punctuation, word, qualifier, or source-order change is allowed.
 5. Only after this ledger passes segmentation validation may asset types, provisional timing, prompts, or production-mix balancing be assigned.
 
