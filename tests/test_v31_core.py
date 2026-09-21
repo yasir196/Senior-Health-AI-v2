@@ -550,3 +550,22 @@ def test_production_page_uses_shared_word_count_and_generation_action():
     assert '"Generate Production Plan"' in production_source
     assert "run_external_command(cli_template, prompt, project)" in production_source
     assert "disabled=generate_disabled" in production_source
+
+
+def test_speech_optimizer_command_enforces_tts_safe_canonical_voice_text():
+    from app import agent_command
+    prompt = agent_command("Speech Optimizer", "demo-project")
+    assert "TTS-SAFE CANONICAL TEXT LOCK" in prompt
+    assert "smart quotes" in prompt
+    assert "em/en dashes" in prompt
+    assert "ellipses" in prompt
+    assert "simple ASCII sentence punctuation" in prompt
+    assert "downstream Production must copy it verbatim" in prompt
+
+
+def test_voice_director_template_owns_tts_cleanup_before_production():
+    template = (Path(__file__).resolve().parents[1] / "Templates" / "Voice" / "voice_director_prompt.md").read_text(encoding="utf-8")
+    assert "## TTS-Safe Canonical Text" in template
+    assert "Production must copy this cleaned text verbatim" in template
+    assert "do not strip all punctuation" in template
+    assert "do not introduce curly quotes, em/en dashes, ellipses" in template
