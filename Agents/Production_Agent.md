@@ -8,7 +8,9 @@ Convert the medically approved script into a professional video production packa
 
 Load only these inputs:
 
-- `Projects/<topic_slug>/06a_voice_script.md` — the only required project-level upstream editorial artifact; treat it as final approved narration
+- `Projects/<topic_slug>/06a_voice_script.md` — final approved narration
+- `Projects/<topic_slug>/06c_scene_ledger.csv` — Python-owned immutable narration units for this Production run
+- `Projects/<topic_slug>/06c_scene_ledger.meta.json` — Python-owned freshness metadata for the ledger
 - `Projects/<topic_slug>/08_actual_timeline.csv` when it already exists (authoritative for actual AI-image timing)
 - `Projects/<topic_slug>/production_settings.json`
 - `VIDEO_PROMPT_TEMPLATE_ULTIMATE.md`
@@ -61,65 +63,38 @@ Stock rows MUST have sequential `broll_prompt_id` values `BR001..BRNNN`, concret
 
 Do not create a fixed number of rows. Scene count follows the current script. Preserve the existing rich data style and downstream schema so Image Prompt Import, image generation, Avatar Timing, Timeline Builder, and CapCut all consume the same Production Sheet without adapters.
 
-## 3B. SEMANTIC SCENE SEGMENTATION CONTRACT — HARD REQUIREMENT
+## 3B. DETERMINISTIC SCENE LEDGER CONTRACT — HARD REQUIREMENT
 
-Scene segmentation happens BEFORE asset allocation. The production mix must never force narration boundaries.
+Python owns narration boundaries before this agent performs asset planning.
 
-Required invariants:
-
-- Every `script_excerpt` is an exact contiguous excerpt from `06a_voice_script.md`, and rows preserve source order.
-- Together the scene excerpts must cover the usable narration without silently dropping narration.
-- One scene = one coherent visual/narrative beat.
-- HARD SEGMENTATION CONTRACT: target 10–24 spoken words. 25–32 words are allowed only when the excerpt is one indivisible coherent visual idea. Any normal scene over 32 spoken words is INVALID and MUST be split before 07_production_sheet.csv is written. The only exception is an AVATAR scene explicitly marked `INTENTIONAL_LONG_AVATAR` in `notes`.
-- Standalone fragments under 4 words are forbidden by default. Merge them with an adjacent semantic beat. The only exception is a deliberate visual emphasis explicitly marked `INTENTIONAL_EMPHASIS` in `notes`.
-- A phrase such as `Just five.` cannot be padded to 6 seconds merely because the scene template prefers 6 seconds. If kept as deliberate emphasis, provisional duration must match its actual spoken length; otherwise merge it.
-- Provisional duration follows narration length and natural speaking pace. Never assign durations from fixed slot buckets.
-- `start_time` / `end_time` must be elapsed `M:SS` or `MM:SS`; never serialize elapsed minutes as `HH:MM:SS`.
-- First freeze semantic scene boundaries. Then assign AVATAR / AI_IMAGE / STOCK / OVERLAY according to `production_settings.json` as an approximate distribution over those existing scenes. Do not create, split, or merge narration scenes to hit exact percentages.
-- The configured mix is a TIMELINE distribution, not a quota-block allocation. Never satisfy it by assigning all AVATAR scenes first, then all AI_IMAGE scenes, then all OVERLAY/stock scenes. Interleave appropriate asset types across the full narration according to scene purpose and visual fit.
-- Do NOT replace quota blocks with a repeating percentage template such as `AVATAR, AVATAR, AI_IMAGE, OVERLAY, OVERLAY` or `AVATAR, AVATAR, AI_IMAGE, AI_IMAGE, AI_IMAGE`. The saved percentages are whole-video targets, never a local repeating cadence. For EACH frozen scene independently choose the best eligible asset from its `scene_purpose`, `narrative_context`, and `visual_intent`; only then use running whole-video counts to prefer an equally suitable under-target lane. Natural local variation is expected.
-- HARD MIXING LIMIT: use the CURRENT saved `production_settings.json` for this project, including any percentages the user changed in the Production UI. With two or more non-zero lanes, distribute those active lanes across the timeline instead of quota blocks. Ordinary balanced mixes should not exceed 4 consecutive scenes of one lane; if the user deliberately configures one lane as highly dominant, a longer run is allowed only as needed to make that saved percentage practical. A 0% lane must not be forced into the sheet, and a 100% single-lane setting is valid.
-- For each non-zero configured lane, keep the final whole-video share approximately within ±5 percentage points of `production_settings.json`. A configured non-zero lane may not disappear entirely. STOCK_VIDEO and STOCK_IMAGE count together as the stock lane.
-
-Before writing the CSV, perform a segmentation self-check: tiny orphan fragments = 0 (except marked intentional emphasis), multi-idea oversized excerpts = 0, fixed-duration padding = 0, and source-order coverage = PASS. Treat this as a generation hard gate, not a downstream warning: if the same final rows would produce any issue from `production_sheet_contract.validate_scene_segmentation`, repair and revalidate them before emitting `07_production_sheet.csv`.
-
-### 3B.1 Mechanical Segmentation Procedure — mandatory
-
-Do not begin from paragraphs or large semantic blocks and then try to split them. Start small and merge:
-
-1. Read `06a_voice_script.md` in source order and build a sentence-level ledger before any asset planning.
-2. Preserve each sentence exactly. For generation, use a **28-word hard ceiling as a safety margin below the validator's legal 32-word ceiling**: a sentence whose canonical `production_sheet_contract._word_count` is 28 or fewer is indivisible during initial ledger construction; sub-sentence slicing is permitted when the complete sentence exceeds 28 canonical words. For such an overlong sentence, divide only at natural clause/punctuation boundaries while retaining the boundary punctuation with the preceding slice; each resulting slice must itself satisfy the generation segmentation contract, must not exceed 28 canonical words, and never create a slice below 4 canonical words. If no natural boundary can produce compliant slices, preserve the complete sentence intact when it is within the validator's legal 32-word ceiling; never invent a mid-clause cut or alter punctuation/word order merely to satisfy the 28-word generation margin. Short complete sentences/fragments that remain below 4 words must be merged into the adjacent unit that belongs to the same idea; when either neighbor is semantically plausible, merge backward. After all merges/splits, regenerate the entire Production sheet from the final scene list and renumber `scene_id`, `IMG001..IMGNNN`, and `BR001..BRNNN` sequentially with no stale numbering from an earlier sheet.
-3. From those exact source units, merge only adjacent units into coherent 10–24-word visual beats, with a **generation hard ceiling of 28 canonical words for every merged beat**. **10–24 is the normal working target. The validator's 25–32 band remains a downstream legal exception, not a generation target or budget to fill.** Never merge merely to reduce scene count. Word counts must match the validator's canonical `production_sheet_contract._word_count` semantics (including hyphenated words and straight/curly apostrophe forms); do not rely on an independent approximate count.
-4. Verify that concatenating the ledger excerpts in order reconstructs the usable narration after whitespace normalization only. No punctuation, word, qualifier, or source-order change is allowed.
-5. Only after this ledger passes segmentation validation may asset types, provisional timing, prompts, or production-mix balancing be assigned.
-
-Paragraph boundaries are not scene boundaries. A 60–120-word paragraph must normally become multiple scenes.
-
-**Escape-marker anti-bypass rule:** `INTENTIONAL_EMPHASIS` and `INTENTIONAL_LONG_AVATAR` are exceptional annotations, not validator bypasses. Use either only when the narration genuinely requires that exception and the scene is still one indivisible visual/narrative idea. Across the entire sheet, allow at most two escape-marked scenes total, and at most one may be `INTENTIONAL_LONG_AVATAR`. Never add an escape marker merely to make `validate_scene_segmentation` return no issue. If ordinary exact slicing can satisfy the contract, ordinary slicing is mandatory.
-
-**Observable segmentation audit:** Before finalizing Production, append a compact `SEGMENTATION_LEDGER` block inside the existing `notes` field of the first CSV row. It must report: source sentence units, final scene count, ordinary >32-word scenes, ordinary <4-word scenes, escape-marker count, long-avatar escape count, provenance reconstruction PASS/FAIL, and segmentation-validator issue count. This is audit metadata only; it must not alter narration or create an additional output file. Finalization requires ordinary >32 = 0, ordinary <4 = 0, provenance reconstruction = PASS, and validator issue count = 0. The ledger must never contain the literal strings `INTENTIONAL_EMPHASIS` or `INTENTIONAL_LONG_AVATAR`, because segmentation validation matches those tokens as substrings of `notes`; use non-colliding ledger labels such as `ESCAPE_MARKED=0` and `LONG_AVATAR_ESCAPE=0` instead.
-
-**FINAL NARRATION-PROVENANCE GATE — mandatory after every scene repair:** Immediately before writing the final CSV, re-read the current `06a_voice_script.md` from disk and validate the FINAL scene rows against that exact source, not against an earlier scene ledger or remembered text. Normalize whitespace only for matching; do not normalize, rewrite, smarten, paraphrase, or substitute punctuation/words inside `script_excerpt`. Starting at the beginning of the voice script, every final `script_excerpt` must be found as one contiguous excerpt at or after the previous scene's end. Any missing excerpt, changed punctuation/word, or out-of-order match is a hard generation failure. Repair it by re-slicing the exact characters/words from `06a_voice_script.md` (and locally re-merge/re-split adjacent scenes if necessary), then rerun BOTH narration-provenance and segmentation/timing validation. Finalize only when provenance issues = 0, segmentation/timing issues = 0, AND asset-distribution issues = 0. Recheck the final `recommended_asset_type` sequence after every repair: configured lanes must remain interleaved according to the CURRENT saved project percentages, consecutive runs must satisfy the percentage-adaptive mixing limit, and non-zero configured shares must remain within the allowed approximate tolerance; 0% lanes are not required. Never weaken or bypass downstream Avatar Timing source validation.
+- Read 06c_scene_ledger.csv in source order. It is the authoritative boundary ledger derived from the current extracted 06a narration.
+- Do not independently split, reword, reorder, resize, repair, or replace a ledger unit.
+- A final Production row may contain exactly one ledger unit or the exact whitespace-normalized concatenation of consecutive, previously unconsumed ledger units.
+- Legal merging is one-way: consecutive ledger units may be merged for one coherent visual beat; a ledger unit may never be split by this agent.
+- Every final Production row must consume a non-empty ledger span. Never create visual-only, zero-narration, invented, or otherwise unmapped rows.
+- Every ledger unit must be consumed exactly once: no skips, reuse, reordering, partial consumption, or narration mutation.
+- Mapping is by exact narration content and source order, not by scene_id equality. Ledger IDs identify source units; final Production IDs are freshly sequential after legal merges.
+- Any merged Production row must remain within the ordinary 32-word validator ceiling. 10–24 remains the preferred coherent visual-beat target; never merge merely to reduce scene count.
+- INTENTIONAL_EMPHASIS and INTENTIONAL_LONG_AVATAR have no segmentation authority. Asset type also creates no segmentation exception.
+- Only after final legal grouping is chosen may production_settings.json be applied as an approximate whole-video asset distribution.
+- Provisional duration follows narration length. start_time/end_time use elapsed M:SS / MM:SS.
+- After grouping, regenerate scene_id, IMG001..IMGNNN, and BR001..BRNNN sequentially with no stale numbering.
+- Application code performs the authoritative current-06a hash check, ledger-to-sheet parallel walk, canonical segmentation validation, and downstream provenance checks after normalization/sanitization. Treat rejection as a hard Production failure; never weaken or hand-edit the ledger to pass it.
 
 ## 4. Step-by-Step Workflow
 
 1. Confirm `06a_voice_script.md` exists and contains usable narration. Do not check or require any prior editorial workflow stage or gate.
 2. Read `config.json` for avatar style, default avatar look, voice provider, language, audience, thumbnail style, script tone, channel name, host name, host title, `doctor_mode`, `credentials_claim`, and name placeholders or configured names.
 3. Create a compact production brief once from the full `06a_voice_script.md` plus `config.json`. Derive section purpose, nearby context, and visual boundaries from the approved narration itself; do not require missing upstream project artifacts.
-4. SEGMENT THE SCRIPT BY SEMANTIC / VISUAL BEAT FIRST — NEVER BY A FIXED SCENE COUNT OR PRODUCTION-MIX QUOTA. A scene represents one clear visual idea. Build the complete scene ledger before assigning AVATAR / AI_IMAGE / STOCK / OVERLAY percentages.
-   - Normal target: 10 to 24 spoken words per scene. 25 to 32 words are allowed only for one coherent visual idea. This is a hard upper-bound contract, not a request to force sentence quotas.
-   - Typical provisional visual duration: roughly 3 to 10 seconds, derived from narration length and meaning; final timing comes later from avatar transcript/alignment.
-   - A fragment under 4 spoken words MUST normally be merged with the adjacent sentence/beat. Example: `Just five.` must not become its own 6-second scene; merge it with `Start with five repetitions` / `That is your starting point` unless the fragment is a genuinely deliberate visual emphasis.
-   - 5 to 8 word fragments should normally be merged when they do not create a complete independent visual idea.
-   - Any normal excerpt above 32 spoken words MUST be split at a natural sentence/clause/visual-idea boundary before the CSV is written. Never emit a >32-word normal scene. Only an AVATAR row explicitly marked `INTENTIONAL_LONG_AVATAR` in `notes` may exceed 32 words.
-   - Do not split a sentence merely to create enough rows for a requested asset percentage. Do not merge multiple different visual ideas merely to reduce row count.
-   - Scene count is whatever the narration naturally requires. Only AFTER semantic scenes are frozen, distribute production_settings.json percentages across those scenes as closely as possible. Percentages are asset allocation targets, never segmentation targets.
-   - `start_time` and `end_time` are provisional elapsed-time strings in `M:SS` / `MM:SS` format only (for example `26:35`, never `26:35:00`).
-   - Estimate provisional duration from spoken word count at a natural senior-health narration pace; do not apply a minimum fixed 6/8/10-second bucket to tiny excerpts.
-   PRE-WRITE HARD GATE: Before assigning asset types or writing the CSV, scan the frozen scene ledger. If any normal scene has >32 spoken words, split it and rescan. If any non-emphasis fragment has <4 words, merge it and rescan. Do not proceed to asset allocation until this gate returns zero violations. Count words from the FINAL literal `script_excerpt` strings that will be written, not from an earlier draft ledger. After all splits/merges, renumber scenes sequentially S001..SNNN, then apply the production mix to the FINAL scene count.
-   POST-ASSET SEGMENTATION GATE: Immediately before final CSV write, run the SAME final rows through `production_sheet_contract.validate_scene_segmentation`. If even one ordinary row is <4 or >32 words, do not emit the CSV: return to the source-order scene ledger, split/merge using exact contiguous text from `06a_voice_script.md`, renumber, recalculate provisional timing, reassign affected asset rows by semantic fit, and run the validator again. Repeat until the deterministic validator itself returns an empty issue list. Never treat these as warnings that Avatar Timing can clean up later; transcript timing replaces provisional timing, not bad scene boundaries.
-   Duration must be recalculated after every split/merge from the new excerpt word count. Do not copy the parent scene duration into child scenes.
-   Keep a single scene ledger with scene ID, provisional timing, exact script excerpt, nearby-scene pointers, section purpose, and medical-boundary reference.
+4. BUILD FINAL PRODUCTION GROUPING FROM THE DETERMINISTIC LEDGER.
+   - Start from 06c_scene_ledger.csv, not from raw 06a paragraphs.
+   - Preserve each ledger unit exactly. Never split one.
+   - Merge only consecutive units when their exact concatenation remains one coherent visual beat and stays at or below 32 canonical words.
+   - Every final row must consume narration; visual-only rows are forbidden.
+   - Do not use asset percentages to create or resize narration boundaries.
+   - After grouping is frozen, renumber Production scenes sequentially and assign the configured asset mix by semantic fit.
+   - Recalculate provisional timing from each final excerpt and use elapsed M:SS / MM:SS.
+   - If a ledger unit cannot support a valid Production grouping, stop and report the blocker. Do not edit 06a, the ledger, or the sheet to manufacture a pass.
 5. Assign each scene one purpose: HOOK, PROBLEM, CREDIBILITY, MECHANISM, PROOF, SOLUTION, WARNING, RECAP, or CTA.
 6. For every scene, build the visual plan in this required order:
    - Script excerpt.
