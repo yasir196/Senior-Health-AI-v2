@@ -23,7 +23,7 @@ class SceneSegmentationError(ValueError):
 
 
 def normalize_narration(text: str) -> str:
-    return re.sub(r"\\s+", " ", str(text or "")).strip()
+    return re.sub(r"\s+", " ", str(text or "")).strip()
 
 
 def extract_narration(markdown: str) -> str:
@@ -42,11 +42,11 @@ def extract_narration(markdown: str) -> str:
             continue
         if in_fence or not line:
             continue
-        if re.match(r"^#{1,6}\\s+", line):
+        if re.match(r"^#{1,6}\s+", line):
             continue
-        if re.fullmatch(r"(?:---+|___+|\\*\\*\\*+)", line):
+        if re.fullmatch(r"(?:---+|___+|\*\*\*+)", line):
             continue
-        if re.match(r"^\\[\\s*Visual\\s+Cue\\s*:", line, flags=re.I):
+        if re.match(r"^\[\s*Visual\s+Cue\s*:", line, flags=re.I):
             continue
         kept.append(line)
     return normalize_narration(" ".join(kept))
@@ -63,7 +63,7 @@ def _sentence_spans(text: str) -> list[str]:
         return []
     spans: list[str] = []
     start = 0
-    for match in re.finditer(r"[.!?]+(?:[\\\"')\\]]+)?(?=\\s+|$)", text):
+    for match in re.finditer(r"[.!?]+(?:[\\"')\]]+)?(?=\s+|$)", text):
         end = match.end()
         candidate = text[start:end].strip()
         last_token = candidate.lower().split()[-1] if candidate.split() else ""
@@ -83,7 +83,7 @@ def _sentence_spans(text: str) -> list[str]:
 def _natural_slices(sentence: str, ceiling: int = 28) -> list[str] | None:
     if canonical_word_count(sentence) <= ceiling:
         return [sentence]
-    boundaries = [m.end() for m in re.finditer(r"[,;:](?=\\s+|$)", sentence)]
+    boundaries = [m.end() for m in re.finditer(r"[,;:](?=\s+|$)", sentence)]
     if not boundaries:
         return None
     parts: list[str] = []
@@ -200,7 +200,7 @@ def write_scene_ledger(project: Path, markdown: str) -> None:
         writer = csv.DictWriter(handle, fieldnames=["scene_id", "script_excerpt"])
         writer.writeheader()
         writer.writerows(rows)
-    (project / LEDGER_META_FILENAME).write_text(json.dumps(meta, indent=2) + "\\n", encoding="utf-8")
+    (project / LEDGER_META_FILENAME).write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
 
 
 def load_scene_ledger(project: Path) -> tuple[list[dict[str, str]], dict[str, str]]:
