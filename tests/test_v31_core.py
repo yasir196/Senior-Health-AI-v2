@@ -569,3 +569,20 @@ def test_voice_director_template_owns_tts_cleanup_before_production():
     assert "Production must copy this cleaned text verbatim" in template
     assert "do not strip all punctuation" in template
     assert "do not introduce curly quotes, em/en dashes, ellipses" in template
+
+
+def test_speech_optimizer_command_enforces_punctuation_spacing_gate():
+    from app import agent_command
+    prompt = agent_command("Speech Optimizer", "demo-project")
+    assert "PUNCTUATION SPACING HARD GATE" in prompt
+    assert "no whitespace before sentence punctuation" in prompt
+    assert "never leave doubled spacing around punctuation" in prompt
+    assert "final punctuation-spacing audit" in prompt
+
+
+def test_voice_director_template_requires_punctuation_spacing_audit():
+    template = (Path(__file__).resolve().parents[1] / "Templates" / "Voice" / "voice_director_prompt.md").read_text(encoding="utf-8")
+    assert "attach punctuation directly to the preceding word" in template
+    assert "never leave whitespace before a full stop" in template
+    assert "no whitespace before sentence punctuation" in template
+    assert "whitespace remains before sentence punctuation" in template
