@@ -49,6 +49,37 @@ def test_repeatability_and_round_trip():
     assert normalize_narration(" ".join(first)) == normalize_narration(text)
 
 
+
+def test_two_complete_sentences_produce_two_units():
+    text = (
+        "This first complete sentence contains enough words to remain a legal standalone scene unit. "
+        "This second complete sentence also contains enough words to remain a separate legal scene unit."
+    )
+    units = segment_voice_script(text)
+    assert len(units) == 2
+
+
+def test_long_multisentence_fixture_uses_real_sentence_boundaries():
+    text = (
+        "This first sentence has enough words to stand alone and should remain the first deterministic unit. "
+        "This second sentence also has enough words to stand alone and should remain the second deterministic unit. "
+        "This third sentence contains a natural comma boundary, plus enough additional words to push the sentence beyond the generation margin while preserving exact narration and source order."
+    )
+    units = segment_voice_script(text)
+    assert len(units) >= 4
+    assert units[0].startswith("This first sentence")
+    assert units[1].startswith("This second sentence")
+    assert normalize_narration(" ".join(units)) == normalize_narration(text)
+    assert all(canonical_word_count(unit) <= 32 for unit in units)
+
+
+def test_short_fragment_merge_prefers_28_before_32_fallback():
+    prefix = " ".join(f"word{i}" for i in range(1, 27)) + "."
+    text = prefix + " Ask first."
+    units = segment_voice_script(text)
+    assert len(units) == 1
+    assert canonical_word_count(units[0]) == 28
+
 def test_decimal_does_not_end_sentence():
     text = "The measured value was 18.9 percent in this example, and that decimal stays inside the sentence. This second sentence remains separate."
     units = segment_voice_script(text)
@@ -190,6 +221,6 @@ def test_legacy_normalization_path_cannot_bypass_ledger_acceptance_wiring():
 def test_agent_contract_requires_fresh_final_ids_after_legal_grouping():
     from pathlib import Path
 
-    agent = Path("Agents/Production_Agent.md").read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]\n    agent = (root / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
     assert "regenerate scene_id, IMG001..IMGNNN, and BR001..BRNNN sequentially" in agent
     assert "no stale numbering" in agent
