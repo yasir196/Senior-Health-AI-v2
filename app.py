@@ -203,8 +203,7 @@ def clear_stale_production_outputs(project: Path) -> list[str]:
 def safe_write_text(path: Path, text: str) -> bool:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8", newline="
-")
+        path.write_text(text, encoding="utf-8", newline="\n")
         return True
     except OSError as exc:
         st.error(f"Could not save {path.name}: {exc}")
@@ -221,8 +220,7 @@ def load_config() -> dict[str, Any]:
 
 
 def save_config(config: dict[str, Any]) -> None:
-    safe_write_text(CONFIG_PATH, json.dumps(config, indent=2, ensure_ascii=False) + "
-")
+    safe_write_text(CONFIG_PATH, json.dumps(config, indent=2, ensure_ascii=False) + "\n")
 
 
 def slugify_topic(topic: str) -> str:
@@ -348,9 +346,7 @@ def run_external_command(command_template: str, prompt: str, project: Path, titl
             result.returncode = 2
             result.output = (
                 result.output
-                + f"
-
-Research / Medical Gate 1 canonical binding finalization failed: {exc}"
+                + f"\n\nResearch / Medical Gate 1 canonical binding finalization failed: {exc}"
             )[-20000:]
         if result.returncode != 0:
             return result
@@ -359,19 +355,13 @@ Research / Medical Gate 1 canonical binding finalization failed: {exc}"
             result.returncode = 2
             result.output = (
                 result.output
-                + f"
-
-Research / Medical Gate 1 evidence contract: {evidence_status}
-"
-                + "
-".join(f"- {issue}" for issue in evidence_issues)
+                + f"\n\nResearch / Medical Gate 1 evidence contract: {evidence_status}\n"
+                + "\n".join(f"- {issue}" for issue in evidence_issues)
             )[-20000:]
         else:
             result.output = (
                 result.output
-                + "
-
-Research / Medical Gate 1 evidence contract: PASS"
+                + "\n\nResearch / Medical Gate 1 evidence contract: PASS"
             )[-20000:]
     is_opus_package_run = stage == "Prepare Opus Package" or (
         stage is None and "prepare a fresh per-project opus_writer_package.md" in prompt
@@ -382,17 +372,11 @@ Research / Medical Gate 1 evidence contract: PASS"
             result.returncode = 2
             result.output = (
                 result.output
-                + "
-
-Opus Writer package runtime contract: FAIL
-"
-                + "
-".join(f"- {issue}" for issue in package_issues)
+                + "\n\nOpus Writer package runtime contract: FAIL\n"
+                + "\n".join(f"- {issue}" for issue in package_issues)
             )[-20000:]
         else:
-            result.output = (result.output + "
-
-Opus Writer package runtime contract: PASS")[-20000:]
+            result.output = (result.output + "\n\nOpus Writer package runtime contract: PASS")[-20000:]
     is_seo_run = stage == "SEO" or (stage is None and "run SEO_Agent" in prompt)
     if result.returncode == 0 and is_seo_run:
         from seo_chapters import SEOChapterError, finalize_project_seo
@@ -405,39 +389,24 @@ Opus Writer package runtime contract: PASS")[-20000:]
             checkpoint = archive_production_learning_checkpoint(ANALYTICS_DB_PATH, project)
             result.output = (
                 result.output
-                + "
-
-Production learning archive: PASS"
-                + f"
-Analytics ID: {checkpoint['analytics_id']}"
-                + f"
-Merged scenes: {checkpoint['merged_rows']}"
-                + "
-Timing authority: 08_actual_timeline.csv"
+                + "\n\nProduction learning archive: PASS"
+                + f"\nAnalytics ID: {checkpoint['analytics_id']}"
+                + f"\nMerged scenes: {checkpoint['merged_rows']}"
+                + "\nTiming authority: 08_actual_timeline.csv"
             )[-20000:]
         except (AnalyticsDBError, OSError, ValueError) as exc:
             result.returncode = 2
-            result.output = (result.output + f"
-
-Production learning archive: FAIL
-{exc}")[-20000:]
+            result.output = (result.output + f"\n\nProduction learning archive: FAIL\n{exc}")[-20000:]
 
         # Preserve the existing deterministic SEO chapter finalizer as a
         # separate concern. It may fail SEO, but it no longer blocks archival.
         try:
             diagnostics = finalize_project_seo(project)
             if diagnostics:
-                result.output = (result.output + "
-
-SEO chapter finalizer:
-" + "
-".join(diagnostics))[-20000:]
+                result.output = (result.output + "\n\nSEO chapter finalizer:\n" + "\n".join(diagnostics))[-20000:]
         except SEOChapterError as exc:
             result.returncode = 2
-            result.output = (result.output + f"
-
-SEO chapter finalization: FAIL
-{exc}")[-20000:]
+            result.output = (result.output + f"\n\nSEO chapter finalization: FAIL\n{exc}")[-20000:]
     return result
 
 def system_version() -> str:
@@ -841,8 +810,7 @@ Use as many CHECK lines as useful, each describing a real check you performed. N
             timeout=300,
             env=os.environ.copy(),
         )
-        combined = "
-".join(x for x in [(completed.stdout or "").strip(), (completed.stderr or "").strip()] if x)
+        combined = "\n".join(x for x in [(completed.stdout or "").strip(), (completed.stderr or "").strip()] if x)
         if completed.returncode != 0:
             return None, combined[-3000:] or f"Codex exited with code {completed.returncode}."
         data = _extract_pre_title_response(combined)
@@ -913,8 +881,7 @@ def render_new_project() -> None:
         path = PROJECTS_DIR / slug; path.mkdir(parents=True, exist_ok=True)
         anchor = topic.strip()
         project_id = __import__("uuid").uuid4().hex
-        safe_write_text(path / "project.json", json.dumps({"project_id": project_id, "topic": anchor, "anchor_title": anchor, "created_at": datetime.now().isoformat(timespec="seconds"), "version": "3.1"}, indent=2) + "
-")
+        safe_write_text(path / "project.json", json.dumps({"project_id": project_id, "topic": anchor, "anchor_title": anchor, "created_at": datetime.now().isoformat(timespec="seconds"), "version": "3.1"}, indent=2) + "\n")
         try:
             ensure_project_record(ANALYTICS_DB_PATH, path, title=anchor)
         except Exception as exc:
@@ -922,8 +889,7 @@ def render_new_project() -> None:
         write_anchor_claim_map(path, anchor)
         defaults = load_config().get("production_defaults", {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20})
         payload = {**defaults, "image_duration_seconds": 10, "image_platform": "Genspark Web"}
-        safe_write_text(path / "production_settings.json", json.dumps(payload, indent=2) + "
-")
+        safe_write_text(path / "production_settings.json", json.dumps(payload, indent=2) + "\n")
         st.success(f"Created {path.name}")
         st.code(command_for_stage(path, "Topic Validation"), language="text")
 
@@ -1114,8 +1080,7 @@ def render_workflow() -> None:
     )
     if c3.button("Validate Project"):
         issues = validate_project(project, config)
-        st.success("Project structure is valid.") if not issues else st.warning("
-".join(issues))
+        st.success("Project structure is valid.") if not issues else st.warning("\n".join(issues))
     if run_clicked:
         cleaner_ok = True
         if stage == "Production Package":
@@ -1148,12 +1113,8 @@ def render_workflow() -> None:
                         diagnostics.extend(f"Asset distribution: {issue}" for issue in distribution_issues)
                         result.output = (
                             result.output
-                            + "
-
-Production final deterministic gate: FAIL
-"
-                            + "
-".join(f"- {issue}" for issue in diagnostics)
+                            + "\n\nProduction final deterministic gate: FAIL\n"
+                            + "\n".join(f"- {issue}" for issue in diagnostics)
                         )[-20000:]
                         st.error(
                             "Production generated files, but the final deterministic narration/segmentation gate FAILED. "
@@ -1637,8 +1598,7 @@ def render_production() -> None:
         "updated_at": datetime.now().isoformat(timespec="seconds"),
     }
     if st.button("Save Production Mix", disabled=not mix_valid):
-        if safe_write_text(settings_path, json.dumps(payload, indent=2) + "
-"):
+        if safe_write_text(settings_path, json.dumps(payload, indent=2) + "\n"):
             st.success("Production mix saved.")
     if not mix_valid:
         st.warning(mix_reason)
@@ -1660,8 +1620,7 @@ def render_production() -> None:
             st.caption(f"• {reason}")
 
     if st.button("Generate Production Plan", type="primary", disabled=generate_disabled, key=f"generate_production_{project.name}"):
-        if not safe_write_text(settings_path, json.dumps(payload, indent=2) + "
-"):
+        if not safe_write_text(settings_path, json.dumps(payload, indent=2) + "\n"):
             st.error("Production generation was not started because production settings could not be saved.")
         else:
             try:
@@ -1894,8 +1853,7 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
             log_path = transcript_dir / "avatar_transcription_error.log"
             try:
                 transcript_dir.mkdir(parents=True, exist_ok=True)
-                log_path.write_text(trace, encoding="utf-8", newline="
-")
+                log_path.write_text(trace, encoding="utf-8", newline="\n")
             except OSError:
                 logging.exception("Could not persist avatar transcription traceback to %s", log_path)
             settings = transcription_settings(config)
@@ -2011,24 +1969,15 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
             capcut_dir.mkdir(parents=True, exist_ok=True)
             missing_path = getattr(exc, "filename", None) or str(exc)
             capcut_report.write_text(
-                "# CapCut Export Report
-
-"
-                "- Status: **FAIL**
-"
-                "- Error: `FileNotFoundError`
-"
-                f"- Missing path: `{missing_path}`
-"
-                f"- Project root: `{project}`
-
-"
+                "# CapCut Export Report\n\n"
+                "- Status: **FAIL**\n"
+                "- Error: `FileNotFoundError`\n"
+                f"- Missing path: `{missing_path}`\n"
+                f"- Project root: `{project}`\n\n"
                 "The exporter stopped before replacing the working project. "
-                "Regenerate after confirming the reported path exists.
-",
+                "Regenerate after confirming the reported path exists.\n",
                 encoding="utf-8",
-                newline="
-",
+                newline="\n",
             )
             st.error(f"CapCut export failed: missing path {missing_path}. Review capcut/export_report.md.")
         except Exception as exc:
@@ -2288,8 +2237,7 @@ def render_files() -> None:
     text = safe_read_text(path); edited = st.text_area("Content", text, height=560); c1, c2 = st.columns(2)
     if c1.button("Save", type="primary") and path.suffix.lower() in EDITABLE_SUFFIXES:
         if path.suffix.lower() == ".json":
-            try: edited = json.dumps(json.loads(edited), indent=2, ensure_ascii=False) + "
-"
+            try: edited = json.dumps(json.loads(edited), indent=2, ensure_ascii=False) + "\n"
             except json.JSONDecodeError as exc: st.error(f"Invalid JSON: {exc}"); return
         safe_write_text(path, edited); st.success("Saved.")
     c2.download_button("Download", text, file_name=path.name)
@@ -2301,11 +2249,8 @@ def render_runtime_authority_notice(config: dict[str, Any]) -> None:
     if conflicts:
         st.warning(
             "Runtime authority conflict — two different runtime bases are configured. "
-            "Narrative QA uses config.json, so any other source will disagree:
-
-"
-            + "
-".join(f"- {c}" for c in conflicts)
+            "Narrative QA uses config.json, so any other source will disagree:\n\n"
+            + "\n".join(f"- {c}" for c in conflicts)
         )
 
 
@@ -3194,12 +3139,9 @@ def render_analytics() -> None:
 
         st.markdown("#### One-time data — do not upload again")
         st.write(
-            "• Actual Timeline snapshots already stored in the permanent DB
-"
-            "• Timestamped transcripts already stored for deleted/legacy projects
-"
-            "• Project links already discovered by Auto-Link
-"
+            "• Actual Timeline snapshots already stored in the permanent DB\n"
+            "• Timestamped transcripts already stored for deleted/legacy projects\n"
+            "• Project links already discovered by Auto-Link\n"
             "• YouTube Video ID once linked"
         )
         st.caption(
