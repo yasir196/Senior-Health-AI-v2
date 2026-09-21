@@ -1,6 +1,6 @@
 import pytest
 
-from production_sheet_contract import canonical_word_count, _word_count
+from production_sheet_contract import canonical_word_count, _word_count, validate_host_introduction_avatar
 from scene_segmentation import (
     SceneSegmentationError,
     build_scene_ledger,
@@ -227,3 +227,43 @@ def test_agent_contract_requires_fresh_final_ids_after_legal_grouping():
     agent = (root / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
     assert "regenerate scene_id, IMG001..IMGNNN, and BR001..BRNNN sequentially" in agent
     assert "no stale numbering" in agent
+
+def test_host_self_introduction_requires_avatar_without_hardcoded_identity():
+    rows = [{
+        "scene_id": "S009",
+        "script_excerpt": "I am Morgan Hale, a Health Educator with Healthy Years.",
+        "recommended_asset_type": "OVERLAY",
+        "avatar_required": "NO",
+    }]
+    issues = validate_host_introduction_avatar(rows, "Morgan Hale")
+    assert len(issues) == 1
+    assert "self-introduction" in issues[0]
+
+
+def test_host_self_introduction_accepts_avatar_and_ignores_third_person_mentions():
+    rows = [
+        {
+            "scene_id": "S001",
+            "script_excerpt": "My name is Elena Cruz, and today we are talking about balance.",
+            "recommended_asset_type": "AVATAR",
+            "avatar_required": "YES",
+        },
+        {
+            "scene_id": "S002",
+            "script_excerpt": "Elena Cruz has discussed this topic before.",
+            "recommended_asset_type": "AI_IMAGE",
+            "avatar_required": "NO",
+        },
+    ]
+    assert validate_host_introduction_avatar(rows, "Elena Cruz") == []
+
+
+def test_host_intro_validator_is_disabled_when_channel_has_no_configured_host():
+    rows = [{
+        "scene_id": "S001",
+        "script_excerpt": "I am Anyone At All.",
+        "recommended_asset_type": "OVERLAY",
+        "avatar_required": "NO",
+    }]
+    assert validate_host_introduction_avatar(rows, "") == []
+
