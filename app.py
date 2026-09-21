@@ -18,7 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
-from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation\nfrom scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_production_against_ledger, write_scene_ledger
+from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation\nfrom scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
     canonical_runtime,
@@ -144,9 +144,13 @@ def production_sheet_ledger_issues(project: Path) -> list[str]:
         ledger_rows, meta = load_scene_ledger(project)
     except SceneSegmentationError as exc:
         return [str(exc)]
-    freshness = validate_ledger_freshness(safe_read_text(voice_path), meta)
+    voice_text = safe_read_text(voice_path)
+    freshness = validate_ledger_freshness(voice_text, meta)
     if freshness:
         return freshness
+    reconstruction = validate_ledger_reconstruction(voice_text, ledger_rows)
+    if reconstruction:
+        return reconstruction
     rows, _fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(sheet_path)
     if not rows:
         return ["07_production_sheet.csv has no production scenes."]
