@@ -64,9 +64,14 @@ def _duration(start: str, end: str, raw: str) -> str:
 
 
 
-def _word_count(text: str) -> int:
+def canonical_word_count(text: str) -> int:
+    """Canonical Production narration word count shared by generation and validation."""
     return len(re.findall(r"\b[\w’'-]+\b", _clean(text)))
 
+
+def _word_count(text: str) -> int:
+    # Backward-compatible private alias; new cross-module callers use the public function.
+    return canonical_word_count(text)
 
 def _time_is_mmss(value: str) -> bool:
     # Production timing is provisional and must stay elapsed M:SS, never time-of-day HH:MM:SS.
