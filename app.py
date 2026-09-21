@@ -18,7 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
-from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation
+from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation, validate_host_introduction_avatar
 from scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -172,6 +172,16 @@ def production_sheet_segmentation_issues(project: Path) -> list[str]:
     if issues:
         return [f"{issue} [canonical word count: production_sheet_contract._word_count]" for issue in issues]
     return []
+
+def production_sheet_host_intro_issues(project: Path) -> list[str]:
+    """Require configured-host self-introduction scenes to remain AVATAR rows."""
+    sheet_path = project / "07_production_sheet.csv"
+    if not sheet_path.is_file():
+        return ["07_production_sheet.csv is missing."]
+    rows, _fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(sheet_path)
+    host_name = str(load_config().get("host_name") or "").strip()
+    return validate_host_introduction_avatar(rows, host_name)
+
 
 def production_sheet_asset_distribution_issues(project: Path) -> list[str]:
     """Return configured whole-video mix/interleaving issues after semantic scenes are frozen."""
@@ -1103,13 +1113,15 @@ def render_workflow() -> None:
                     )
                     source_ok, source_issues = validate_production_sheet_against_voice(project)
                     segmentation_issues = production_sheet_segmentation_issues(project)
+                    host_intro_issues = production_sheet_host_intro_issues(project)
                     distribution_issues = production_sheet_asset_distribution_issues(project)
-                    if not source_ok or segmentation_issues or distribution_issues:
+                    if not source_ok or segmentation_issues or host_intro_issues or distribution_issues:
                         result.returncode = 2
                         diagnostics = []
                         if not source_ok:
                             diagnostics.extend(f"Narration provenance: {issue}" for issue in source_issues)
                         diagnostics.extend(f"Segmentation/timing: {issue}" for issue in segmentation_issues)
+                        diagnostics.extend(f"Host introduction: {issue}" for issue in host_intro_issues)
                         diagnostics.extend(f"Asset distribution: {issue}" for issue in distribution_issues)
                         result.output = (
                             result.output
