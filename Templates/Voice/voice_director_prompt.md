@@ -64,7 +64,24 @@ Preserve the approved outro and CTA. Do not remove spoken disclaimers.
 
 Before saving `06a_voice_script.md`, perform a final cleanup pass. The final file must read exactly like a script that a human narrator would speak. If any text would sound unnatural when read aloud, remove it unless it is part of the approved narration.
 
-The final file should require zero manual editing before upload to ElevenLabs Studio V3.
+### TTS-Safe Canonical Text
+
+`06a_voice_script.md` is the canonical downstream spoken text. Make it TTS-safe here, once, before Production sees it. Production must copy this cleaned text verbatim and must never perform its own punctuation cleanup or wording normalization.
+
+Normalize punctuation conservatively without changing approved medical meaning, claims, safety boundaries, CTA meaning, or the intended hook words:
+
+- replace curly/smart quotation marks with plain spoken text; remove quotation marks when they are only typographic and not words to be spoken
+- replace em dashes and en dashes with a full stop, comma, or simple hyphen only when that preserves the same spoken meaning and cadence
+- replace ellipses and repeated punctuation with a simple full stop or comma
+- remove decorative/special Unicode punctuation, Markdown residue, and non-spoken symbols
+- expand ordinary contractions when that makes synthesis safer, for example `isn't` -> `is not`, `can't` -> `cannot`, and `we've` -> `we have`; do not alter a proper name or technical term merely because it contains an apostrophe or hyphen
+- retain simple ASCII full stops, commas, question marks, colons, semicolons, and necessary intra-word hyphens when they help pronunciation or sentence boundaries
+- do not strip all punctuation: normal sentence punctuation is required for natural TTS pacing
+- do not introduce curly quotes, em/en dashes, ellipses, decorative symbols, or punctuation clutter during later rhythm optimization
+
+After normalization, read the complete voice script again and verify that no lexical meaning, medical qualifier, negation, number, unit, drug/supplement name, safety caution, or CTA meaning changed. Paragraph/sentence splitting may change boundaries, but it must not silently delete or add spoken content.
+
+The final file should require zero manual editing before upload to ElevenLabs Studio V3 or downstream HeyGen narration use.
 
 ## 06b Voice Checklist
 
@@ -90,6 +107,9 @@ Speech QA must verify:
 - no custom tags
 - no SSML
 - CTA and spoken disclaimer preserved
+- TTS-safe canonical text check passed: no smart quotes, em/en dashes, ellipses, decorative Unicode punctuation, or punctuation clutter
+- contractions expanded where synthesis safety requires it without changing meaning
+- simple sentence punctuation retained for natural pacing
 
 Paragraph Statistics must include:
 
@@ -171,9 +191,9 @@ You may improve only:
 7. Minor punctuation improvements
 8. Long sentence splitting
 9. Comma placement
-10. Ellipsis (...) where a natural spoken pause improves delivery
+10. Full stops or commas for natural spoken pauses
 11. Question punctuation where appropriate
-12. Em dash (—) where conversational interruption sounds natural
+12. TTS-safe ASCII punctuation only; do not introduce em/en dashes, smart quotes, ellipses, or decorative symbols
 
 ## Paragraph Rules
 
@@ -188,11 +208,11 @@ You may improve only:
 - Avoid 35 to 50 word sentences.
 - Split long sentences naturally without changing meaning.
 
-## Ellipsis Rules
+## Pause Punctuation Rules
 
-- Use ellipsis sparingly.
-- Use ellipsis only where a thoughtful pause naturally improves delivery.
-- Never overuse ellipsis.
+- Prefer a full stop or comma for a natural spoken pause.
+- Do not use ellipses, em/en dashes, smart quotes, or repeated punctuation as pause controls.
+- Keep punctuation simple enough for reliable TTS synthesis.
 
 ## Question Flow
 
@@ -221,3 +241,5 @@ Fail the optimized script if:
 - video title, section headings, chapter headings, visual cues, camera directions, production notes, internal editing notes, QA notes, narration labels, structural bullets, structural numbering, or reports remain in `06a_voice_script.md`
 - the first spoken line is not the script hook
 - the hook wording is changed
+- smart/curly quotes, em/en dashes, ellipses, decorative Unicode punctuation, or repeated punctuation remain in spoken narration
+- TTS cleanup changes lexical meaning, a medical qualifier, negation, number, unit, technical name, safety caution, or CTA meaning
