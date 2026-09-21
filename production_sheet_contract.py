@@ -73,6 +73,37 @@ def _word_count(text: str) -> int:
     # Backward-compatible private alias; new cross-module callers use the public function.
     return canonical_word_count(text)
 
+def validate_host_introduction_avatar(rows: list[dict[str, str]], host_name: str) -> list[str]:
+    """Require configured-host self-introduction beats to remain presenter-led.
+
+    Detection is channel-generic: it uses the configured host_name plus first-person
+    self-identification wording, never a hardcoded presenter identity.
+    """
+    host = _clean(host_name)
+    if not host:
+        return []
+
+    host_pattern = re.escape(host)
+    intro_patterns = (
+        rf"\b(?:i\s+am|i['’]m|my\s+name\s+is|this\s+is)\s+{host_pattern}\b",
+        rf"\b{host_pattern}\s+here\b",
+    )
+    issues: list[str] = []
+    for idx, row in enumerate(rows, 1):
+        excerpt = _clean(row.get("script_excerpt"))
+        if not excerpt or not any(re.search(pattern, excerpt, flags=re.IGNORECASE) for pattern in intro_patterns):
+            continue
+        sid = _clean(row.get("scene_id")) or f"row {idx}"
+        asset = _clean(row.get("recommended_asset_type")).upper()
+        avatar_required = _clean(row.get("avatar_required")).upper()
+        if asset != "AVATAR" or avatar_required != "YES":
+            issues.append(
+                f"{sid}: configured host self-introduction must use recommended_asset_type=AVATAR "
+                "and avatar_required=YES; asset balancing or visual-variety rules cannot override it."
+            )
+    return issues
+
+
 def _time_is_mmss(value: str) -> bool:
     # Production timing is provisional and must stay elapsed M:SS, never time-of-day HH:MM:SS.
     return bool(re.fullmatch(r"\d{1,4}:[0-5]\d(?:\.\d+)?", _clean(value)))

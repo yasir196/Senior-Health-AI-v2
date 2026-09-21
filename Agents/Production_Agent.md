@@ -174,6 +174,7 @@ Asset decision rules:
 - Use `STOCK_IMAGE` when a static documentary photo communicates the idea and motion is not necessary.
 - Use `AI_IMAGE` when an internal or abstract concept needs a photorealistic medical-documentary visual and stock footage would be generic or misleading.
 - Use `AVATAR` when trust, caution, transition, recap, or sensitive guidance should remain presenter-led.
+- **Host self-introduction invariant:** when the configured presenter identifies themself in narration (for example, first-person wording equivalent to "I am <configured host_name>", "I'm <configured host_name>", "My name is <configured host_name>", "This is <configured host_name>", or "<configured host_name> here"), that final scene MUST use `recommended_asset_type=AVATAR` and `avatar_required=YES`. Resolve the identity from `config.json`; never hardcode a presenter name or channel. Nearby same-type balancing, asset percentages, visual-variety rules, AI-image preference, overlays, or pattern-interrupt logic may not convert that self-introduction scene away from AVATAR. A normal third-person mention of the host name does not trigger this rule.
 - Use `OVERLAY` when the base footage or avatar is sufficient and only a label, arrow, framework, or emphasis is needed.
 - Use `SPLIT_SCREEN` when the scene compares two behaviors, capacities, or daily-life examples.
 
