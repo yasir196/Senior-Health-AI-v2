@@ -1621,8 +1621,13 @@ def render_production() -> None:
                 if result.returncode == 0 and (project / "07_production_sheet.csv").is_file():
                     contract_ok, contract_issues = normalize_production_sheet(project / "07_production_sheet.csv")
                     if contract_ok:
-                        # Acceptance gate runs AFTER canonical/legacy normalization. Call the
-                        # segmentation validator directly here rather than relying on
+                        sanitize_csv_file(
+                            project / "07_production_sheet.csv",
+                            required_text_columns=("script_excerpt",),
+                        )
+                        # Acceptance gate runs AFTER canonical/legacy normalization and CSV
+                        # sanitization, so it validates the same final bytes downstream stages read.
+                        # Call the segmentation validator directly rather than relying on
                         # validate_canonical_rows(check_segmentation=...), so compatibility
                         # normalization cannot bypass Production-stage scene validity.
                         segmentation_issues = production_sheet_segmentation_issues(project)
@@ -1630,10 +1635,6 @@ def render_production() -> None:
                             source_ok = False
                             source_issues = ["SCENE_SEGMENTATION_QA_FAILED"] + segmentation_issues
                         else:
-                            sanitize_csv_file(
-                                project / "07_production_sheet.csv",
-                                required_text_columns=("script_excerpt",),
-                            )
                             source_ok, source_issues = validate_production_sheet_against_voice(project)
                     else:
                         source_ok = False
