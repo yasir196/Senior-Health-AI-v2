@@ -18,7 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
-from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation
+from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation\nfrom scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
     canonical_runtime,
@@ -132,6 +132,25 @@ def validate_production_sheet_against_voice(project: Path) -> tuple[bool, list[s
         else:
             cursor = pos + len(excerpt)
     return not issues, issues
+
+
+def production_sheet_ledger_issues(project: Path) -> list[str]:
+    """Validate current-06a freshness and the mandatory ledger/sheet bijection."""
+    voice_path = project / "06a_voice_script.md"
+    sheet_path = project / "07_production_sheet.csv"
+    if not voice_path.is_file() or not sheet_path.is_file():
+        return ["06a_voice_script.md and 07_production_sheet.csv are required for ledger validation."]
+    try:
+        ledger_rows, meta = load_scene_ledger(project)
+    except SceneSegmentationError as exc:
+        return [str(exc)]
+    freshness = validate_ledger_freshness(safe_read_text(voice_path), meta)
+    if freshness:
+        return freshness
+    rows, _fieldnames, _encoding = read_csv_rows_with_legacy_encoding_fallback(sheet_path)
+    if not rows:
+        return ["07_production_sheet.csv has no production scenes."]
+    return validate_production_against_ledger(rows, ledger_rows)
 
 
 def production_sheet_segmentation_issues(project: Path) -> list[str]:
@@ -1605,13 +1624,19 @@ def render_production() -> None:
                 st.error(str(exc))
                 result = None
             else:
-                prompt = command_for_stage(project, "Production Package")
                 try:
-                    with st.spinner("Generating production outputs..."):
-                        result = run_external_command(cli_template, prompt, project)
-                except Exception as exc:
-                    st.error(f"Production generation could not start: {type(exc).__name__}. Check the Codex CLI configuration and run log.")
+                    write_scene_ledger(project, safe_read_text(project / "06a_voice_script.md"))
+                except (OSError, SceneSegmentationError) as exc:
+                    st.error(f"Production generation stopped before asset planning: {exc}")
                     result = None
+                else:
+                    prompt = command_for_stage(project, "Production Package")
+                    try:
+                        with st.spinner("Generating production outputs..."):
+                            result = run_external_command(cli_template, prompt, project)
+                    except Exception as exc:
+                        st.error(f"Production generation could not start: {type(exc).__name__}. Check the Codex CLI configuration and run log.")
+                        result = None
             if result is None:
                 pass
             else:
@@ -1635,7 +1660,12 @@ def render_production() -> None:
                             source_ok = False
                             source_issues = ["SCENE_SEGMENTATION_QA_FAILED"] + segmentation_issues
                         else:
-                            source_ok, source_issues = validate_production_sheet_against_voice(project)
+                            ledger_issues = production_sheet_ledger_issues(project)
+                            if ledger_issues:
+                                source_ok = False
+                                source_issues = ["SCENE_LEDGER_QA_FAILED"] + ledger_issues
+                            else:
+                                source_ok, source_issues = validate_production_sheet_against_voice(project)
                     else:
                         source_ok = False
                         source_issues = list(contract_issues)
