@@ -141,18 +141,6 @@ def _merge_short_units(units: list[str]) -> list[str]:
     return out
 
 
-def _merge_to_working_target(units: list[str]) -> list[str]:
-    out: list[str] = []
-    for unit in units:
-        if out and canonical_word_count(out[-1]) < 10:
-            merged = normalize_narration(out[-1] + " " + unit)
-            if canonical_word_count(merged) <= 24:
-                out[-1] = merged
-                continue
-        out.append(unit)
-    return out
-
-
 def segment_voice_script(text: str) -> list[str]:
     narration = normalize_narration(text)
     if not narration:
@@ -175,7 +163,6 @@ def segment_voice_script(text: str) -> list[str]:
             "Revise and re-approve upstream narration; never hand-edit the ledger or Production sheet."
         )
     units = _merge_short_units(units)
-    units = _merge_to_working_target(units)
     if any(canonical_word_count(x) > 32 or canonical_word_count(x) == 0 for x in units):
         raise SceneSegmentationError("Deterministic ledger produced an invalid unit.")
     if normalize_narration(" ".join(units)) != narration:
@@ -215,6 +202,17 @@ def load_scene_ledger(project: Path) -> tuple[list[dict[str, str]], dict[str, st
     except (OSError, json.JSONDecodeError) as exc:
         raise SceneSegmentationError(f"Could not read scene-ledger metadata: {exc}") from exc
     return rows, meta
+
+
+def validate_ledger_reconstruction(markdown: str, ledger_rows: list[dict[str, str]]) -> list[str]:
+    """Prove the persisted ledger still reconstructs the current extracted narration."""
+    narration = normalize_narration(extract_narration(markdown))
+    units = [normalize_narration(row.get("script_excerpt", "")) for row in ledger_rows]
+    if not units or any(not unit for unit in units):
+        return ["06c scene ledger is empty or contains an empty narration unit."]
+    if normalize_narration(" ".join(units)) != narration:
+        return ["06c scene ledger does not reconstruct the current extracted 06a narration exactly."]
+    return []
 
 
 def validate_ledger_freshness(markdown: str, meta: dict[str, str]) -> list[str]:
