@@ -63,7 +63,7 @@ def _sentence_spans(text: str) -> list[str]:
         return []
     spans: list[str] = []
     start = 0
-    for match in re.finditer(r"[.!?]+(?:[\\x22\\x27)\\]]+)?(?=\\s+|$)", text):
+    for match in re.finditer(r'[.!?]+["\')\]]*(?=\s+|$)', text):
         end = match.end()
         candidate = text[start:end].strip()
         last_token = candidate.lower().split()[-1] if candidate.split() else ""
@@ -125,6 +125,19 @@ def _merge_short_units(units: list[str]) -> list[str]:
             out.append(unit)
             i += 1
             continue
+        if out:
+            merged = normalize_narration(out[-1] + " " + unit)
+            if canonical_word_count(merged) <= 28:
+                out[-1] = merged
+                i += 1
+                continue
+        if i + 1 < len(units):
+            merged = normalize_narration(unit + " " + units[i + 1])
+            if canonical_word_count(merged) <= 28:
+                out.append(merged)
+                i += 2
+                continue
+        # A 29-32 result is a legal fallback only when no <=28 adjacent merge exists.
         if out:
             merged = normalize_narration(out[-1] + " " + unit)
             if canonical_word_count(merged) <= 32:
