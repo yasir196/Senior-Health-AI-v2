@@ -78,6 +78,9 @@ Normalize punctuation conservatively without changing approved medical meaning, 
 - retain simple ASCII full stops, commas, question marks, colons, semicolons, and necessary intra-word hyphens when they help pronunciation or sentence boundaries
 - do not strip all punctuation: normal sentence punctuation is required for natural TTS pacing
 - do not introduce curly quotes, em/en dashes, ellipses, decorative symbols, or punctuation clutter during later rhythm optimization
+- punctuation must attach to the preceding word with no space before it, followed by exactly one normal space when another word follows on the same paragraph; never emit artifacts such as `word . next`, `word , next`, `word ? next`, or doubled spaces around punctuation
+- when replacing an em/en dash or ellipsis, rewrite the boundary as a grammatically valid comma or sentence break; for example `trade-offs — maybe adjusting` becomes `trade-offs. Maybe adjusting`, never `trade-offs .  maybe adjusting`
+- run a final literal spacing audit over the complete saved narration and repair every space-before-punctuation artifact before writing `06a_voice_script.md`
 
 After normalization, read the complete voice script again and verify that no lexical meaning, medical qualifier, negation, number, unit, drug/supplement name, safety caution, or CTA meaning changed. Paragraph/sentence splitting may change boundaries, but it must not silently delete or add spoken content.
 
@@ -110,6 +113,7 @@ Speech QA must verify:
 - TTS-safe canonical text check passed: no smart quotes, em/en dashes, ellipses, decorative Unicode punctuation, or punctuation clutter
 - contractions expanded where synthesis safety requires it without changing meaning
 - simple sentence punctuation retained for natural pacing
+- punctuation-spacing audit passed: no spaces before `.,?!:;` and no doubled spaces around punctuation
 
 Paragraph Statistics must include:
 
@@ -243,3 +247,4 @@ Fail the optimized script if:
 - the hook wording is changed
 - smart/curly quotes, em/en dashes, ellipses, decorative Unicode punctuation, or repeated punctuation remain in spoken narration
 - TTS cleanup changes lexical meaning, a medical qualifier, negation, number, unit, technical name, safety caution, or CTA meaning
+- any punctuation-spacing artifact remains, including a space before `.`, `,`, `?`, `!`, `:`, or `;`, or doubled spaces around punctuation
