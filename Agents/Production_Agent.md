@@ -70,7 +70,7 @@ Python owns narration boundaries before this agent performs asset planning.
 - Read 06c_scene_ledger.csv in source order. It is the authoritative boundary ledger derived from the current extracted 06a narration.
 - Do not independently split, reword, reorder, resize, repair, or replace a ledger unit.
 - A final Production row may contain exactly one ledger unit or the exact whitespace-normalized concatenation of consecutive, previously unconsumed ledger units.
-- Legal merging is one-way: consecutive ledger units may be merged for one coherent visual beat; a ledger unit may never be split by this agent.
+- The Python ledger already performs deterministic word-based grouping of consecutive complete sentences toward ~25–27 words per scene. A ledger unit may never be split by this agent; additional merging is optional only when it preserves a coherent visual beat and does not defeat the pacing target.
 - Every final Production row must consume a non-empty ledger span. Never create visual-only, zero-narration, invented, or otherwise unmapped rows.
 - Every ledger unit must be consumed exactly once: no skips, reuse, reordering, partial consumption, or narration mutation.
 - Mapping is by exact narration content and source order, not by scene_id equality. Ledger IDs identify source units; final Production IDs are freshly sequential after legal merges.
@@ -224,7 +224,7 @@ Authoritative allocation and timing rules:
 - When `08_actual_timeline.csv` exists, it is authoritative for the linked scene's actual start/end timing and exact narration context. Never replace those values with WPM estimates. If it does not yet exist during the initial Production pass, preserve the existing production allocation/timing and do not invent "actual" timing; downstream Avatar Timing remains responsible for creating the actual timeline.
 - `production_settings.json` remains authoritative for Production Mix and configured image display duration/allocation behavior. The prompt-writing layer must not independently recalculate slots.
 
-Explicitly ignore these legacy rules from `VIDEO_PROMPT_TEMPLATE_ULTIMATE.md`: fixed 8-second images; Total Words / 200 runtime; full-script image-count calculation; one-image-per-25–27-words allocation; sequential whole-script extraction as slot selection; mandatory 10/50-prompt approval pauses; mandatory mechanical scene-type rotation. These conflict with the existing pipeline.
+Explicitly ignore these legacy rules from `VIDEO_PROMPT_TEMPLATE_ULTIMATE.md`: fixed 8-second images; mandatory 10/50-prompt approval pauses; mandatory mechanical scene-type rotation. The canonical Production pacing rule in this agent now owns the word-based calculation: Word Count ÷ 200 for estimated minutes, × 7.5 for target scenes, and ~25–27 words per scene adjusted to natural sentence breaks.
 
 For each assigned AI-image slot:
 
