@@ -70,11 +70,11 @@ Python owns narration boundaries before this agent performs asset planning.
 - Read 06c_scene_ledger.csv in source order. It is the authoritative boundary ledger derived from the current extracted 06a narration.
 - Do not independently split, reword, reorder, resize, repair, or replace a ledger unit.
 - A final Production row may contain exactly one ledger unit or the exact whitespace-normalized concatenation of consecutive, previously unconsumed ledger units.
-- Legal merging is one-way: consecutive ledger units may be merged for one coherent visual beat; a ledger unit may never be split by this agent.
+- The Python ledger already performs deterministic word-based grouping of consecutive complete sentences toward ~25–27 words per scene. A ledger unit may never be split by this agent; additional merging is optional only when it preserves a coherent visual beat and does not defeat the pacing target.
 - Every final Production row must consume a non-empty ledger span. Never create visual-only, zero-narration, invented, or otherwise unmapped rows.
 - Every ledger unit must be consumed exactly once: no skips, reuse, reordering, partial consumption, or narration mutation.
 - Mapping is by exact narration content and source order, not by scene_id equality. Ledger IDs identify source units; final Production IDs are freshly sequential after legal merges.
-- Any merged Production row must remain within the ordinary 32-word validator ceiling. 10–24 remains the preferred coherent visual-beat target; never merge merely to reduce scene count.
+- Scene pacing is word-based across the whole script: auto-calculate Word Count from the approved narration; Video Duration = Word Count ÷ 200 minutes; Total Scenes Needed = Video Duration × 7.5; Words Per Scene = ~25–27 words, adjusted to natural sentence breaks. The ~25–27 figure is an average pacing target, not a hard per-scene maximum. Never split a complete approved sentence merely to hit the target.
 - INTENTIONAL_EMPHASIS and INTENTIONAL_LONG_AVATAR have no segmentation authority. Asset type also creates no segmentation exception.
 - Only after final legal grouping is chosen may production_settings.json be applied as an approximate whole-video asset distribution.
 - Provisional duration follows narration length. start_time/end_time use elapsed M:SS / MM:SS.
@@ -89,12 +89,12 @@ Python owns narration boundaries before this agent performs asset planning.
 4. BUILD FINAL PRODUCTION GROUPING FROM THE DETERMINISTIC LEDGER.
    - Start from 06c_scene_ledger.csv, not from raw 06a paragraphs.
    - Preserve each ledger unit exactly. Never split one.
-   - Merge only consecutive units when their exact concatenation remains one coherent visual beat and stays at or below 32 canonical words.
+   - Merge only consecutive complete-sentence ledger units when their exact concatenation remains one coherent visual beat and keeps whole-video pacing near the ~25–27 words-per-scene target. Do not split a sentence or force a merge merely to hit the target.
    - Every final row must consume narration; visual-only rows are forbidden.
    - Do not use asset percentages to create or resize narration boundaries.
    - After grouping is frozen, renumber Production scenes sequentially and assign the configured asset mix by semantic fit.
    - Recalculate provisional timing from each final excerpt and use elapsed M:SS / MM:SS.
-   - If a ledger unit cannot support a valid Production grouping, stop and report the blocker. Do not edit 06a, the ledger, or the sheet to manufacture a pass.
+   - A complete sentence longer than ~25–27 words is a valid ledger/Production unit and is not an upstream revision reason. Do not edit 06a, the ledger, or the sheet merely to force a word target.
 5. Assign each scene one purpose: HOOK, PROBLEM, CREDIBILITY, MECHANISM, PROOF, SOLUTION, WARNING, RECAP, or CTA.
 6. For every scene, build the visual plan in this required order:
    - Script excerpt.
@@ -133,7 +133,7 @@ Optimize performance without changing outputs:
 - Generate asset-specific fields in grouped passes after the recommended asset type is known: stock rows together, AI-image rows together, avatar rows together, overlay rows together, and split-screen rows together. The content must remain scene-specific and must still follow the narrative-context rules.
 - Track visual-variety state incrementally while assigning asset types instead of performing a separate full-plan rewrite. Validation may still fail a row, but fixes must be row-local and must not change narration, timing, scene order, prompt IDs, or approved medical meaning.
 - Reuse repeated safety text, avatar identity text, negative prompt text, and status mappings as constants. Do not regenerate those boilerplate phrases independently for each scene.
-- Run the same final segmentation checks enforced by `production_sheet_contract.validate_scene_segmentation` against the final in-memory rows before writing files: ordinary excerpts under 4 words = 0; ordinary excerpts over 32 words = 0; elapsed-time format violations = 0; narration-duration plausibility violations = 0. If any check fails, repair the scene ledger locally, renumber scenes and prompt IDs as needed, recalculate provisional timing, and validate again. Write each output file once only after this final validation reaches zero segmentation/timing issues. Avoid write-read-write loops unless validation fails.
+- Run the same final scene-boundary checks enforced by `production_sheet_contract.validate_scene_segmentation` against the final in-memory rows before writing files: ordinary excerpts under 4 words = 0 and narration reconstruction must remain exact. Word count is a pacing target, not a hard maximum; complete approved sentences may exceed ~25–27 words. Provisional timing diagnostics remain non-blocking because actual timing comes from avatar transcripts. If a hard boundary check fails, repair grouping without changing approved narration, renumber scenes and prompt IDs as needed, and validate again. Write each output file once only after hard scene-boundary validation passes.
 - These optimizations are performance-only. They must not remove required columns, change allowed values, relax validation, skip narrative context, weaken medical safety, alter scene timing, or change the final outputs expected by this agent.
 
 ## 4A. Narrative Context Visual Planning Layer
@@ -224,7 +224,7 @@ Authoritative allocation and timing rules:
 - When `08_actual_timeline.csv` exists, it is authoritative for the linked scene's actual start/end timing and exact narration context. Never replace those values with WPM estimates. If it does not yet exist during the initial Production pass, preserve the existing production allocation/timing and do not invent "actual" timing; downstream Avatar Timing remains responsible for creating the actual timeline.
 - `production_settings.json` remains authoritative for Production Mix and configured image display duration/allocation behavior. The prompt-writing layer must not independently recalculate slots.
 
-Explicitly ignore these legacy rules from `VIDEO_PROMPT_TEMPLATE_ULTIMATE.md`: fixed 8-second images; Total Words / 200 runtime; full-script image-count calculation; one-image-per-25–27-words allocation; sequential whole-script extraction as slot selection; mandatory 10/50-prompt approval pauses; mandatory mechanical scene-type rotation. These conflict with the existing pipeline.
+Explicitly ignore these legacy rules from `VIDEO_PROMPT_TEMPLATE_ULTIMATE.md`: fixed 8-second images; mandatory 10/50-prompt approval pauses; mandatory mechanical scene-type rotation. The canonical Production pacing rule in this agent now owns the word-based calculation: Word Count ÷ 200 for estimated minutes, × 7.5 for target scenes, and ~25–27 words per scene adjusted to natural sentence breaks.
 
 For each assigned AI-image slot:
 
@@ -274,7 +274,7 @@ Required invariant: AI_IMAGE assignments in `07_production_sheet.csv` = entries 
 - Stock-search rows fail validation if `asset_search_query` lacks a concrete subject and action, `manual_search_notes` is missing, or `avoid_results` is blank.
 - AI prompts fail validation if they only repeat narration without visual interpretation.
 - `asset_status` must match `recommended_asset_type` defaults unless a selected asset path justifies a later status.
-- **Final scene-segmentation hard gate before writing `07_production_sheet.csv`:** rescan the complete final row set after all visual/asset decisions. Merge every <4-word orphan into an adjacent semantic beat unless its notes explicitly contain `INTENTIONAL_EMPHASIS`; split every >32-word normal scene at a natural narration/visual idea boundary unless an AVATAR row is explicitly documented `INTENTIONAL_LONG_AVATAR`; then renumber scene IDs and recalculate all provisional start/end/duration values from narration length. Re-run the scan after repair. Do not finalize the CSV while any ordinary tiny-fragment, >32-word, or narration-duration plausibility violation remains. Do not mark an ordinary violation intentional merely to make validation pass.
+- **Final scene-segmentation hard gate before writing `07_production_sheet.csv`:** rescan the complete final row set after all visual/asset decisions. Merge every <4-word orphan into an adjacent complete-sentence semantic beat unless its notes explicitly contain `INTENTIONAL_EMPHASIS`; never split a complete approved sentence merely because it exceeds the ~25–27 words-per-scene pacing target. Then renumber scene IDs and recalculate provisional start/end/duration values from narration length. Re-run the scan after repair. Do not finalize the CSV while any hard narration-boundary or reconstruction violation remains. Provisional narration-duration plausibility is diagnostic only and must not block Production.
 - Regression check: for the script excerpt `You lace up, you get your steps in...`, the visual direction must be ordinary older-adult walking. It must not become stairs, chair rise, physical therapist, or unrelated exercise.
 
 ## 6. Output Format

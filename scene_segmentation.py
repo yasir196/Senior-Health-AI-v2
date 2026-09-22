@@ -80,103 +80,70 @@ def _sentence_spans(text: str) -> list[str]:
     return spans
 
 
-def _natural_slices(sentence: str, ceiling: int = 28) -> list[str] | None:
-    if canonical_word_count(sentence) <= ceiling:
-        return [sentence]
-    boundaries = [m.end() for m in re.finditer(r"[,;:](?=\s+|$)", sentence)]
-    if not boundaries:
-        return None
-    parts: list[str] = []
-    start = 0
-    while start < len(sentence):
-        remaining = sentence[start:].strip()
-        if canonical_word_count(remaining) <= ceiling:
-            if canonical_word_count(remaining) < 4 and parts:
-                merged = normalize_narration(parts[-1] + " " + remaining)
-                if canonical_word_count(merged) <= ceiling:
-                    parts[-1] = merged
-                    return parts
-            parts.append(remaining)
-            break
-        candidates: list[tuple[int, str]] = []
-        for boundary in boundaries:
-            if boundary <= start:
-                continue
-            piece = sentence[start:boundary].strip()
-            words = canonical_word_count(piece)
-            if 4 <= words <= ceiling:
-                candidates.append((boundary, piece))
-        if not candidates:
-            return None
-        boundary, piece = candidates[-1]
-        parts.append(piece)
-        start = boundary
-        while start < len(sentence) and sentence[start].isspace():
-            start += 1
-    return parts if parts and all(4 <= canonical_word_count(x) <= ceiling for x in parts) else None
+def _group_sentences_by_word_target(sentences: list[str], target: float = 26.0) -> list[str]:
+    """Group whole consecutive sentences near the word target without orphaning tiny tails.
 
-
-def _merge_short_units(units: list[str]) -> list[str]:
+    Sentence boundaries are immutable. A sentence longer than the target stays intact.
+    Short sentences are grouped greedily toward the target, then any trailing scene
+    under 4 words is merged backward so tiny orphan scenes cannot survive.
+    """
     out: list[str] = []
     i = 0
-    while i < len(units):
-        unit = units[i]
-        if canonical_word_count(unit) >= 4:
-            out.append(unit)
+    while i < len(sentences):
+        first = sentences[i]
+        first_words = canonical_word_count(first)
+
+        if first_words >= target:
+            out.append(first)
             i += 1
             continue
-        if out:
-            merged = normalize_narration(out[-1] + " " + unit)
-            if canonical_word_count(merged) <= 28:
-                out[-1] = merged
-                i += 1
-                continue
-        if i + 1 < len(units):
-            merged = normalize_narration(unit + " " + units[i + 1])
-            if canonical_word_count(merged) <= 28:
-                out.append(merged)
-                i += 2
-                continue
-        # A 29-32 result is a legal fallback only when no <=28 adjacent merge exists.
-        if out:
-            merged = normalize_narration(out[-1] + " " + unit)
-            if canonical_word_count(merged) <= 32:
-                out[-1] = merged
-                i += 1
-                continue
-        if i + 1 < len(units):
-            merged = normalize_narration(unit + " " + units[i + 1])
-            if canonical_word_count(merged) <= 32:
-                out.append(merged)
-                i += 2
-                continue
-        raise SceneSegmentationError(f"Could not legally merge short narration unit: {unit!r}")
-    return out
 
+        best_end = i
+        best_text = first
+        best_distance = abs(first_words - target)
+        combined = first
+        end = i + 1
+
+        while end < len(sentences):
+            candidate = normalize_narration(combined + " " + sentences[end])
+            words = canonical_word_count(candidate)
+            distance = abs(words - target)
+
+            # Prefer whichever whole-sentence grouping is closer to target.
+            # On equal distance, prefer the larger grouping to avoid a tiny tail.
+            if distance < best_distance or (distance == best_distance and end > best_end):
+                best_end = end
+                best_text = candidate
+                best_distance = distance
+
+            if words >= target:
+                break
+
+            combined = candidate
+            end += 1
+
+        out.append(best_text)
+        i = best_end + 1
+
+    # Never leave a tiny complete sentence as its own scene. Merge it backward;
+    # this may create a scene above target, which is valid because target is soft.
+    if len(out) > 1 and canonical_word_count(out[-1]) < 4:
+        out[-2] = normalize_narration(out[-2] + " " + out[-1])
+        out.pop()
+
+    return out
 
 def segment_voice_script(text: str) -> list[str]:
     narration = normalize_narration(text)
     if not narration:
         raise SceneSegmentationError("No spoken narration found.")
     units: list[str] = []
-    for sentence in _sentence_spans(narration):
-        words = canonical_word_count(sentence)
-        if words <= 28:
-            units.append(sentence)
-            continue
-        slices = _natural_slices(sentence, 28)
-        if slices is not None:
-            units.extend(slices)
-            continue
-        if words <= 32:
-            units.append(sentence)
-            continue
-        raise SceneSegmentationError(
-            f"Approved narration contains an unsegmentable {words}-word sentence above the legal 32-word ceiling. "
-            "Revise and re-approve upstream narration; never hand-edit the ledger or Production sheet."
-        )
-    units = _merge_short_units(units)
-    if any(canonical_word_count(x) > 32 or canonical_word_count(x) == 0 for x in units):
+    # Sentence boundaries are authoritative for ledger units. The 25-27 word
+    # figure is a whole-video pacing target, not a per-sentence hard ceiling.
+    # Never split an approved sentence merely to satisfy a word target.
+    sentences = _sentence_spans(narration)
+    units = _group_sentences_by_word_target(sentences, target=26.0)
+    if any(canonical_word_count(x) == 0 for x in units):
         raise SceneSegmentationError("Deterministic ledger produced an invalid unit.")
     if normalize_narration(" ".join(units)) != narration:
         raise SceneSegmentationError("Ledger reconstruction does not match extracted narration.")
@@ -270,8 +237,6 @@ def validate_production_against_ledger(
         if not matched:
             issues.append(f"{sid}: script_excerpt is not one exact consecutive ledger span at source position {cursor + 1}.")
             continue
-        if end > cursor and canonical_word_count(excerpt) > 32:
-            issues.append(f"{sid}: merged ledger span exceeds the ordinary 32-word Production ceiling.")
         cursor = end + 1
     if cursor != len(ledger):
         issues.append(f"Production consumed {cursor} of {len(ledger)} ledger units; every ledger unit must be consumed exactly once.")
