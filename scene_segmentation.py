@@ -80,30 +80,44 @@ def _sentence_spans(text: str) -> list[str]:
     return spans
 
 
-def _merge_short_units(units: list[str]) -> list[str]:
-    """Merge tiny complete sentences without imposing a hard word ceiling.
+def _group_sentences_by_word_target(sentences: list[str], target: float = 26.0) -> list[str]:
+    """Group complete consecutive sentences around the word-based scene target.
 
-    Sentence text remains intact. A short sentence may be grouped with an adjacent
-    complete sentence so Production does not create meaningless tiny visual scenes.
+    Sentence boundaries are immutable: this function only groups whole sentences.
+    A sentence longer than the target remains intact as its own scene. For each
+    scene, choose the consecutive-sentence grouping whose word count is closest to
+    the target; ties prefer the smaller grouping so pacing does not drift long.
     """
     out: list[str] = []
     i = 0
-    while i < len(units):
-        unit = units[i]
-        if canonical_word_count(unit) >= 4:
-            out.append(unit)
+    while i < len(sentences):
+        first = sentences[i]
+        first_words = canonical_word_count(first)
+        if first_words >= target:
+            out.append(first)
             i += 1
             continue
-        if out:
-            out[-1] = normalize_narration(out[-1] + " " + unit)
-            i += 1
-            continue
-        if i + 1 < len(units):
-            out.append(normalize_narration(unit + " " + units[i + 1]))
-            i += 2
-            continue
-        out.append(unit)
-        i += 1
+
+        best_end = i
+        best_text = first
+        best_distance = abs(first_words - target)
+        combined = first
+        end = i + 1
+        while end < len(sentences):
+            candidate = normalize_narration(combined + " " + sentences[end])
+            words = canonical_word_count(candidate)
+            distance = abs(words - target)
+            if distance < best_distance:
+                best_end = end
+                best_text = candidate
+                best_distance = distance
+            if words >= target:
+                break
+            combined = candidate
+            end += 1
+
+        out.append(best_text)
+        i = best_end + 1
     return out
 
 def segment_voice_script(text: str) -> list[str]:
@@ -114,8 +128,8 @@ def segment_voice_script(text: str) -> list[str]:
     # Sentence boundaries are authoritative for ledger units. The 25-27 word
     # figure is a whole-video pacing target, not a per-sentence hard ceiling.
     # Never split an approved sentence merely to satisfy a word target.
-    units = _sentence_spans(narration)
-    units = _merge_short_units(units)
+    sentences = _sentence_spans(narration)
+    units = _group_sentences_by_word_target(sentences, target=26.0)
     if any(canonical_word_count(x) == 0 for x in units):
         raise SceneSegmentationError("Deterministic ledger produced an invalid unit.")
     if normalize_narration(" ".join(units)) != narration:
