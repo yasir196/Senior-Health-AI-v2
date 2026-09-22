@@ -121,7 +121,9 @@ def validate_scene_segmentation(rows: list[dict[str, str]]) -> list[str]:
 
     This gate intentionally ignores provisional Production timing. Scene boundaries are
     narration/visual-idea boundaries; actual timing is established from avatar transcripts.
-    Tiny fragments must normally be merged; overly broad excerpts must be split.
+    Tiny fragments must normally be merged. Word-count pacing is an average target,
+    not a hard maximum: complete approved sentences may exceed the target and must
+    not be split merely to satisfy a scene word count.
     """
     issues: list[str] = []
     for idx, row in enumerate(rows, 1):
@@ -130,18 +132,11 @@ def validate_scene_segmentation(rows: list[dict[str, str]]) -> list[str]:
         words = _word_count(excerpt)
         notes = _clean(row.get("notes")).upper()
         intentional = "INTENTIONAL_EMPHASIS" in notes
-        intentional_long_avatar = ("INTENTIONAL_LONG_AVATAR" in notes and _clean(row.get("recommended_asset_type")).upper() == "AVATAR")
-
         if 0 < words < 4 and not intentional:
             issues.append(
                 f"{sid}: script_excerpt has only {words} words; merge this tiny fragment with an adjacent semantic beat "
                 "unless it is deliberately marked INTENTIONAL_EMPHASIS in notes."
             )
-        if words > 32 and not intentional_long_avatar:
-            issues.append(
-                f"{sid}: script_excerpt has {words} words; split it at a natural visual/semantic idea change (target roughly 10-24 words; 25-32 is allowed only for one coherent visual idea)."
-            )
-
     return issues
 
 
