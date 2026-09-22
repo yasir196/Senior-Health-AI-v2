@@ -1,6 +1,6 @@
 import pytest
 
-from production_sheet_contract import canonical_word_count, _word_count, validate_host_introduction_avatar
+from production_sheet_contract import canonical_word_count, _word_count, validate_host_introduction_avatar, validate_scene_segmentation, validate_provisional_timing
 from scene_segmentation import (
     SceneSegmentationError,
     build_scene_ledger,
@@ -267,3 +267,34 @@ def test_host_intro_validator_is_disabled_when_channel_has_no_configured_host():
     }]
     assert validate_host_introduction_avatar(rows, "") == []
 
+
+
+def test_provisional_duration_does_not_fail_scene_boundary_gate():
+    rows = [{
+        "scene_id": "S006",
+        "script_excerpt": "One two three four five six seven eight nine ten eleven twelve thirteen fourteen.",
+        "start_time": "0:00",
+        "end_time": "0:10",
+        "duration_sec": "10",
+        "notes": "",
+        "recommended_asset_type": "AI_IMAGE",
+    }]
+    assert validate_scene_segmentation(rows) == []
+    timing = validate_provisional_timing(rows)
+    assert timing
+    assert "actual timing will be derived from avatar transcripts" in timing[0]
+
+
+def test_provisional_time_format_does_not_fail_scene_boundary_gate():
+    rows = [{
+        "scene_id": "S009",
+        "script_excerpt": "This scene has enough words to remain a valid semantic narration beat.",
+        "start_time": "00:00:00",
+        "end_time": "00:00:10",
+        "duration_sec": "10",
+        "notes": "",
+        "recommended_asset_type": "AVATAR",
+    }]
+    assert validate_scene_segmentation(rows) == []
+    timing = validate_provisional_timing(rows)
+    assert any("provisional start_time" in issue for issue in timing)
