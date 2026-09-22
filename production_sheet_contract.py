@@ -117,9 +117,10 @@ def _duration_seconds(raw: str) -> float | None:
 
 
 def validate_scene_segmentation(rows: list[dict[str, str]]) -> list[str]:
-    """Validate semantic scene sizing before downstream asset/timeline work.
+    """Validate semantic scene boundaries before downstream asset/timeline work.
 
-    Scene boundaries are narration/visual-idea boundaries, not fixed-duration or mix quotas.
+    This gate intentionally ignores provisional Production timing. Scene boundaries are
+    narration/visual-idea boundaries; actual timing is established from avatar transcripts.
     Tiny fragments must normally be merged; overly broad excerpts must be split.
     """
     issues: list[str] = []
@@ -141,22 +142,36 @@ def validate_scene_segmentation(rows: list[dict[str, str]]) -> list[str]:
                 f"{sid}: script_excerpt has {words} words; split it at a natural visual/semantic idea change (target roughly 10-24 words; 25-32 is allowed only for one coherent visual idea)."
             )
 
+    return issues
+
+
+def validate_provisional_timing(rows: list[dict[str, str]]) -> list[str]:
+    """Return diagnostics for non-authoritative Production timing.
+
+    07_production_sheet.csv timing is planning metadata only. Actual downstream timing
+    is derived from avatar transcripts into 08_actual_timeline.csv, so these diagnostics
+    must never invalidate otherwise-correct scene boundaries or block Avatar Timing.
+    """
+    issues: list[str] = []
+    for idx, row in enumerate(rows, 1):
+        sid = _clean(row.get("scene_id")) or f"row {idx}"
+        excerpt = _clean(row.get("script_excerpt"))
+        words = _word_count(excerpt)
+
         start = _clean(row.get("start_time"))
         end = _clean(row.get("end_time"))
         if start and not _time_is_mmss(start):
-            issues.append(f"{sid}: start_time must use elapsed M:SS format, got {start!r}.")
+            issues.append(f"{sid}: provisional start_time should use elapsed M:SS format, got {start!r}.")
         if end and not _time_is_mmss(end):
-            issues.append(f"{sid}: end_time must use elapsed M:SS format, got {end!r}.")
+            issues.append(f"{sid}: provisional end_time should use elapsed M:SS format, got {end!r}.")
 
         duration = _duration_seconds(row.get("duration_sec"))
         if duration is not None and words:
-            # A generous ceiling catches quota-driven timings such as 6 sec for "Just five."
-            # while allowing slower senior-health narration and meaningful pauses.
             plausible_max = max(3.0, (words / 105.0) * 60.0 + 1.0)
             if duration > plausible_max + 0.05:
                 issues.append(
-                    f"{sid}: duration_sec={duration:g} is too long for a {words}-word excerpt; derive provisional timing from narration length, "
-                    "not a fixed scene-duration bucket."
+                    f"{sid}: provisional duration_sec={duration:g} is longer than expected for a {words}-word excerpt; "
+                    "actual timing will be derived from avatar transcripts."
                 )
     return issues
 
