@@ -159,7 +159,7 @@ def production_sheet_ledger_issues(project: Path) -> list[str]:
 
 
 def production_sheet_segmentation_issues(project: Path) -> list[str]:
-    """Return semantic scene/timing QA issues without conflating them with source provenance."""
+    """Return semantic scene-boundary issues without treating provisional timing as authoritative."""
     sheet_path = project / "07_production_sheet.csv"
     if not sheet_path.is_file():
         return ["07_production_sheet.csv is missing."]
@@ -1120,7 +1120,7 @@ def render_workflow() -> None:
                         diagnostics = []
                         if not source_ok:
                             diagnostics.extend(f"Narration provenance: {issue}" for issue in source_issues)
-                        diagnostics.extend(f"Segmentation/timing: {issue}" for issue in segmentation_issues)
+                        diagnostics.extend(f"Scene segmentation: {issue}" for issue in segmentation_issues)
                         diagnostics.extend(f"Host introduction: {issue}" for issue in host_intro_issues)
                         diagnostics.extend(f"Asset distribution: {issue}" for issue in distribution_issues)
                         result.output = (
@@ -1129,7 +1129,7 @@ def render_workflow() -> None:
                             + "\n".join(f"- {issue}" for issue in diagnostics)
                         )[-20000:]
                         st.error(
-                            "Production generated files, but the final deterministic narration/segmentation gate FAILED. "
+                            "Production generated files, but the final deterministic narration/scene-boundary gate FAILED. "
                             "07_production_sheet.csv is NOT PRODUCTION READY; regenerate Production before Avatar Timing."
                         )
                         for issue in diagnostics[:12]:
@@ -1694,7 +1694,7 @@ def render_production() -> None:
                     st.success("Production generation completed successfully.")
                 elif result.returncode == 0 and not source_ok:
                     if source_issues and source_issues[0] == "SCENE_SEGMENTATION_QA_FAILED":
-                        st.error("Production output rejected: scene segmentation/timing QA failed. The script source itself still matches 06a_voice_script.md.")
+                        st.error("Production output rejected: scene-boundary QA failed. The script source itself still matches 06a_voice_script.md.")
                         display_issues = source_issues[1:]
                     else:
                         st.error("Production output rejected: 07_production_sheet.csv failed the canonical Production/source contract.")
@@ -1769,7 +1769,7 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
             segmentation_issues = production_sheet_segmentation_issues(project)
             if segmentation_issues:
                 scenes = []
-                st.error("Production sheet narration matches 06a_voice_script.md, but scene segmentation/timing FAILED. Regenerate Production before Avatar Timing; transcript timing cannot repair invalid scene boundaries.")
+                st.error("Production sheet narration matches 06a_voice_script.md, but scene-boundary validation FAILED. Regenerate Production before Avatar Timing because transcript timing cannot repair invalid narration boundaries.")
                 for issue in segmentation_issues[:6]:
                     st.caption(f"• {issue}")
     sequence = chunk_sequence_info(discovery)
