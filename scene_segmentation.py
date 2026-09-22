@@ -81,6 +81,11 @@ def _sentence_spans(text: str) -> list[str]:
 
 
 def _merge_short_units(units: list[str]) -> list[str]:
+    """Merge tiny complete sentences without imposing a hard word ceiling.
+
+    Sentence text remains intact. A short sentence may be grouped with an adjacent
+    complete sentence so Production does not create meaningless tiny visual scenes.
+    """
     out: list[str] = []
     i = 0
     while i < len(units):
@@ -90,33 +95,16 @@ def _merge_short_units(units: list[str]) -> list[str]:
             i += 1
             continue
         if out:
-            merged = normalize_narration(out[-1] + " " + unit)
-            if canonical_word_count(merged) <= 28:
-                out[-1] = merged
-                i += 1
-                continue
+            out[-1] = normalize_narration(out[-1] + " " + unit)
+            i += 1
+            continue
         if i + 1 < len(units):
-            merged = normalize_narration(unit + " " + units[i + 1])
-            if canonical_word_count(merged) <= 28:
-                out.append(merged)
-                i += 2
-                continue
-        # A 29-32 result is a legal fallback only when no <=28 adjacent merge exists.
-        if out:
-            merged = normalize_narration(out[-1] + " " + unit)
-            if canonical_word_count(merged) <= 32:
-                out[-1] = merged
-                i += 1
-                continue
-        if i + 1 < len(units):
-            merged = normalize_narration(unit + " " + units[i + 1])
-            if canonical_word_count(merged) <= 32:
-                out.append(merged)
-                i += 2
-                continue
-        raise SceneSegmentationError(f"Could not legally merge short narration unit: {unit!r}")
+            out.append(normalize_narration(unit + " " + units[i + 1]))
+            i += 2
+            continue
+        out.append(unit)
+        i += 1
     return out
-
 
 def segment_voice_script(text: str) -> list[str]:
     narration = normalize_narration(text)
