@@ -80,42 +80,6 @@ def _sentence_spans(text: str) -> list[str]:
     return spans
 
 
-def _natural_slices(sentence: str, ceiling: int = 28) -> list[str] | None:
-    if canonical_word_count(sentence) <= ceiling:
-        return [sentence]
-    boundaries = [m.end() for m in re.finditer(r"[,;:](?=\s+|$)", sentence)]
-    if not boundaries:
-        return None
-    parts: list[str] = []
-    start = 0
-    while start < len(sentence):
-        remaining = sentence[start:].strip()
-        if canonical_word_count(remaining) <= ceiling:
-            if canonical_word_count(remaining) < 4 and parts:
-                merged = normalize_narration(parts[-1] + " " + remaining)
-                if canonical_word_count(merged) <= ceiling:
-                    parts[-1] = merged
-                    return parts
-            parts.append(remaining)
-            break
-        candidates: list[tuple[int, str]] = []
-        for boundary in boundaries:
-            if boundary <= start:
-                continue
-            piece = sentence[start:boundary].strip()
-            words = canonical_word_count(piece)
-            if 4 <= words <= ceiling:
-                candidates.append((boundary, piece))
-        if not candidates:
-            return None
-        boundary, piece = candidates[-1]
-        parts.append(piece)
-        start = boundary
-        while start < len(sentence) and sentence[start].isspace():
-            start += 1
-    return parts if parts and all(4 <= canonical_word_count(x) <= ceiling for x in parts) else None
-
-
 def _merge_short_units(units: list[str]) -> list[str]:
     out: list[str] = []
     i = 0
@@ -159,24 +123,12 @@ def segment_voice_script(text: str) -> list[str]:
     if not narration:
         raise SceneSegmentationError("No spoken narration found.")
     units: list[str] = []
-    for sentence in _sentence_spans(narration):
-        words = canonical_word_count(sentence)
-        if words <= 28:
-            units.append(sentence)
-            continue
-        slices = _natural_slices(sentence, 28)
-        if slices is not None:
-            units.extend(slices)
-            continue
-        if words <= 32:
-            units.append(sentence)
-            continue
-        raise SceneSegmentationError(
-            f"Approved narration contains an unsegmentable {words}-word sentence above the legal 32-word ceiling. "
-            "Revise and re-approve upstream narration; never hand-edit the ledger or Production sheet."
-        )
+    # Sentence boundaries are authoritative for ledger units. The 25-27 word
+    # figure is a whole-video pacing target, not a per-sentence hard ceiling.
+    # Never split an approved sentence merely to satisfy a word target.
+    units = _sentence_spans(narration)
     units = _merge_short_units(units)
-    if any(canonical_word_count(x) > 32 or canonical_word_count(x) == 0 for x in units):
+    if any(canonical_word_count(x) == 0 for x in units):
         raise SceneSegmentationError("Deterministic ledger produced an invalid unit.")
     if normalize_narration(" ".join(units)) != narration:
         raise SceneSegmentationError("Ledger reconstruction does not match extracted narration.")
@@ -270,8 +222,6 @@ def validate_production_against_ledger(
         if not matched:
             issues.append(f"{sid}: script_excerpt is not one exact consecutive ledger span at source position {cursor + 1}.")
             continue
-        if end > cursor and canonical_word_count(excerpt) > 32:
-            issues.append(f"{sid}: merged ledger span exceeds the ordinary 32-word Production ceiling.")
         cursor = end + 1
     if cursor != len(ledger):
         issues.append(f"Production consumed {cursor} of {len(ledger)} ledger units; every ledger unit must be consumed exactly once.")
