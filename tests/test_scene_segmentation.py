@@ -50,13 +50,14 @@ def test_repeatability_and_round_trip():
 
 
 
-def test_two_complete_sentences_produce_two_units():
+def test_two_short_complete_sentences_group_toward_word_target():
     text = (
-        "This first complete sentence contains enough words to remain a legal standalone scene unit. "
-        "This second complete sentence also contains enough words to remain a separate legal scene unit."
+        "This first complete sentence contains enough words to remain meaningful on its own. "
+        "This second complete sentence also remains intact while joining the same paced scene."
     )
     units = segment_voice_script(text)
-    assert len(units) == 2
+    assert len(units) == 1
+    assert units[0] == text
 
 
 def test_long_multisentence_fixture_preserves_complete_sentence_boundaries():
@@ -68,13 +69,14 @@ def test_long_multisentence_fixture_preserves_complete_sentence_boundaries():
         "well beyond the twenty-eight word pacing target."
     )
     units = segment_voice_script(text)
-    assert len(units) == 3
+    assert len(units) == 2
     assert units[0].startswith("This first sentence")
-    assert units[1].startswith("This second sentence")
-    assert canonical_word_count(units[2]) > 28
+    assert "This second sentence" in units[0]
+    assert units[1].startswith("This third sentence")
+    assert canonical_word_count(units[1]) > 28
     assert normalize_narration(" ".join(units)) == normalize_narration(text)
 
-def test_short_fragment_merge_prefers_28_before_32_fallback():
+def test_short_fragment_groups_toward_word_target():
     prefix = " ".join(f"word{i}" for i in range(1, 27)) + "."
     text = prefix + " Ask first."
     units = segment_voice_script(text)
@@ -311,3 +313,22 @@ def test_tiny_sentence_can_merge_with_long_neighbor_without_hard_ceiling():
     assert len(units) == 1
     assert normalize_narration(units[0]) == normalize_narration(text)
     assert canonical_word_count(units[0]) == 39
+
+
+def test_word_based_grouping_targets_about_26_without_splitting_sentences():
+    sentences = [
+        "One two three four five six seven eight.",
+        "Nine ten eleven twelve thirteen fourteen fifteen.",
+        "Sixteen seventeen eighteen nineteen twenty twenty-one.",
+        "Twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven.",
+    ]
+    text = " ".join(sentences)
+    units = segment_voice_script(text)
+    assert normalize_narration(" ".join(units)) == normalize_narration(text)
+    assert len(units) < len(sentences)
+    assert all(any(sentence in unit for unit in units) for sentence in sentences)
+    assert not any(
+        sentence.startswith(unit) and sentence != unit
+        for sentence in sentences
+        for unit in units
+    )
