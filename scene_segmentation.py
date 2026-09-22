@@ -81,18 +81,18 @@ def _sentence_spans(text: str) -> list[str]:
 
 
 def _group_sentences_by_word_target(sentences: list[str], target: float = 26.0) -> list[str]:
-    """Group complete consecutive sentences around the word-based scene target.
+    """Group whole consecutive sentences near the word target without orphaning tiny tails.
 
-    Sentence boundaries are immutable: this function only groups whole sentences.
-    A sentence longer than the target remains intact as its own scene. For each
-    scene, choose the consecutive-sentence grouping whose word count is closest to
-    the target; ties prefer the smaller grouping so pacing does not drift long.
+    Sentence boundaries are immutable. A sentence longer than the target stays intact.
+    Short sentences are grouped greedily toward the target, then any trailing scene
+    under 4 words is merged backward so tiny orphan scenes cannot survive.
     """
     out: list[str] = []
     i = 0
     while i < len(sentences):
         first = sentences[i]
         first_words = canonical_word_count(first)
+
         if first_words >= target:
             out.append(first)
             i += 1
@@ -103,21 +103,34 @@ def _group_sentences_by_word_target(sentences: list[str], target: float = 26.0) 
         best_distance = abs(first_words - target)
         combined = first
         end = i + 1
+
         while end < len(sentences):
             candidate = normalize_narration(combined + " " + sentences[end])
             words = canonical_word_count(candidate)
             distance = abs(words - target)
-            if distance < best_distance:
+
+            # Prefer whichever whole-sentence grouping is closer to target.
+            # On equal distance, prefer the larger grouping to avoid a tiny tail.
+            if distance < best_distance or (distance == best_distance and end > best_end):
                 best_end = end
                 best_text = candidate
                 best_distance = distance
+
             if words >= target:
                 break
+
             combined = candidate
             end += 1
 
         out.append(best_text)
         i = best_end + 1
+
+    # Never leave a tiny complete sentence as its own scene. Merge it backward;
+    # this may create a scene above target, which is valid because target is soft.
+    if len(out) > 1 and canonical_word_count(out[-1]) < 4:
+        out[-2] = normalize_narration(out[-2] + " " + out[-1])
+        out.pop()
+
     return out
 
 def segment_voice_script(text: str) -> list[str]:
