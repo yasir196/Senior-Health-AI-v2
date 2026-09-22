@@ -302,3 +302,12 @@ def test_scene_boundary_gate_allows_complete_long_sentence():
         "recommended_asset_type": "AI_IMAGE",
     }]
     assert validate_scene_segmentation(rows) == []
+
+
+def test_tiny_sentence_can_merge_with_long_neighbor_without_hard_ceiling():
+    long_sentence = " ".join(f"word{i}" for i in range(1, 38)) + "."
+    text = long_sentence + " Ask first."
+    units = segment_voice_script(text)
+    assert len(units) == 1
+    assert normalize_narration(units[0]) == normalize_narration(text)
+    assert canonical_word_count(units[0]) == 39
