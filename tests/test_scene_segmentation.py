@@ -59,20 +59,20 @@ def test_two_complete_sentences_produce_two_units():
     assert len(units) == 2
 
 
-def test_long_multisentence_fixture_uses_real_sentence_boundaries():
+def test_long_multisentence_fixture_preserves_complete_sentence_boundaries():
     text = (
         "This first sentence has enough words to stand alone and should remain the first deterministic unit. "
         "This second sentence also has enough words to stand alone and should remain the second deterministic unit. "
         "This third sentence contains a natural comma boundary near the middle of the line, "
         "and it then continues with enough additional words to push the complete sentence "
-        "well beyond the twenty-eight word generation margin."
+        "well beyond the twenty-eight word pacing target."
     )
     units = segment_voice_script(text)
-    assert len(units) == 4
+    assert len(units) == 3
     assert units[0].startswith("This first sentence")
     assert units[1].startswith("This second sentence")
+    assert canonical_word_count(units[2]) > 28
     assert normalize_narration(" ".join(units)) == normalize_narration(text)
-    assert all(canonical_word_count(unit) <= 28 for unit in units)
 
 def test_short_fragment_merge_prefers_28_before_32_fallback():
     prefix = " ".join(f"word{i}" for i in range(1, 27)) + "."
@@ -95,12 +95,11 @@ def test_abbreviation_does_not_end_sentence():
     assert not any(unit == "Dr." for unit in units)
 
 
-def test_over_28_with_natural_boundary_splits_under_margin():
+def test_over_28_sentence_stays_intact_despite_internal_comma():
     text = "One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen, sixteen seventeen eighteen nineteen twenty twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven twenty-eight twenty-nine thirty thirty-one thirty-two thirty-three."
     units = segment_voice_script(text)
-    assert len(units) >= 2
-    assert all(canonical_word_count(unit) <= 28 for unit in units)
-    assert normalize_narration(" ".join(units)) == normalize_narration(text)
+    assert units == [text]
+    assert canonical_word_count(units[0]) == 33
 
 
 def test_29_to_32_without_boundary_is_preserved():
@@ -109,10 +108,11 @@ def test_29_to_32_without_boundary_is_preserved():
     assert units == [text]
 
 
-def test_unsegmentable_over_32_fails_explicitly():
-    text = " ".join(f"word{i}" for i in range(1, 34)) + "."
-    with pytest.raises(SceneSegmentationError, match="above the legal 32-word ceiling"):
-        segment_voice_script(text)
+def test_complete_sentence_over_32_is_legal_and_not_split():
+    text = " ".join(f"word{i}" for i in range(1, 38)) + "."
+    units = segment_voice_script(text)
+    assert units == [text]
+    assert canonical_word_count(units[0]) == 37
 
 
 def test_short_fragment_merges_without_marker_authority():
@@ -178,19 +178,13 @@ def test_persisted_ledger_must_reconstruct_current_voice():
     assert validate_ledger_reconstruction(voice, rows)
 
 
-def test_avatar_and_notes_markers_cannot_bypass_merged_over_32_ceiling():
+def test_consecutive_sentence_merge_is_not_rejected_by_hard_word_ceiling():
     first = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen."
     second = "eighteen nineteen twenty twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven twenty-eight twenty-nine thirty thirty-one thirty-two thirty-three thirty-four."
     ledger = _ledger(first, second)
     merged = first + " " + second
-    prod = [{
-        "scene_id": "SC001",
-        "script_excerpt": merged,
-        "recommended_asset_type": "AVATAR",
-        "notes": "INTENTIONAL_LONG_AVATAR INTENTIONAL_EMPHASIS",
-    }]
-    issues = validate_production_against_ledger(prod, ledger)
-    assert any("exceeds the ordinary 32-word Production ceiling" in issue for issue in issues)
+    prod = [{"scene_id": "SC001", "script_excerpt": merged, "notes": ""}]
+    assert validate_production_against_ledger(prod, ledger) == []
 
 
 def test_app_compiles_and_wires_ledger_gate_after_normalize_and_sanitize():
@@ -298,3 +292,13 @@ def test_provisional_time_format_does_not_fail_scene_boundary_gate():
     assert validate_scene_segmentation(rows) == []
     timing = validate_provisional_timing(rows)
     assert any("provisional start_time" in issue for issue in timing)
+
+
+def test_scene_boundary_gate_allows_complete_long_sentence():
+    rows = [{
+        "scene_id": "S001",
+        "script_excerpt": " ".join(f"word{i}" for i in range(1, 38)) + ".",
+        "notes": "",
+        "recommended_asset_type": "AI_IMAGE",
+    }]
+    assert validate_scene_segmentation(rows) == []
