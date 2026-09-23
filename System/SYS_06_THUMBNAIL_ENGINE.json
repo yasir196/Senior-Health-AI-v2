@@ -847,12 +847,12 @@
       "id": "V33",
       "rule": "channel_led_text_visual_dominance",
       "severity": "warn",
-      "pass_condition": "text normally has strong visual dominance comparable to roughly 40-55% of the frame, but this is guidance only and is never measured as a percentage gate; applicable ACTIVE historical channel examples take precedence"
+      "pass_condition": "text is normally the dominant visual element; numeric reference lives only in text_visual_dominance_guidance.reviewer_reference and must never appear in generated outputs; applicable ACTIVE historical channel examples take precedence"
     },
     {
       "id": "V34",
       "name": "Generated composition geometry canonicalization",
-      "severity": "BLOCK",
+      "severity": "block",
       "pass_condition": "04_thumbnail_concepts.md and 11_thumbnail_prompt.md contain the required GRID MAP block, use only the nine canonical 3x3 cell names for composition, contain no numeric composition percentages/thirds/frame shares, and contain no non-canonical cell aliases; historical percentage geometry is translated to canonical cells before output"
     }
   ],
@@ -977,7 +977,10 @@
       "generic_editorial_composition"
     ],
     "text_visual_dominance_guidance": {
-      "target": "Text should normally have strong visual dominance comparable to roughly 40-55% of the frame.",
+      "target": "Text should normally be the dominant visual element.",
+      "reviewer_reference": "roughly 40-55% of the frame",
+      "reviewer_only": true,
+      "generated_output_rule": "Do not expose the numeric percentage target in 04_thumbnail_concepts.md or 11_thumbnail_prompt.md.",
       "severity": "warn",
       "enforcement": "guidance_only_not_a_measured_percentage_gate",
       "historical_override": "Applicable ACTIVE historical channel examples take precedence over this guidance."
@@ -985,7 +988,7 @@
     "grid_specification": {
       "system": "3x3_named_cells",
       "required_output": "Describe text, presenter/face, and hero object/group placement using only canonical named 3x3 cells; never use numeric canvas percentages, thirds, numeric frame shares, or non-canonical aliases.",
-      "example": "text: top-left + middle-left; presenter: middle-right; hero: middle-center",
+      "example": "GRID MAP\ntext: top-left, middle-left\nhero: middle-center\nface: middle-right\nbottom-right: background/clothing only",
       "cell_names": [
         "top-left",
         "top-center",
