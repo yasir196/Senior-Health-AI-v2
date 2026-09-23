@@ -1,6 +1,6 @@
 {
   "module": "agent_definitions",
-  "version": "1.2",
+  "version": "1.3",
   "orchestration": "SYS_11.dag",
   "project_root": "Projects/<topic_slug>/",
   "agents": [
