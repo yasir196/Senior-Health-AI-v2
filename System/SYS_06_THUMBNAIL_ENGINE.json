@@ -841,7 +841,7 @@
       "id": "V32",
       "rule": "bottom_right_timestamp_safe_zone_clear",
       "severity": "block",
-      "pass_condition": "selected concept, Text Overlay Specification, and final production prompt keep the bottom-right 3x3 grid cell free of text, face, hands/gesture, hero object/group, and other critical detail; background and non-critical presenter torso/clothing are allowed; both output files include exactly: Bottom-right timestamp safe zone: CLEAR"
+      "pass_condition": "selected concept, Text Overlay Specification, and final production prompt keep the bottom-right 3x3 grid cell free of text, face, hands/gesture, hero object/group, anatomical illustrations, organ cutaways, internal details, stool cues, cards, icons, and other critical detail; only background or the human model's non-critical clothing/shoulder is allowed there; tall/full-body heroes use the center column or are cropped/faded above the bottom row and are not assigned to the same column as the face; both output files include exactly: Bottom-right timestamp safe zone: CLEAR"
     },
     {
       "id": "V33",
@@ -1001,18 +1001,28 @@
         "hands_or_gesture",
         "hero_object",
         "hero_group",
+        "anatomical_illustration",
+        "organ_cutaway",
+        "internal_detail",
+        "stool_cue",
+        "card",
+        "icon",
         "other_critical_detail"
       ],
-      "final_prompt_requirement": "Keep the bottom-right grid cell free of text, face, hands/gesture, hero object/group, and other critical detail. Background and non-critical presenter torso/clothing may occupy the cell.",
+      "final_prompt_requirement": "Keep the bottom-right grid cell free of text, face, hands/gesture, hero object/group, anatomical illustrations, organ cutaways, internal details, stool cues, cards, icons, and other critical detail. Only background or the human model's non-critical clothing/shoulder may occupy the cell.",
       "required_output_line": "Bottom-right timestamp safe zone: CLEAR",
       "allowed": [
         "background",
-        "presenter_torso_or_clothing"
+        "human_model_noncritical_clothing_or_shoulder"
       ]
     },
     "top_right_ui_awareness": {
       "severity": "warn",
       "guidance": "Prefer keeping critical small details away from the top-right when practical because interface controls can appear there on some surfaces."
+    },
+    "tall_hero_rule": {
+      "severity": "block",
+      "rule": "When the hero is tall or full-body (for example an anatomy cutaway, standing person, or bottle), place the critical hero in the center column or crop/fade it above the bottom row so the bottom-right cell remains clear. Do not assign the hero and the face to the same column."
     }
   }
 }
