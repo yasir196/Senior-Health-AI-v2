@@ -324,8 +324,8 @@
       "outline_color",
       "outline_thickness",
       "drop_shadow_recommendation",
-      "maximum_text_width",
-      "maximum_text_height",
+      "text_width_grid_cells",
+      "text_height_grid_cells",
       "safe_margins",
       "mobile_readability_notes",
       "do_not_overlap_zones",
@@ -358,7 +358,7 @@
       "line_breaks_keep_words_large",
       "outline_and_shadow_separate_text_from_background",
       "safe_margins_keep_text_inside_frame",
-      "bottom_right_grid_cell_is_clear_of_text_face_and_hero_object_or_group"
+      "bottom_right_grid_cell_has_no_text_face_hands_or_gesture_hero_object_or_hero_group_or_other_critical_detail; presenter_torso_or_clothing_and_background_are_allowed"
     ],
     "safe_margin_requirements": [
       "reserve_bottom_right_3x3_cell_for_timestamp_overlay"
@@ -452,7 +452,7 @@
     "text_words_min": 2,
     "text_words_max": null,
     "text_length_policy": "No fixed maximum. Prefer the shortest wording that stays immediately clear for a 60+ viewer on mobile. Length is a learned packaging variable and must not be shortened into ambiguous shorthand.",
-    "face_position": "right_third_preferred",
+    "face_position": "channel_reference_and_3x3_grid_preferred",
     "hero_objects": "one_dominant_visual_story_or_hero_group; list-level concepts may use multiple clearly grouped items when needed to preserve the list promise",
     "signal_icons": "optional_when_nonredundant",
     "required_eye_path": "clear_mobile_eye_path_required; arrow/signal is optional and must not be added when redundant",
@@ -835,13 +835,13 @@
       "id": "V31",
       "rule": "complete_text_overlay_specification",
       "severity": "block",
-      "pass_condition": "the selected winning concept and final prompt include a Text Overlay Specification with final overlay text, line breaks, text placement, alignment, font style, font weight, font family recommendation, uppercase/lowercase, primary text color, highlight color if applicable, outline color, outline thickness, drop shadow recommendation, maximum text width, maximum text height, safe margins, mobile readability notes, do-not-overlap zones, visual hierarchy, and contrast recommendation"
+      "pass_condition": "the selected winning concept and final prompt include a Text Overlay Specification with final overlay text, line breaks, text placement, alignment, font style, font weight, font family recommendation, uppercase/lowercase, primary text color, highlight color if applicable, outline color, outline thickness, drop shadow recommendation, text width grid cells, text height grid cells, 3x3 grid placement for text/presenter/hero, bottom-right timestamp safe-zone status, safe margins, mobile readability notes, do-not-overlap zones, visual hierarchy, and contrast recommendation"
     },
     {
       "id": "V32",
       "rule": "bottom_right_timestamp_safe_zone_clear",
       "severity": "block",
-      "pass_condition": "selected concept, Text Overlay Specification, and final production prompt keep the bottom-right 3x3 grid cell empty or background-only with no text, face, hero object, or hero group, and both output files include exactly: Bottom-right timestamp safe zone: CLEAR"
+      "pass_condition": "selected concept, Text Overlay Specification, and final production prompt keep the bottom-right 3x3 grid cell free of text, face, hands/gesture, hero object/group, and other critical detail; background and non-critical presenter torso/clothing are allowed; both output files include exactly: Bottom-right timestamp safe zone: CLEAR"
     },
     {
       "id": "V33",
@@ -979,7 +979,18 @@
     "grid_specification": {
       "system": "3x3_named_cells",
       "required_output": "Describe text, presenter, and hero object/group placement using named 3x3 cells rather than exact canvas percentages.",
-      "example": "text: top-left + middle-left; presenter: center-right; hero: middle-center"
+      "example": "text: top-left + middle-left; presenter: middle-right; hero: middle-center",
+      "cell_names": [
+        "top-left",
+        "top-center",
+        "top-right",
+        "middle-left",
+        "middle-center",
+        "middle-right",
+        "bottom-left",
+        "bottom-center",
+        "bottom-right"
+      ]
     },
     "bottom_right_timestamp_safe_zone": {
       "severity": "block",
@@ -987,11 +998,17 @@
       "prohibited": [
         "text",
         "face",
+        "hands_or_gesture",
         "hero_object",
-        "hero_group"
+        "hero_group",
+        "other_critical_detail"
       ],
-      "final_prompt_requirement": "Keep the bottom-right grid cell empty or background-only.",
-      "required_output_line": "Bottom-right timestamp safe zone: CLEAR"
+      "final_prompt_requirement": "Keep the bottom-right grid cell free of text, face, hands/gesture, hero object/group, and other critical detail. Background and non-critical presenter torso/clothing may occupy the cell.",
+      "required_output_line": "Bottom-right timestamp safe zone: CLEAR",
+      "allowed": [
+        "background",
+        "presenter_torso_or_clothing"
+      ]
     },
     "top_right_ui_awareness": {
       "severity": "warn",
