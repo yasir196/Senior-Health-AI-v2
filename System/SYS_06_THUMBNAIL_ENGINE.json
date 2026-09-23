@@ -26,7 +26,7 @@
     "final_prompt_required": true
   },
   "visual_pattern_intelligence": {
-    "purpose": "Analyze likely top-performing and common competitor thumbnail patterns for the topic before generating concepts, then deliberately create concepts that preserve CTR signals while avoiding clone-like similarity.",
+    "purpose": "Analyze likely top-performing and common competitor thumbnail patterns for the topic before generating concepts, then deliberately create concepts that preserve proven packaging signals while avoiding clone-like similarity.",
     "analysis_timing": "before_concept_generation",
     "live_audit_policy": "If live competitor thumbnails or search results are not provided, infer common competitor layouts from the topic, title, content DNA, thumbnail blueprints, and prior channel patterns. Label the result as an estimated visual-pattern analysis.",
     "required_analysis_fields": [
@@ -83,7 +83,7 @@
     ]
   },
   "thumbnail_text_intelligence": {
-    "purpose": "Maximize thumbnail text curiosity and predicted packaging strength while ensuring text is specific to the viewer problem, title gap, research promise, and visual concept rather than generic or interchangeable.",
+    "purpose": "Maximize thumbnail text curiosity and Packaging Score while ensuring text is specific to the viewer problem, title gap, research promise, and visual concept rather than generic or interchangeable.",
     "analysis_timing": "before_concept_generation",
     "required_pre_generation_fields": [
       "primary_viewer_problem",
@@ -176,9 +176,9 @@
         "id": "question",
         "label": "Question",
         "examples": [
-          "CAN YOU?",
           "WHAT CHANGED?",
-          "WHY HARDER?"
+          "WHY HARDER?",
+          "WHAT'S MISSING?"
         ]
       },
       {
@@ -437,7 +437,7 @@
         "clinical_badge",
         "scrubs_unless_project_explicitly_requires_and_allows_them"
       ],
-      "required_output_flag": "PRESENTER_REFERENCE: NOT SUPPLIED — generic model used",
+      "required_output_flag": "PRESENTER_REFERENCE: NOT SUPPLIED - generic model used",
       "identity_claim_prohibited": true
     }
   },
@@ -491,7 +491,7 @@
       "name": "hero_presenter_claim",
       "use": "transformation",
       "components": [
-        "vigorous_senior_or_doctor",
+        "vigorous_senior_or_presenter",
         "yellow_claim",
         "thumbs_up_or_check",
         "clear_emotion"
@@ -514,7 +514,7 @@
       "use": "safety_caution",
       "components": [
         "food_hero",
-        "doctor_stop_or_ask_first_gesture",
+        "presenter_stop_or_ask_first_gesture",
         "warning_color",
         "non_alarmist_caveat_signal"
       ]
@@ -534,7 +534,7 @@
     "green": "safe_signal_check_or_allowed_choice",
     "blue": "trust_authority_band",
     "dark": "contrast_base",
-    "white": "doctor_coat_or_text_separation"
+    "white": "text_separation_or_neutral_highlight"
   },
   "scoring_model": {
     "score_range_per_category": [
@@ -637,9 +637,11 @@
       "human_face": 7,
       "visual_uniqueness": 7,
       "mobile_eye_catch": 7,
-      "senior_comprehension_semantic_completeness": 7,
       "promise_coverage": 7,
       "instant_visual_comprehension": 7
+    },
+    "winner_text_minimums": {
+      "senior_comprehension_semantic_completeness": 7
     }
   },
   "validation_rules": [
@@ -838,8 +840,8 @@
       {
         "title": "Eat 2 Kiwis Before Bed After 60... What Happens?",
         "weak_thumbnail_text": "EAT 2 KIWIS BEFORE BED",
-        "better_thumbnail_text": "WHAT HAPPENS NEXT?",
-        "reason": "The improved thumbnail keeps the subject clear through the visible kiwi hero while adding a senior-readable unresolved question instead of cryptic shorthand or title duplication."
+        "better_thumbnail_text": "WHY AT NIGHT?",
+        "reason": "The improved thumbnail keeps the kiwi subject clear through the visible hero while adding a senior-readable timing question without repeating the title's main wording."
       }
     ]
   },
@@ -851,6 +853,7 @@
     "winning_prompt_required": true,
     "canonical_file": "04_thumbnail_concepts.md",
     "canonical_file_must_include": [
+      "thumbnail_contract_version_2_6",
       "historical_channel_examples_used",
       "thumbnail_text_intelligence_diagnosis",
       "visual_pattern_intelligence_analysis",
@@ -883,10 +886,11 @@
       "why_winner_stands_out_from_competitors",
       "text_overlay_specification",
       "production_ready_ai_image_prompt",
-      "ranked_table_detailed_winner_sync_PASS"
+      "ranked_table_detailed_winner_sync_PASS_ascii"
     ],
     "prompt_file": "11_thumbnail_prompt.md",
     "prompt_file_must_include": [
+      "thumbnail_contract_version_2_6",
       "winning_concept",
       "selected_title",
       "selected_thumbnail_text",
@@ -901,7 +905,10 @@
     ],
     "cross_file_sync_required": true,
     "cross_file_sync_check": "04_thumbnail_concepts.md and 11_thumbnail_prompt.md must agree on selected title, winning concept, selected thumbnail text, text overlay specification, and final production layout/prompt intent before thumbnail validation can PASS.",
-    "legacy_project_policy": "Do not retroactively fail a previously completed v2.5 thumbnail package solely because v2.6 adds Historical Channel Examples Used or sync markers. Enforce the v2.6 output contract on thumbnail packages generated or regenerated under v2.6; migrate legacy projects when they are intentionally regenerated."
+    "legacy_project_policy": "Do not retroactively fail a package with no Thumbnail Contract Version marker solely because v2.6 adds Historical Channel Examples Used, version markers, or sync markers. Enforce the full v2.6 output contract on packages generated or intentionally regenerated under v2.6.",
+    "contract_version_marker": "Thumbnail Contract Version: 2.6",
+    "legacy_detection_policy": "If Thumbnail Contract Version is absent, treat the package as legacy for v2.6 migration purposes. Do not retroactively apply newly required v2.6-only sections unless the thumbnail package is intentionally regenerated.",
+    "final_sync_line": "Ranked-table <-> detailed-winner sync: PASS"
   },
   "prohibited_visuals": [
     "fake_medical_numbers",
@@ -925,7 +932,7 @@
     "unrelated_reference_accessories",
     "reference_clothing_copied_without_justification",
     "reference_composition_copied",
-    "presenter_identity_changed"
+    "presenter_identity_changed_when_reference_supplied"
   ],
   "winning_title_contract": {
     "source": "Projects/<topic_slug>/project.json.anchor_title",
