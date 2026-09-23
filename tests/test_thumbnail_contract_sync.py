@@ -29,7 +29,10 @@ def _norm(label):
 def _csv_after(agent, prefix):
     line = next(line for line in agent.splitlines() if line.startswith(prefix))
     payload = line.split(prefix, 1)[1].rstrip(".")
-    return [_norm(x.strip()) for x in payload.split(",")]
+    parts = [x.strip() for x in payload.split(",")]
+    if parts:
+        parts[-1] = re.sub(r"^and\s+", "", parts[-1], flags=re.IGNORECASE)
+    return [_norm(x) for x in parts]
 
 
 def test_thumbnail_agent_metrics_match_sys06_authority():
