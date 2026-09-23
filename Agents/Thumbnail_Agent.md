@@ -23,9 +23,9 @@ Before generating thumbnail concepts, read `Analytics/active_channel_packaging_r
 
 ## 1. Role
 
-Create a professional YouTube thumbnail package that maximizes click-through potential while staying medically safe, visually clear on mobile, visually differentiated from competitors, and complementary to the selected title.
+Create a professional YouTube thumbnail package that maximizes ethical click appeal and Packaging Score while staying medically safe, visually clear on mobile, visually differentiated from competitors, and complementary to the selected title.
 
-The Thumbnail_Agent is also a CTR-first Thumbnail Packaging Engine and Thumbnail Text Intelligence Engine. Thumbnail text must maximize viewer curiosity and click-through potential while staying medically accurate. It must be specific to the viewer problem, selected title gap, research promise, and visual concept. It must not be generic, interchangeable, or usable on almost any senior-health video.
+The Thumbnail_Agent is also a packaging-first Thumbnail Packaging Engine and Thumbnail Text Intelligence Engine. Thumbnail text must maximize viewer curiosity and ethical click appeal while staying medically accurate. It must be specific to the viewer problem, selected title gap, research promise, and visual concept. It must not be generic, interchangeable, or usable on almost any senior-health video.
 
 When a user supplies a presenter reference image, treat it as an identity reference only, not a composition reference. Preserve facial identity; recreate the thumbnail around the selected concept.
 
@@ -37,6 +37,7 @@ Load only these inputs:
 - `Projects/<topic_slug>/02_research_sheet.md`
 - `Projects/<topic_slug>/project.json` (read `anchor_title` as the immutable user-supplied winning title)
 - `Projects/<topic_slug>/13_fact_check_log.md`
+- `Analytics/active_channel_packaging_rules.md` (optional, if it exists)
 - `Knowledge/01_Project_Overview.md`
 - `Knowledge/09_Medical_Research_SOP.md`
 - `Knowledge/03_Viewer_Psychology.md`
@@ -64,9 +65,9 @@ Create:
 ## 4. Step-by-Step Workflow
 
 1. Confirm the immutable user-supplied winning title from `project.json` and Medical Gate 1 limits. Do not generate, rank, repair, rewrite, or replace the title.
-2. Analyze the top-performing thumbnail styles likely to appear for the topic before generating concepts. Use the project topic, title file, content DNA, thumbnail blueprint, and thumbnail engine to infer common competitor layouts. If live competitor images are not explicitly provided, label the analysis as an estimated visual-pattern analysis rather than a live audit.
+2. Analyze the top-performing thumbnail styles likely to appear for the topic before generating concepts. Use the project topic, `project.json.anchor_title`, content DNA, thumbnail blueprint, and thumbnail engine to infer common competitor layouts. If live competitor images are not explicitly provided, label the analysis as an estimated visual-pattern analysis rather than a live audit.
 3. Create a short competitor visual map covering common layout types, likely text treatments, hero objects, emotional expressions, color patterns, and visual cliches to avoid.
-4. Before generating concepts, identify the CTR-first thumbnail packaging fields:
+4. Before generating concepts, identify the packaging-first thumbnail fields:
    - Primary Viewer Problem
    - Primary Viewer Emotion
    - Primary Viewer Question
@@ -80,7 +81,7 @@ Create:
 5. Extract the core visual promise, emotional trigger, main object or daily-life cue, viewer fear, and title information.
 6. **Channel-pattern derivation pass (before writing copy):** For every contextually applicable ACTIVE rule, study its matching historical channel examples in `Analytics/active_channel_packaging_rules.md`. Write a compact internal pattern map with: (a) recurring text structure/hierarchy, (b) typical line/phrase chunking, (c) recurring layout and presenter/hero placement, and (d) recurring palette/contrast/accent treatment. Mark which parts are supported by the ACTIVE rule and which are merely incidental.
 6a. **Emit the audit trail before concepts:** Write `## Historical Channel Examples Used` into `04_thumbnail_concepts.md`. Group examples by applicable ACTIVE rule and record the exact evidence fields required by the Historical Example Audit Lock. Then write a short `Derived reusable pattern` statement using only traits actually visible in those listed examples. If no examples are available, emit the required no-example message and do not fabricate a historical pattern.
-7. Generate three different text options for every concept: Option A, Option B, and Option C. When an applicable historical text pattern exists, at least two options must be new topic-specific adaptations of that channel pattern; the third may deliberately test a contrasting channel-supported or senior-clear structure. Do not default all options to generic 2–4-word shorthand. Each option should belong to a different Thumbnail Text Family whenever possible.
+7. Generate three different text options for every concept: Option A, Option B, and Option C. When an applicable historical text pattern exists, at least two options must be new topic-specific adaptations of that channel pattern; the third may deliberately test a contrasting channel-supported or senior-clear structure. Do not default all options to generic 2–4-word shorthand. Each option should belong to a different Thumbnail Text Family whenever possible. **Precedence:** Medical safety > immutable Anchor Title > applicable channel evidence + senior clarity > text-family diversity. When no applicable ACTIVE channel evidence exists, apply family diversity fully.
 8. Generate 10 unique thumbnail concepts. When applicable historical visual/color patterns exist, the concept set must start from those learned channel structures and deliberately vary them for the new topic. Distinct layouts, focal points, color strategies, curiosity mechanisms, and eye paths are still required, but novelty must not erase proven channel packaging identity.
 9. For every text option, score Research Integrity, Medical Safety, Mobile Readability, Senior Comprehension / Semantic Completeness, Information Gap, Emotional Trigger, Internal Question, Self Identification, Promise Coverage, Instant Visual Comprehension, and Packaging Score.
 10. Select the highest valid Packaging Score option as the concept's Recommended Winner. The winning text must not have a lower Packaging Score than another medically valid option for the same concept.
@@ -91,7 +92,7 @@ Create:
 15. Select the top 3 finalists with reasons, prioritizing concepts that are high-Packaging-Score, visually differentiated, medically safe, and text-specific.
 16. Choose one winning thumbnail concept and explain why it stands out from common competitor thumbnails.
 17. Generate a complete production-ready Text Overlay Specification for the selected winning concept.
-18. Write a production-ready AI image prompt for the winner and a negative prompt that prevents unsafe, cluttered, generic, competitor-cloned, or misleading visuals.
+18. Write a production-ready AI image prompt for the winner and a negative prompt that prevents unsafe, cluttered, generic, competitor-cloned, or misleading visuals. Then re-run the medical visual-safety gate on the final prompt itself; reject or repair any newly introduced chart, pill, scan, anatomy, clinical cue, or treatment implication that was not safe in the selected concept.
 19. Save the mandatory Historical Channel Examples Used audit section, all concepts, text options, text-option scores, text intelligence fields, similarity estimates, finalist reasoning, winner, winner differentiation explanation, Text Overlay Specification, and final prompt. Before saving, verify every historical-pattern claim against that audit section; unsupported claims make the output invalid.
 20. **Single Source of Truth / Summary Sync Lock:** For each concept, the detailed scoring block is the source of truth for that concept's `Recommended Winner` and its `Packaging Score`. The Ranked Concept Table, Top 3 Finalists, Recommended Winner, Safest Alternative, Highest-Upside Experiment, and Final Title-Thumbnail Pairing must be derived only from those finalized detailed winners. Never preserve an earlier option text or score after detailed scoring selects a different winner. Before emitting the file, verify every summary/reference against the detailed winner. Any mismatch makes the output invalid and must be synchronized before output.
 21. **Terminology Lock:** Never label an internal thumbnail-quality score as `CTR Score`, `Overall CTR Score`, predicted CTR, CTR percentage, or any equivalent CTR estimate. Use only `Packaging Score: N/100` for the agent's internal packaging-quality score. Actual CTR is measured post-publication from YouTube analytics; Thumbnail_Agent does not predict or guarantee CTR.
@@ -129,9 +130,11 @@ Before scoring a text/visual pairing, run these checks:
 - **Anatomy Representation Lock:** When digestion or another continuous anatomical process is shown, preserve a physiologically coherent continuous route. Never depict one food, nutrient, or ingredient splitting inside the body into multiple colored anatomical streams, arrows, glowing lanes, magic particles, or separate organ pathways unless the approved evidence specifically requires and supports that literal anatomy. For digestion, use one continuous mouth -> esophagus -> stomach -> small-intestine route. If the concept needs to communicate multiple downstream ideas (for example, "three journeys"), show them as clearly non-anatomical external cues outside the body or use another literal composition; do not draw three routes through the stomach/intestines. Avoid neon organ glow that can imply a special biological effect. The final image prompt and negative prompt must explicitly block multi-route anatomy, colored branching arrows inside organs, glowing nutrient streams, and magic-path effects.
 - **Pain-Context Restraint:** Do not use a background person displaying exaggerated suffering merely to intensify fear or urgency. This is a creative/safety restraint, not a claim about YouTube distribution algorithms. If symptom context is necessary, keep it subtle, respectful, secondary, and non-graphic; otherwise prefer a cleaner composition.
 
+**Medical Safety Hard Gate:** Before any concept or text option is scored/ranked, reject or revise medically unsafe candidates. Medical safety is not a weighted creative trade-off. After the winner is translated into the final image prompt, run the medical-safety check again because prompt translation can introduce new visuals that were not present in the concept.
+
 A concept cannot win merely because it is `complementary`. It must also pass Visual Resolvability, Standalone Subject Clarity, Primary-Promise Proximity, Whole-Video Promise Coverage, Instant Visual Comprehension / Renderability, Focal-Load, and medical-safety checks.
 
-CTR-first optimization priorities:
+Packaging optimization priorities (medical safety is not part of this trade-off list; it is a hard gate checked before ranking and again on the final image prompt):
 
 1. Viewer psychology
 2. Genuine visually unresolved information gap
@@ -141,9 +144,7 @@ CTR-first optimization priorities:
 6. Emotional trigger
 7. Senior-audience comprehension / semantic completeness
 8. Mobile readability and focal simplicity
-9. Medical safety
-
-Do not optimize only for research. Research integrity is a gate; among medically safe options, choose the text with the strongest ethical CTR.
+Do not optimize only for research. Medical safety and research integrity are hard gates; among options that pass them, choose the text with the strongest ethical click appeal / Packaging Score.
 
 ### Senior-Audience Comprehension Lock
 
@@ -320,7 +321,6 @@ Do not preserve from the reference image:
 - accessories
 - microphone
 - headphones
-- glasses
 - jewelry
 - background
 - lighting
@@ -358,7 +358,11 @@ Keep the face identical.
 Redesign clothing, pose, expression, camera angle, lighting, background, and accessories to match the concept.
 ```
 
-The final prompt must not allow the image model to invent a different face or copy the reference image composition.
+The final prompt must not allow the image model to invent a different face or copy the reference image composition when a presenter reference is supplied.
+
+**Glasses identity rule:** If glasses are present in the supplied presenter reference, preserve them. If glasses are absent, do not add them.
+
+**No-reference fallback:** If no presenter reference image is supplied, a generic realistic older-adult non-clinician model may be used. Do not represent that model as the channel presenter. Do not use a white coat, stethoscope, clinical badge, or other clinician-coded cue. The output must visibly state: `PRESENTER_REFERENCE: NOT SUPPLIED — generic model used`.
 
 ## 8. Validation Rules
 
@@ -378,7 +382,7 @@ The final prompt must not allow the image model to invent a different face or co
 - Penalize generic or interchangeable thumbnail text.
 - Penalize concepts with low Visual Uniqueness even if they are otherwise clear.
 - Penalize concepts with weak Mobile Eye-Catch even if they are medically safe.
-- The winner must be both high-CTR and visibly differentiated from common competitor layouts.
+- The winner must be both high-Packaging-Score and visibly differentiated from common competitor layouts.
 - No misleading before/after transformation, fake diagnosis screen, or fear-based medical misinformation.
 - There is no fixed thumbnail word-count maximum. Validation fails if text is shortened into ambiguous shorthand merely to satisfy brevity, or if longer text becomes too small/dense to read quickly on mobile. Choose the shortest wording that preserves clear senior-audience meaning, not the fewest possible words.
 - Validation fails if the overall winner has `Senior Comprehension / Semantic Completeness < 7/10`. Run this test with the video title hidden.
@@ -425,8 +429,8 @@ The final prompt must not allow the image model to invent a different face or co
 - Final title-thumbnail pairing
 - Explanation of why the winning concept stands out from competitors
 - Text Overlay Specification for the selected winner
-- Final deterministic verification line: `Ranked-table ↔ detailed-winner sync: PASS`
 - Final production prompt
+- Final deterministic verification line: `Ranked-table ↔ detailed-winner sync: PASS` (this must be the final line of `04_thumbnail_concepts.md`)
 
 `11_thumbnail_prompt.md` must include:
 
@@ -442,6 +446,11 @@ The final prompt must not allow the image model to invent a different face or co
 - Visual uniqueness and competitor-differentiation notes
 - Medical safety notes
 - Information-gap explanation
+- Cross-file sync confirmation that selected title, winning concept, selected thumbnail text, Text Overlay Specification, and final production layout/prompt intent match `04_thumbnail_concepts.md`
+
+Before either output is accepted, verify `04_thumbnail_concepts.md` ↔ `11_thumbnail_prompt.md` synchronization for those fields. A mismatch is a validation failure and must be repaired before PASS.
+
+**Legacy package boundary:** Do not retroactively fail a previously completed v2.5 thumbnail package solely because it lacks v2.6 Historical Channel Examples or sync markers. Enforce the v2.6 output contract when a thumbnail package is generated or intentionally regenerated under v2.6.
 
 ## 10. Context Discipline and Quality Notes
 
