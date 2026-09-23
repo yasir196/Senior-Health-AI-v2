@@ -541,7 +541,7 @@
       0,
       10
     ],
-    "total_score_max": 150,
+    "total_score_max": 140,
     "normalized_score_max": 100,
     "categories": [
       {
@@ -599,12 +599,6 @@
         "definition": "Large, high-contrast text that is immediately clear to a 60+ viewer at small feed size; no arbitrary word-count maximum."
       },
       {
-        "id": "senior_comprehension_semantic_completeness",
-        "label": "Senior Comprehension / Semantic Completeness",
-        "max_points": 10,
-        "definition": "Whether the overlay makes useful sense at a quick glance without requiring title-first decoding or cryptic shorthand."
-      },
-      {
         "id": "color_contrast",
         "label": "Color Contrast",
         "max_points": 10,
@@ -635,7 +629,7 @@
         "definition": "How strongly the thumbnail grabs attention in a fast mobile feed through silhouette, focal contrast, face readability, text punch, and instant visual question."
       }
     ],
-    "calculation": "raw_total_score = sum of all 15 concept category scores; normalized_score = round((raw_total_score / 150) * 100)",
+    "calculation": "raw_total_score = sum of all 14 concept category scores; normalized_score = round((raw_total_score / 140) * 100)",
     "winner_minimums": {
       "medical_safety": 7,
       "mobile_visibility": 7,
