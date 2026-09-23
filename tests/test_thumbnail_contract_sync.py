@@ -200,3 +200,31 @@ def test_thumbnail_v27_overlay_uses_grid_dimensions_not_percentage_width():
     v31 = next(v for v in sys06["validation_rules"] if v["id"] == "V31")
     assert "text width grid cells" in v31["pass_condition"]
     assert "3x3 grid placement" in v31["pass_condition"]
+
+
+def test_thumbnail_v27_generated_outputs_forbid_percentage_geometry_and_aliases():
+    agent = _read("Agents/Thumbnail_Agent.md")
+    sys06 = _load_json("System/SYS_06_THUMBNAIL_ENGINE.json")
+    contract = sys06["composition_policy"]["output_geometry_contract"]
+    assert contract["severity"].lower() == "block"
+    assert contract["canonical_cell_names_only"] is True
+    assert contract["aliases_invalid"] is True
+    assert contract["required_grid_map_keys"] == ["text", "hero", "face", "bottom-right"]
+    assert "Never express composition" in agent
+    assert "numeric percentages" in agent
+    assert "GRID MAP" in agent
+    assert "Historical percentage geometry" in agent
+    grid = sys06["composition_policy"]["grid_specification"]
+    assert grid["required_grid_map"]["heading"] == "GRID MAP"
+    assert grid["required_grid_map"]["keys"] == ["text", "hero", "face", "bottom-right"]
+    v34 = next(v for v in sys06["validation_rules"] if v["id"] == "V34")
+    assert v34["severity"] == "BLOCK"
+    assert "no numeric composition percentages" in v34["pass_condition"]
+    assert "non-canonical cell aliases" in v34["pass_condition"]
+
+
+def test_thumbnail_v27_percentage_dominance_is_reviewer_only():
+    sys06 = _load_json("System/SYS_06_THUMBNAIL_ENGINE.json")
+    dominance = sys06["composition_policy"]["text_visual_dominance"]
+    assert dominance["reviewer_only"] is True
+    assert "Do not expose the numeric percentage target" in dominance["generated_output_rule"]
