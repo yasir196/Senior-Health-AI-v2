@@ -1,15 +1,17 @@
 {
   "module": "thumbnail_engine",
-  "version": "2.5",
+  "version": "2.6",
   "purpose": "Packaging-first professional YouTube thumbnail packaging, visual pattern intelligence, and thumbnail text intelligence system for Senior Health AI videos while preserving medical integrity. Internal Packaging Score is a quality heuristic, not measured or predicted YouTube CTR.",
   "required_project_inputs": [
     "Projects/<topic_slug>/01_topic_validation.md",
     "Projects/<topic_slug>/02_research_sheet.md",
-    "Projects/<topic_slug>/project.json (anchor_title)"
+    "Projects/<topic_slug>/project.json (anchor_title)",
+    "Projects/<topic_slug>/13_fact_check_log.md",
+    "Analytics/active_channel_packaging_rules.md (optional, if exists)"
   ],
   "required_outputs": {
     "canonical_thumbnail_package": "Projects/<topic_slug>/04_thumbnail_concepts.md",
-    "optional_prompt_only_file": "Projects/<topic_slug>/11_thumbnail_prompt.md"
+    "required_prompt_file": "Projects/<topic_slug>/11_thumbnail_prompt.md"
   },
   "concept_generation": {
     "required_concept_count": 10,
@@ -24,7 +26,7 @@
     "final_prompt_required": true
   },
   "visual_pattern_intelligence": {
-    "purpose": "Analyze likely top-performing and common competitor thumbnail patterns for the topic before generating concepts, then deliberately create concepts that preserve CTR signals while avoiding clone-like similarity.",
+    "purpose": "Analyze likely top-performing and common competitor thumbnail patterns for the topic before generating concepts, then deliberately create concepts that preserve proven packaging signals while avoiding clone-like similarity.",
     "analysis_timing": "before_concept_generation",
     "live_audit_policy": "If live competitor thumbnails or search results are not provided, infer common competitor layouts from the topic, title, content DNA, thumbnail blueprints, and prior channel patterns. Label the result as an estimated visual-pattern analysis.",
     "required_analysis_fields": [
@@ -81,7 +83,7 @@
     ]
   },
   "thumbnail_text_intelligence": {
-    "purpose": "Maximize thumbnail text curiosity and predicted packaging strength while ensuring text is specific to the viewer problem, title gap, research promise, and visual concept rather than generic or interchangeable.",
+    "purpose": "Maximize thumbnail text curiosity and Packaging Score while ensuring text is specific to the viewer problem, title gap, research promise, and visual concept rather than generic or interchangeable.",
     "analysis_timing": "before_concept_generation",
     "required_pre_generation_fields": [
       "primary_viewer_problem",
@@ -91,7 +93,9 @@
       "internal_question_created",
       "primary_visual_hook",
       "emotional_trigger",
-      "title_thumbnail_information_gap"
+      "title_thumbnail_information_gap",
+      "whole_video_promise_coverage",
+      "instant_visual_comprehension_renderability"
     ],
     "one_clear_idea_rule": [
       "missing_piece",
@@ -106,10 +110,13 @@
     ],
     "packaging_optimization_priorities": [
       "viewer_psychology",
-      "information_gap",
+      "genuine_visually_unresolved_information_gap",
+      "primary_title_promise_proximity",
+      "whole_video_promise_coverage",
+      "instant_visual_comprehension_renderability",
       "emotional_trigger",
-      "mobile_readability",
-      "medical_safety"
+      "senior_audience_comprehension_semantic_completeness",
+      "mobile_readability_and_focal_simplicity"
     ],
     "research_integrity_policy": "Research integrity is a gate. Among medically safe options, select the highest ethical Packaging Score option.",
     "complement_title_do_not_repeat": true,
@@ -169,9 +176,9 @@
         "id": "question",
         "label": "Question",
         "examples": [
-          "CAN YOU?",
           "WHAT CHANGED?",
-          "WHY HARDER?"
+          "WHY HARDER?",
+          "WHAT'S MISSING?"
         ]
       },
       {
@@ -234,10 +241,13 @@
         "research_integrity",
         "medical_safety",
         "mobile_readability",
+        "senior_comprehension_semantic_completeness",
         "information_gap",
         "emotional_trigger",
         "internal_question",
         "self_identification",
+        "promise_coverage",
+        "instant_visual_comprehension",
         "packaging_score"
       ],
       "internal_question_rule": "Every text must naturally create an internal question. If no internal question exists, lower the Packaging Score.",
@@ -250,6 +260,8 @@
       "missing_piece",
       "internal_question_created",
       "visual_hook",
+      "whole_video_promise_coverage",
+      "instant_visual_comprehension_renderability",
       "text_option_a",
       "text_option_b",
       "text_option_c",
@@ -280,7 +292,19 @@
     "interchangeability_test": {
       "question": "Could this same text fit ten unrelated senior-health videos?",
       "fail_if_yes_without_unique_visual_justification": true
-    }
+    },
+    "medical_safety_gate": {
+      "priority": "hard_gate_before_optimization",
+      "pre_scoring": "Reject or revise medically unsafe concepts before scoring or ranking.",
+      "final_prompt_recheck": "Re-run medical visual safety on the final image prompt because prompt translation can introduce new charts, pills, scans, anatomy, or treatment implications."
+    },
+    "precedence": [
+      "medical_safety",
+      "immutable_anchor_title",
+      "channel_evidence_and_senior_clarity",
+      "text_family_diversity"
+    ],
+    "family_diversity_fallback": "When no applicable ACTIVE channel evidence exists, apply text-family diversity fully. When channel evidence exists, channel-supported structure plus senior clarity takes precedence over forcing different families."
   },
   "text_overlay_specification": {
     "required_for_selected_winner": true,
@@ -328,7 +352,7 @@
     ],
     "mobile_readability_requirements": [
       "text_readable_at_small_feed_size",
-      "short_words_are_prioritized",
+      "wording_is_as_concise_as_possible_without_losing_senior_clarity_or_semantic_completeness",
       "line_breaks_keep_words_large",
       "outline_and_shadow_separate_text_from_background",
       "safe_margins_keep_text_inside_frame"
@@ -345,14 +369,14 @@
       "eyebrows",
       "skin_tone",
       "age_appearance",
-      "identity"
+      "identity",
+      "glasses_when_present_in_reference"
     ],
     "do_not_preserve": [
       "clothing",
       "accessories",
       "microphone",
       "headphones",
-      "glasses",
       "jewelry",
       "background",
       "lighting",
@@ -398,11 +422,24 @@
     ],
     "must_not_allow": [
       "different_face",
-      "invented_presenter",
       "reference_composition_copy",
       "reference_clothing_copy_without_justification",
-      "reference_accessories_copy_without_justification"
-    ]
+      "reference_accessories_copy_without_justification",
+      "generic_model_claimed_as_channel_presenter"
+    ],
+    "glasses_policy": "If glasses are present in the supplied presenter reference, preserve them as part of the reference appearance. If glasses are absent, do not add them.",
+    "fallback_when_reference_not_supplied": {
+      "allowed": true,
+      "model": "generic realistic older-adult non-clinician model",
+      "clinical_cues_prohibited": [
+        "white_coat",
+        "stethoscope",
+        "clinical_badge",
+        "scrubs_unless_project_explicitly_requires_and_allows_them"
+      ],
+      "required_output_flag": "PRESENTER_REFERENCE: NOT SUPPLIED - generic model used",
+      "identity_claim_prohibited": true
+    }
   },
   "master_recipe": {
     "background": "dark_high_contrast",
@@ -410,15 +447,10 @@
     "text_words_max": null,
     "text_length_policy": "No fixed maximum. Prefer the shortest wording that stays immediately clear for a 60+ viewer on mobile. Length is a learned packaging variable and must not be shortened into ambiguous shorthand.",
     "face_position": "right_third_preferred",
-    "hero_objects": 1,
-    "signal_icons": 1,
-    "required_eye_path": [
-      "face",
-      "food",
-      "arrow",
-      "text"
-    ],
-    "clutter_policy": "single_focal_story_no_crowded_backgrounds_no_tiny_labels"
+    "hero_objects": "one_dominant_visual_story_or_hero_group; list-level concepts may use multiple clearly grouped items when needed to preserve the list promise",
+    "signal_icons": "optional_when_nonredundant",
+    "required_eye_path": "clear_mobile_eye_path_required; arrow/signal is optional and must not be added when redundant",
+    "clutter_policy": "single_focal_story_no_crowded_backgrounds_no_tiny_labels; list-level hero groups remain legal when visually unified"
   },
   "layout_registry": [
     {
@@ -459,7 +491,7 @@
       "name": "hero_presenter_claim",
       "use": "transformation",
       "components": [
-        "vigorous_senior_or_doctor",
+        "vigorous_senior_or_presenter",
         "yellow_claim",
         "thumbs_up_or_check",
         "clear_emotion"
@@ -482,7 +514,7 @@
       "use": "safety_caution",
       "components": [
         "food_hero",
-        "doctor_stop_or_ask_first_gesture",
+        "presenter_stop_or_ask_first_gesture",
         "warning_color",
         "non_alarmist_caveat_signal"
       ]
@@ -502,14 +534,14 @@
     "green": "safe_signal_check_or_allowed_choice",
     "blue": "trust_authority_band",
     "dark": "contrast_base",
-    "white": "doctor_coat_or_text_separation"
+    "white": "text_separation_or_neutral_highlight"
   },
   "scoring_model": {
     "score_range_per_category": [
       0,
       10
     ],
-    "total_score_max": 120,
+    "total_score_max": 140,
     "normalized_score_max": 100,
     "categories": [
       {
@@ -522,7 +554,7 @@
         "id": "mobile_visibility",
         "label": "Mobile Visibility",
         "max_points": 10,
-        "definition": "Whether the face, food, signal cue, and text remain clear at small YouTube feed size."
+        "definition": "Whether the dominant visual story, face when used, any necessary signal cue, and text remain clear at small YouTube feed size."
       },
       {
         "id": "curiosity_gap",
@@ -537,28 +569,40 @@
         "definition": "How well the thumbnail adds a missing visual question or contrast instead of duplicating the title."
       },
       {
-        "id": "food_visibility",
-        "label": "Food Visibility",
+        "id": "promise_coverage",
+        "label": "Promise Coverage",
         "max_points": 10,
-        "definition": "For food topics, whether the food hero object is instantly recognizable, appetizing, and dominant. For non-food topics, score the equivalent hero-object clarity."
+        "definition": "How well the thumbnail represents the whole video's primary promise rather than an incidental subsection."
+      },
+      {
+        "id": "instant_visual_comprehension",
+        "label": "Instant Visual Comprehension",
+        "max_points": 10,
+        "definition": "Whether a cold viewer can understand the literal visual relationship in about one second without needing the title or explanation."
+      },
+      {
+        "id": "food_visibility",
+        "label": "Food Visibility / Hero Object Clarity",
+        "max_points": 10,
+        "definition": "For food topics, whether the food hero is instantly recognizable; for non-food topics, score equivalent hero-object or hero-group clarity."
       },
       {
         "id": "human_face",
         "label": "Human Face",
         "max_points": 10,
-        "definition": "Presence, size, expression, eye direction, and emotional clarity of a human face."
+        "definition": "Presence, size, expression, eye direction, and emotional clarity of a human face; a generic non-clinician model is permitted when no presenter reference is supplied."
       },
       {
         "id": "text_readability",
         "label": "Text Readability",
         "max_points": 10,
-        "definition": "Large, high-contrast text that is immediately clear to a 60+ viewer at small feed size. Prefer concise wording, but do not enforce an arbitrary word-count maximum or shorten into ambiguous shorthand."
+        "definition": "Large, high-contrast text that is immediately clear to a 60+ viewer at small feed size; no arbitrary word-count maximum."
       },
       {
         "id": "color_contrast",
         "label": "Color Contrast",
         "max_points": 10,
-        "definition": "Contrast between background, face, food, text, and signal cue."
+        "definition": "Contrast between background, face, hero visual, text, and any necessary signal cue."
       },
       {
         "id": "competition_difference",
@@ -585,14 +629,19 @@
         "definition": "How strongly the thumbnail grabs attention in a fast mobile feed through silhouette, focal contrast, face readability, text punch, and instant visual question."
       }
     ],
-    "calculation": "raw_total_score = emotional_trigger + mobile_visibility + curiosity_gap + information_gap + food_visibility + human_face + text_readability + color_contrast + competition_difference + medical_safety + visual_uniqueness + mobile_eye_catch; normalized_score = round((raw_total_score / 120) * 100)",
+    "calculation": "raw_total_score = sum of all 14 concept category scores; normalized_score = round((raw_total_score / 140) * 100)",
     "winner_minimums": {
       "medical_safety": 7,
       "mobile_visibility": 7,
       "text_readability": 7,
       "human_face": 7,
       "visual_uniqueness": 7,
-      "mobile_eye_catch": 7
+      "mobile_eye_catch": 7,
+      "promise_coverage": 7,
+      "instant_visual_comprehension": 7
+    },
+    "winner_text_minimums": {
+      "senior_comprehension_semantic_completeness": 7
     }
   },
   "validation_rules": [
@@ -604,9 +653,9 @@
     },
     {
       "id": "V2",
-      "rule": "eye_path_face_food_arrow_text",
+      "rule": "clear_eye_path_without_redundant_pointer",
       "severity": "block",
-      "pass_condition": "composition guides the viewer from Face to Food to Arrow to Text"
+      "pass_condition": "composition has a clear mobile eye path among the necessary face/hero/text elements; an Arrow/Signal is optional and must not be added when redundant"
     },
     {
       "id": "V3",
@@ -628,15 +677,15 @@
     },
     {
       "id": "V6",
-      "rule": "exactly_one_recognizable_hero_object",
+      "rule": "one_dominant_visual_story_or_hero_group",
       "severity": "block",
-      "pass_condition": "one food, body part, object, or visual class dominates the concept"
+      "pass_condition": "one visual story dominates; a single hero object is preferred, but list or multi-item titles may use a clearly unified hero group when needed to preserve the whole-video/list-level promise"
     },
     {
       "id": "V7",
       "rule": "human_face_present",
       "severity": "block",
-      "pass_condition": "a clear expressive human face is present unless a documented topic-specific exception exists"
+      "pass_condition": "a clear expressive human face is present unless a documented topic-specific exception exists; when no presenter reference is supplied, a generic realistic non-clinician older-adult model is allowed and must be explicitly flagged"
     },
     {
       "id": "V8",
@@ -654,7 +703,7 @@
       "id": "V10",
       "rule": "medical_visual_safety",
       "severity": "block",
-      "pass_condition": "no cure symbols, fake before-after numbers, fake medical results, medication-change implication, frightening hospital imagery, or guaranteed outcome"
+      "pass_condition": "medical visual safety is checked before scoring/ranking and re-checked on the final image prompt; no cure symbols, fake before-after numbers, fake medical results, medication-change implication, frightening hospital imagery, guaranteed outcome, or newly introduced unsafe chart/pill/scan/anatomy cue"
     },
     {
       "id": "V11",
@@ -714,7 +763,7 @@
       "id": "V20",
       "rule": "minimum_text_family_diversity",
       "severity": "block",
-      "pass_condition": "at least 5 distinct thumbnail text families are explored across the 10 concepts"
+      "pass_condition": "at least 5 distinct thumbnail text families are explored across the 10 concepts when no applicable ACTIVE channel evidence conflicts; channel evidence plus senior clarity takes precedence over forced family diversity"
     },
     {
       "id": "V21",
@@ -726,7 +775,7 @@
       "id": "V22",
       "rule": "text_option_packaging_scoring_complete",
       "severity": "block",
-      "pass_condition": "each text option is scored for Research Integrity, Medical Safety, Mobile Readability, Information Gap, Emotional Trigger, Internal Question, Self Identification, and Packaging Score"
+      "pass_condition": "each text option is scored for Research Integrity, Medical Safety, Mobile Readability, Senior Comprehension / Semantic Completeness, Information Gap, Emotional Trigger, Internal Question, Self Identification, Promise Coverage, Instant Visual Comprehension, and Packaging Score"
     },
     {
       "id": "V23",
@@ -756,25 +805,25 @@
       "id": "V27",
       "rule": "reference_presenter_identity_only",
       "severity": "block",
-      "pass_condition": "when a reference presenter image is available, the final prompt states that it is used only as the facial identity reference and that the presenter is recreated for the thumbnail concept"
+      "pass_condition": "when a reference presenter image is available, the final prompt states that it is used only as the facial identity reference and the presenter is recreated; when absent, the generic-model fallback flag is emitted"
     },
     {
       "id": "V28",
       "rule": "reference_composition_not_copied",
       "severity": "block",
-      "pass_condition": "final prompt redesigns clothing, pose, expression, camera angle, lighting, background, and accessories for the concept instead of copying the reference composition"
+      "pass_condition": "when a presenter reference exists, final prompt redesigns clothing, pose, expression, camera angle, lighting, background, and unrelated accessories instead of copying the reference composition"
     },
     {
       "id": "V29",
       "rule": "reference_accessories_removed",
       "severity": "block",
-      "pass_condition": "podcast equipment, headphones, desk, computer, boom arm, keyboard, coffee mug, office chair, and unrelated reference accessories are excluded unless the concept explicitly requires them"
+      "pass_condition": "unrelated reference accessories are excluded unless the concept requires them; glasses follow the identity rule: preserve when present in the supplied reference, never add when absent"
     },
     {
       "id": "V30",
       "rule": "presenter_identity_preserved",
       "severity": "block",
-      "pass_condition": "face, facial proportions, hairstyle, beard if present, eyebrows, skin tone, age appearance, and identity are preserved"
+      "pass_condition": "when a presenter reference exists, face, facial proportions, hairstyle, beard if present, eyebrows, skin tone, age appearance, identity, and glasses if present are preserved; when no reference exists, the generic model must not be represented as the channel presenter"
     },
     {
       "id": "V31",
@@ -791,8 +840,8 @@
       {
         "title": "Eat 2 Kiwis Before Bed After 60... What Happens?",
         "weak_thumbnail_text": "EAT 2 KIWIS BEFORE BED",
-        "better_thumbnail_text": "2 KIWIS?",
-        "reason": "The improved thumbnail keeps the hero object and curiosity without duplicating the full title."
+        "better_thumbnail_text": "WHY AT NIGHT?",
+        "reason": "The improved thumbnail keeps the kiwi subject clear through the visible hero while adding a senior-readable timing question without repeating the title's main wording."
       }
     ]
   },
@@ -804,6 +853,8 @@
     "winning_prompt_required": true,
     "canonical_file": "04_thumbnail_concepts.md",
     "canonical_file_must_include": [
+      "thumbnail_contract_version_2_6",
+      "historical_channel_examples_used",
       "thumbnail_text_intelligence_diagnosis",
       "visual_pattern_intelligence_analysis",
       "common_competitor_layout_map",
@@ -811,6 +862,9 @@
       "text_intelligence_fields_for_every_concept",
       "text_option_a_b_c_for_every_concept",
       "text_option_packaging_scoring",
+      "senior_comprehension_scores",
+      "promise_coverage_scores",
+      "instant_visual_comprehension_scores",
       "internal_question_scores",
       "self_identification_scores",
       "recommended_text_winner_per_concept",
@@ -831,10 +885,12 @@
       "selected_winner",
       "why_winner_stands_out_from_competitors",
       "text_overlay_specification",
-      "production_ready_ai_image_prompt"
+      "production_ready_ai_image_prompt",
+      "ranked_table_detailed_winner_sync_PASS_ascii"
     ],
     "prompt_file": "11_thumbnail_prompt.md",
     "prompt_file_must_include": [
+      "thumbnail_contract_version_2_6",
       "winning_concept",
       "selected_title",
       "selected_thumbnail_text",
@@ -846,7 +902,13 @@
       "mobile_readability_notes",
       "medical_safety_notes",
       "information_gap_explanation"
-    ]
+    ],
+    "cross_file_sync_required": true,
+    "cross_file_sync_check": "04_thumbnail_concepts.md and 11_thumbnail_prompt.md must agree on selected title, winning concept, selected thumbnail text, text overlay specification, and final production layout/prompt intent before thumbnail validation can PASS.",
+    "legacy_project_policy": "Do not retroactively fail a package with no Thumbnail Contract Version marker solely because v2.6 adds Historical Channel Examples Used, version markers, or sync markers. Enforce the full v2.6 output contract on packages generated or intentionally regenerated under v2.6.",
+    "contract_version_marker": "Thumbnail Contract Version: 2.6",
+    "legacy_detection_policy": "If Thumbnail Contract Version is absent, treat the package as legacy for v2.6 migration purposes. Do not retroactively apply newly required v2.6-only sections unless the thumbnail package is intentionally regenerated.",
+    "final_sync_line": "Ranked-table <-> detailed-winner sync: PASS"
   },
   "prohibited_visuals": [
     "fake_medical_numbers",
@@ -870,7 +932,7 @@
     "unrelated_reference_accessories",
     "reference_clothing_copied_without_justification",
     "reference_composition_copied",
-    "presenter_identity_changed"
+    "presenter_identity_changed_when_reference_supplied"
   ],
   "winning_title_contract": {
     "source": "Projects/<topic_slug>/project.json.anchor_title",

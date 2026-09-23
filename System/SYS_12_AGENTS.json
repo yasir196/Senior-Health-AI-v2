@@ -1,6 +1,6 @@
 {
   "module": "agent_definitions",
-  "version": "1.2",
+  "version": "1.3",
   "orchestration": "SYS_11.dag",
   "project_root": "Projects/<topic_slug>/",
   "agents": [
@@ -119,7 +119,8 @@
         "topic_validation": "01_topic_validation.md",
         "research_sheet": "02_research_sheet.md",
         "medical_gate_1": "13_fact_check_log.md pass",
-        "winning_title": "project.json.anchor_title (required, immutable user-supplied title)"
+        "winning_title": "project.json.anchor_title (required, immutable user-supplied title)",
+        "active_channel_packaging_rules": "Analytics/active_channel_packaging_rules.md (optional, if exists)"
       },
       "output_files": [
         "04_thumbnail_concepts.md",
@@ -130,10 +131,13 @@
       ],
       "failure_route": "thumbnail_agent",
       "constraints": [
-        "apply_V1_V6"
+        "apply_V1_V31"
       ],
       "reads": [
+        "SYS_01",
+        "SYS_03",
         "SYS_06",
+        "SYS_07",
         "SYS_09",
         "SYS_15"
       ]
