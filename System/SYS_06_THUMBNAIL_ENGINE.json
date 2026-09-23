@@ -1,6 +1,6 @@
 {
   "module": "thumbnail_engine",
-  "version": "2.6",
+  "version": "2.7",
   "purpose": "Packaging-first professional YouTube thumbnail packaging, visual pattern intelligence, and thumbnail text intelligence system for Senior Health AI videos while preserving medical integrity. Internal Packaging Score is a quality heuristic, not measured or predicted YouTube CTR.",
   "required_project_inputs": [
     "Projects/<topic_slug>/01_topic_validation.md",
@@ -178,7 +178,7 @@
         "examples": [
           "WHAT CHANGED?",
           "WHY HARDER?",
-          "WHAT'S MISSING?"
+          "WHY NOT BEFORE?"
         ]
       },
       {
@@ -324,13 +324,15 @@
       "outline_color",
       "outline_thickness",
       "drop_shadow_recommendation",
-      "maximum_text_width",
-      "maximum_text_height",
+      "text_width_grid_cells",
+      "text_height_grid_cells",
       "safe_margins",
       "mobile_readability_notes",
       "do_not_overlap_zones",
       "visual_hierarchy",
-      "contrast_recommendation"
+      "contrast_recommendation",
+      "3x3_grid_placement_for_text_presenter_and_hero_object_or_group",
+      "bottom_right_timestamp_safe_zone_status"
     ],
     "style_preferences": [
       "bold_condensed_sans_serif_when_suitable",
@@ -355,7 +357,11 @@
       "wording_is_as_concise_as_possible_without_losing_senior_clarity_or_semantic_completeness",
       "line_breaks_keep_words_large",
       "outline_and_shadow_separate_text_from_background",
-      "safe_margins_keep_text_inside_frame"
+      "safe_margins_keep_text_inside_frame",
+      "bottom_right_grid_cell_has_no_text_face_hands_or_gesture_hero_object_or_hero_group_or_other_critical_detail; background_or_human_model_noncritical_clothing_or_shoulder_are_allowed"
+    ],
+    "safe_margin_requirements": [
+      "apply_bottom_right_timestamp_safe_zone_definition"
     ]
   },
   "reference_presenter_identity": {
@@ -446,7 +452,7 @@
     "text_words_min": 2,
     "text_words_max": null,
     "text_length_policy": "No fixed maximum. Prefer the shortest wording that stays immediately clear for a 60+ viewer on mobile. Length is a learned packaging variable and must not be shortened into ambiguous shorthand.",
-    "face_position": "right_third_preferred",
+    "face_position": "channel_reference_and_3x3_grid_preferred",
     "hero_objects": "one_dominant_visual_story_or_hero_group; list-level concepts may use multiple clearly grouped items when needed to preserve the list promise",
     "signal_icons": "optional_when_nonredundant",
     "required_eye_path": "clear_mobile_eye_path_required; arrow/signal is optional and must not be added when redundant",
@@ -829,7 +835,25 @@
       "id": "V31",
       "rule": "complete_text_overlay_specification",
       "severity": "block",
-      "pass_condition": "the selected winning concept and final prompt include a Text Overlay Specification with final overlay text, line breaks, text placement, alignment, font style, font weight, font family recommendation, uppercase/lowercase, primary text color, highlight color if applicable, outline color, outline thickness, drop shadow recommendation, maximum text width, maximum text height, safe margins, mobile readability notes, do-not-overlap zones, visual hierarchy, and contrast recommendation"
+      "pass_condition": "the selected winning concept and final prompt include a Text Overlay Specification with final overlay text, line breaks, text placement, alignment, font style, font weight, font family recommendation, uppercase/lowercase, primary text color, highlight color if applicable, outline color, outline thickness, drop shadow recommendation, text width grid cells, text height grid cells, 3x3 grid placement for text/presenter/hero, bottom-right timestamp safe-zone status, safe margins, mobile readability notes, do-not-overlap zones, visual hierarchy, and contrast recommendation"
+    },
+    {
+      "id": "V32",
+      "rule": "bottom_right_timestamp_safe_zone_clear",
+      "severity": "block",
+      "pass_condition": "selected concept, Text Overlay Specification, and final production prompt keep the bottom-right 3x3 grid cell free of text, face, hands/gesture, hero object/group, anatomical illustrations, organ cutaways, internal details, stool cues, cards, icons, and other critical detail; only background or the human model's non-critical clothing/shoulder is allowed there; tall/full-body heroes use the center column or are cropped/faded above the bottom row and are not assigned to the same column as the face; both output files include exactly: Bottom-right timestamp safe zone: CLEAR"
+    },
+    {
+      "id": "V33",
+      "rule": "channel_led_text_visual_dominance",
+      "severity": "warn",
+      "pass_condition": "text is normally the dominant visual element; numeric reference lives only in text_visual_dominance_guidance.reviewer_reference and must never appear in generated outputs; applicable ACTIVE historical channel examples take precedence"
+    },
+    {
+      "id": "V34",
+      "name": "Generated composition geometry canonicalization",
+      "severity": "block",
+      "pass_condition": "04_thumbnail_concepts.md and 11_thumbnail_prompt.md contain the required GRID MAP block, use only the nine canonical 3x3 cell names for composition, contain no numeric composition percentages/thirds/frame shares, and contain no non-canonical cell aliases; historical percentage geometry is translated to canonical cells before output"
     }
   ],
   "information_overlap_policy": {
@@ -853,7 +877,7 @@
     "winning_prompt_required": true,
     "canonical_file": "04_thumbnail_concepts.md",
     "canonical_file_must_include": [
-      "thumbnail_contract_version_2_6",
+      "thumbnail_contract_version_2_7",
       "historical_channel_examples_used",
       "thumbnail_text_intelligence_diagnosis",
       "visual_pattern_intelligence_analysis",
@@ -886,11 +910,12 @@
       "why_winner_stands_out_from_competitors",
       "text_overlay_specification",
       "production_ready_ai_image_prompt",
-      "ranked_table_detailed_winner_sync_PASS_ascii"
+      "ranked_table_detailed_winner_sync_PASS_ascii",
+      "bottom_right_timestamp_safe_zone_CLEAR"
     ],
     "prompt_file": "11_thumbnail_prompt.md",
     "prompt_file_must_include": [
-      "thumbnail_contract_version_2_6",
+      "thumbnail_contract_version_2_7",
       "winning_concept",
       "selected_title",
       "selected_thumbnail_text",
@@ -901,14 +926,16 @@
       "text_overlay_specification",
       "mobile_readability_notes",
       "medical_safety_notes",
-      "information_gap_explanation"
+      "information_gap_explanation",
+      "bottom_right_timestamp_safe_zone_CLEAR"
     ],
     "cross_file_sync_required": true,
     "cross_file_sync_check": "04_thumbnail_concepts.md and 11_thumbnail_prompt.md must agree on selected title, winning concept, selected thumbnail text, text overlay specification, and final production layout/prompt intent before thumbnail validation can PASS.",
-    "legacy_project_policy": "Do not retroactively fail a package with no Thumbnail Contract Version marker solely because v2.6 adds Historical Channel Examples Used, version markers, or sync markers. Enforce the full v2.6 output contract on packages generated or intentionally regenerated under v2.6.",
-    "contract_version_marker": "Thumbnail Contract Version: 2.6",
-    "legacy_detection_policy": "If Thumbnail Contract Version is absent, treat the package as legacy for v2.6 migration purposes. Do not retroactively apply newly required v2.6-only sections unless the thumbnail package is intentionally regenerated.",
-    "final_sync_line": "Ranked-table <-> detailed-winner sync: PASS"
+    "legacy_project_policy": "Do not retroactively fail an unversioned, v2.5, or v2.6 package solely because v2.7 adds composition guidance, the 3x3 map, or timestamp safe-zone markers. Enforce the full v2.7 output contract on packages generated or intentionally regenerated under v2.7.",
+    "contract_version_marker": "Thumbnail Contract Version: 2.7",
+    "legacy_detection_policy": "If Thumbnail Contract Version is absent, treat the package as legacy for v2.7 migration purposes. A package explicitly marked 2.6 is also legacy relative to v2.7. Do not retroactively apply newly required v2.7-only composition or safe-zone sections unless the thumbnail package is intentionally regenerated.",
+    "final_sync_line": "Ranked-table <-> detailed-winner sync: PASS",
+    "bottom_right_timestamp_safe_zone_line": "Bottom-right timestamp safe zone: CLEAR"
   },
   "prohibited_visuals": [
     "fake_medical_numbers",
@@ -940,5 +967,94 @@
     "must_use_exactly": true,
     "generation_or_rewrite_allowed": false,
     "selected_title_field_rule": "Every selected_title/final_title_thumbnail_pairing field must use the exact project.json.anchor_title."
+  },
+  "composition_policy": {
+    "precedence": [
+      "medical_safety",
+      "bottom_right_timestamp_safe_zone",
+      "applicable_ACTIVE_historical_channel_examples",
+      "text_visual_dominance_guidance",
+      "generic_editorial_composition"
+    ],
+    "text_visual_dominance_guidance": {
+      "target": "Text should normally be the dominant visual element.",
+      "reviewer_reference": "roughly 40-55% of the frame",
+      "reviewer_only": true,
+      "generated_output_rule": "Do not expose the numeric percentage target in 04_thumbnail_concepts.md or 11_thumbnail_prompt.md.",
+      "severity": "warn",
+      "enforcement": "guidance_only_not_a_measured_percentage_gate",
+      "historical_override": "Applicable ACTIVE historical channel examples take precedence over this guidance."
+    },
+    "grid_specification": {
+      "system": "3x3_named_cells",
+      "required_output": "Describe text, presenter/face, and hero object/group placement using only canonical named 3x3 cells; never use numeric canvas percentages, thirds, numeric frame shares, or non-canonical aliases.",
+      "example": "GRID MAP\ntext: top-left, middle-left\nhero: middle-center\nface: middle-right\nbottom-right: background/clothing only",
+      "cell_names": [
+        "top-left",
+        "top-center",
+        "top-right",
+        "middle-left",
+        "middle-center",
+        "middle-right",
+        "bottom-left",
+        "bottom-center",
+        "bottom-right"
+      ],
+      "required_grid_map": {
+        "heading": "GRID MAP",
+        "keys": [
+          "text",
+          "hero",
+          "face",
+          "bottom-right"
+        ],
+        "values": "comma-separated canonical cell names only; bottom-right may use the literal value background/clothing only"
+      }
+    },
+    "bottom_right_timestamp_safe_zone": {
+      "severity": "block",
+      "cell": "bottom-right",
+      "prohibited": [
+        "text",
+        "face",
+        "hands_or_gesture",
+        "hero_object",
+        "hero_group",
+        "anatomical_illustration",
+        "organ_cutaway",
+        "internal_detail",
+        "stool_cue",
+        "card",
+        "icon",
+        "other_critical_detail"
+      ],
+      "final_prompt_requirement": "Keep the bottom-right grid cell free of text, face, hands/gesture, hero object/group, anatomical illustrations, organ cutaways, internal details, stool cues, cards, icons, and other critical detail. Only background or the human model's non-critical clothing/shoulder may occupy the cell.",
+      "required_output_line": "Bottom-right timestamp safe zone: CLEAR",
+      "allowed": [
+        "background",
+        "human_model_noncritical_clothing_or_shoulder"
+      ]
+    },
+    "top_right_ui_awareness": {
+      "severity": "warn",
+      "guidance": "Prefer keeping critical small details away from the top-right when practical because interface controls can appear there on some surfaces."
+    },
+    "tall_hero_rule": {
+      "severity": "block",
+      "rule": "When the hero is tall or full-body (for example an anatomy cutaway, standing person, or bottle), place the critical hero in the center column or crop/fade it above the bottom row so the bottom-right cell remains clear. Do not assign the hero and the face to the same column."
+    },
+    "output_geometry_contract": {
+      "severity": "block",
+      "generated_output_rule": "Never express composition in 04_thumbnail_concepts.md or 11_thumbnail_prompt.md as numeric percentages, thirds, or numeric canvas/frame shares. Translate all composition geometry, including ACTIVE historical examples, into canonical named 3x3 cells.",
+      "historical_geometry_rule": "Historical percentage geometry is reviewer evidence only. Translate it to canonical 3x3 cells before output; never copy the numeric geometry or non-canonical aliases.",
+      "canonical_cell_names_only": true,
+      "aliases_invalid": true,
+      "required_grid_map_keys": [
+        "text",
+        "hero",
+        "face",
+        "bottom-right"
+      ]
+    }
   }
 }
