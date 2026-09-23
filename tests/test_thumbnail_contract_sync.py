@@ -203,8 +203,8 @@ def test_thumbnail_v27_overlay_uses_grid_dimensions_not_percentage_width():
 
 
 def test_thumbnail_v27_generated_outputs_forbid_percentage_geometry_and_aliases():
-    agent = _read("Agents/Thumbnail_Agent.md")
-    sys06 = _load_json("System/SYS_06_THUMBNAIL_ENGINE.json")
+    agent = AGENT.read_text(encoding="utf-8")
+    sys06 = _load(SYS06)
     contract = sys06["composition_policy"]["output_geometry_contract"]
     assert contract["severity"].lower() == "block"
     assert contract["canonical_cell_names_only"] is True
@@ -224,7 +224,7 @@ def test_thumbnail_v27_generated_outputs_forbid_percentage_geometry_and_aliases(
 
 
 def test_thumbnail_v27_percentage_dominance_is_reviewer_only():
-    sys06 = _load_json("System/SYS_06_THUMBNAIL_ENGINE.json")
+    sys06 = _load(SYS06)
     dominance = sys06["composition_policy"]["text_visual_dominance"]
     assert dominance["reviewer_only"] is True
     assert "Do not expose the numeric percentage target" in dominance["generated_output_rule"]
