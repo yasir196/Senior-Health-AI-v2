@@ -126,6 +126,8 @@ def test_thumbnail_v27_composition_has_no_fixed_43_41_tokens():
         assert "41%" not in text, f"stale fixed composition token in {path}"
         assert "left 43%" not in text.lower(), f"stale fixed left split in {path}"
         assert "maximum 41%" not in text.lower(), f"stale fixed text-width rule in {path}"
+        assert "35–42%" not in text, f"stale fixed presenter-width rule in {path}"
+        assert "35-42%" not in text, f"stale fixed presenter-width rule in {path}"
 
 
 def test_thumbnail_v27_safe_zone_blocks_and_dominance_warns():
@@ -147,3 +149,43 @@ def test_thumbnail_v27_safe_zone_machine_line_is_synced():
     assert line in agent
     assert sys06["composition_policy"]["bottom_right_timestamp_safe_zone"]["required_output_line"] == line
     assert all(ord(ch) < 128 for ch in line)
+
+
+def test_thumbnail_v27_grid_uses_only_declared_cell_names():
+    sys06 = _load(SYS06)
+    grid = sys06["composition_policy"]["grid_specification"]
+    expected = {
+        "top-left", "top-center", "top-right",
+        "middle-left", "middle-center", "middle-right",
+        "bottom-left", "bottom-center", "bottom-right",
+    }
+    assert set(grid["cell_names"]) == expected
+    used = set(re.findall(r"(?:top|middle|bottom)-(?:left|center|right)", grid["example"]))
+    assert used <= expected
+    assert "center-right" not in grid["example"]
+
+
+def test_thumbnail_v27_safe_zone_definition_is_consistent():
+    agent = AGENT.read_text(encoding="utf-8")
+    sys06 = _load(SYS06)
+    zone = sys06["composition_policy"]["bottom_right_timestamp_safe_zone"]
+    assert zone["prohibited"] == [
+        "text", "face", "hands_or_gesture", "hero_object", "hero_group", "other_critical_detail"
+    ]
+    assert zone["allowed"] == ["background", "presenter_torso_or_clothing"]
+    v32 = next(v for v in sys06["validation_rules"] if v["id"] == "V32")
+    for phrase in ("hands/gesture", "presenter torso/clothing"):
+        assert phrase in v32["pass_condition"]
+        assert phrase in agent
+
+
+def test_thumbnail_v27_overlay_uses_grid_dimensions_not_percentage_width():
+    sys06 = _load(SYS06)
+    fields = sys06["text_overlay_specification"]["required_fields"]
+    assert "maximum_text_width" not in fields
+    assert "maximum_text_height" not in fields
+    assert "text_width_grid_cells" in fields
+    assert "text_height_grid_cells" in fields
+    v31 = next(v for v in sys06["validation_rules"] if v["id"] == "V31")
+    assert "text width grid cells" in v31["pass_condition"]
+    assert "3x3 grid placement" in v31["pass_condition"]
