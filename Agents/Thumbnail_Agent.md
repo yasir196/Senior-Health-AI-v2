@@ -387,7 +387,7 @@ The final prompt must not allow the image model to invent a different face or co
 - Penalize concepts with low Visual Uniqueness even if they are otherwise clear.
 - Penalize concepts with weak Mobile Eye-Catch even if they are medically safe.
 - The winner must be both high-Packaging-Score and visibly differentiated from common competitor layouts.
-- The selected winning text option must have `Senior Comprehension / Semantic Completeness >= 7/10` with the video title hidden; this is a text-option minimum, not a concept-category score.
+- Validation fails if the selected winning text option has `Senior Comprehension / Semantic Completeness < 7/10` with the video title hidden; this is a text-option minimum, not a concept-category score.
 - No misleading before/after transformation, fake diagnosis screen, or fear-based medical misinformation.
 - There is no fixed thumbnail word-count maximum. Validation fails if text is shortened into ambiguous shorthand merely to satisfy brevity, or if longer text becomes too small/dense to read quickly on mobile. Choose the shortest wording that preserves clear senior-audience meaning, not the fewest possible words.
 - Thumbnail text must not reveal the entire payoff.
