@@ -218,13 +218,13 @@ def test_thumbnail_v27_generated_outputs_forbid_percentage_geometry_and_aliases(
     assert grid["required_grid_map"]["heading"] == "GRID MAP"
     assert grid["required_grid_map"]["keys"] == ["text", "hero", "face", "bottom-right"]
     v34 = next(v for v in sys06["validation_rules"] if v["id"] == "V34")
-    assert v34["severity"] == "BLOCK"
+    assert v34["severity"] == "block"
     assert "no numeric composition percentages" in v34["pass_condition"]
     assert "non-canonical cell aliases" in v34["pass_condition"]
 
 
 def test_thumbnail_v27_percentage_dominance_is_reviewer_only():
     sys06 = _load(SYS06)
-    dominance = sys06["composition_policy"]["text_visual_dominance"]
+    dominance = sys06["composition_policy"]["text_visual_dominance_guidance"]
     assert dominance["reviewer_only"] is True
     assert "Do not expose the numeric percentage target" in dominance["generated_output_rule"]
