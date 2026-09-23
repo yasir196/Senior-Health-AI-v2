@@ -358,7 +358,7 @@
       "line_breaks_keep_words_large",
       "outline_and_shadow_separate_text_from_background",
       "safe_margins_keep_text_inside_frame",
-      "bottom_right_grid_cell_has_no_text_face_hands_or_gesture_hero_object_or_hero_group_or_other_critical_detail; presenter_torso_or_clothing_and_background_are_allowed"
+      "bottom_right_grid_cell_has_no_text_face_hands_or_gesture_hero_object_or_hero_group_or_other_critical_detail; background_or_human_model_noncritical_clothing_or_shoulder_are_allowed"
     ],
     "safe_margin_requirements": [
       "apply_bottom_right_timestamp_safe_zone_definition"
@@ -848,6 +848,12 @@
       "rule": "channel_led_text_visual_dominance",
       "severity": "warn",
       "pass_condition": "text normally has strong visual dominance comparable to roughly 40-55% of the frame, but this is guidance only and is never measured as a percentage gate; applicable ACTIVE historical channel examples take precedence"
+    },
+    {
+      "id": "V34",
+      "name": "Generated composition geometry canonicalization",
+      "severity": "BLOCK",
+      "pass_condition": "04_thumbnail_concepts.md and 11_thumbnail_prompt.md contain the required GRID MAP block, use only the nine canonical 3x3 cell names for composition, contain no numeric composition percentages/thirds/frame shares, and contain no non-canonical cell aliases; historical percentage geometry is translated to canonical cells before output"
     }
   ],
   "information_overlap_policy": {
@@ -978,7 +984,7 @@
     },
     "grid_specification": {
       "system": "3x3_named_cells",
-      "required_output": "Describe text, presenter, and hero object/group placement using named 3x3 cells rather than exact canvas percentages.",
+      "required_output": "Describe text, presenter/face, and hero object/group placement using only canonical named 3x3 cells; never use numeric canvas percentages, thirds, numeric frame shares, or non-canonical aliases.",
       "example": "text: top-left + middle-left; presenter: middle-right; hero: middle-center",
       "cell_names": [
         "top-left",
@@ -990,7 +996,17 @@
         "bottom-left",
         "bottom-center",
         "bottom-right"
-      ]
+      ],
+      "required_grid_map": {
+        "heading": "GRID MAP",
+        "keys": [
+          "text",
+          "hero",
+          "face",
+          "bottom-right"
+        ],
+        "values": "comma-separated canonical cell names only; bottom-right may use the literal value background/clothing only"
+      }
     },
     "bottom_right_timestamp_safe_zone": {
       "severity": "block",
@@ -1023,6 +1039,19 @@
     "tall_hero_rule": {
       "severity": "block",
       "rule": "When the hero is tall or full-body (for example an anatomy cutaway, standing person, or bottle), place the critical hero in the center column or crop/fade it above the bottom row so the bottom-right cell remains clear. Do not assign the hero and the face to the same column."
+    },
+    "output_geometry_contract": {
+      "severity": "block",
+      "generated_output_rule": "Never express composition in 04_thumbnail_concepts.md or 11_thumbnail_prompt.md as numeric percentages, thirds, or numeric canvas/frame shares. Translate all composition geometry, including ACTIVE historical examples, into canonical named 3x3 cells.",
+      "historical_geometry_rule": "Historical percentage geometry is reviewer evidence only. Translate it to canonical 3x3 cells before output; never copy the numeric geometry or non-canonical aliases.",
+      "canonical_cell_names_only": true,
+      "aliases_invalid": true,
+      "required_grid_map_keys": [
+        "text",
+        "hero",
+        "face",
+        "bottom-right"
+      ]
     }
   }
 }
