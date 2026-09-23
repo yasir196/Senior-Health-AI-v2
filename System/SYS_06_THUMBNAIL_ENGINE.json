@@ -361,7 +361,7 @@
       "bottom_right_grid_cell_has_no_text_face_hands_or_gesture_hero_object_or_hero_group_or_other_critical_detail; presenter_torso_or_clothing_and_background_are_allowed"
     ],
     "safe_margin_requirements": [
-      "reserve_bottom_right_3x3_cell_for_timestamp_overlay"
+      "apply_bottom_right_timestamp_safe_zone_definition"
     ]
   },
   "reference_presenter_identity": {
