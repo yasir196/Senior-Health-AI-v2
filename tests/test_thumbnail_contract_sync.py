@@ -124,6 +124,8 @@ def test_thumbnail_v27_composition_has_no_fixed_43_41_tokens():
         text = path.read_text(encoding="utf-8")
         assert "43%" not in text, f"stale fixed composition token in {path}"
         assert "41%" not in text, f"stale fixed composition token in {path}"
+        assert "left 43%" not in text.lower(), f"stale fixed left split in {path}"
+        assert "maximum 41%" not in text.lower(), f"stale fixed text-width rule in {path}"
 
 
 def test_thumbnail_v27_safe_zone_blocks_and_dominance_warns():
