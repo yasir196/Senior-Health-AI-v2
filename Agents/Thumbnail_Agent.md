@@ -95,7 +95,7 @@ Create:
 19. Save the mandatory Historical Channel Examples Used audit section, all concepts, text options, text-option scores, text intelligence fields, similarity estimates, finalist reasoning, winner, winner differentiation explanation, Text Overlay Specification, and final prompt. Before saving, verify every historical-pattern claim against that audit section; unsupported claims make the output invalid.
 20. **Single Source of Truth / Summary Sync Lock:** For each concept, the detailed scoring block is the source of truth for that concept's `Recommended Winner` and its `Packaging Score`. The Ranked Concept Table, Top 3 Finalists, Recommended Winner, Safest Alternative, Highest-Upside Experiment, and Final Title-Thumbnail Pairing must be derived only from those finalized detailed winners. Never preserve an earlier option text or score after detailed scoring selects a different winner. Before emitting the file, verify every summary/reference against the detailed winner. Any mismatch makes the output invalid and must be synchronized before output.
 21. **Terminology Lock:** Never label an internal thumbnail-quality score as `CTR Score`, `Overall CTR Score`, predicted CTR, CTR percentage, or any equivalent CTR estimate. Use only `Packaging Score: N/100` for the agent's internal packaging-quality score. Actual CTR is measured post-publication from YouTube analytics; Thumbnail_Agent does not predict or guarantee CTR.
-22. End `04_thumbnail_concepts.md` with `Ranked-table ↔ detailed-winner sync: PASS` only after the deterministic cross-check in Rule 19 succeeds. If it does not succeed, repair the summary fields first; do not emit `PASS` on inconsistent output.
+22. End `04_thumbnail_concepts.md` with `Ranked-table ↔ detailed-winner sync: PASS` only after the deterministic cross-check in Rule 20 succeeds. If it does not succeed, repair the summary fields first; do not emit `PASS` on inconsistent output.
 
 ## 5. Thumbnail Text Intelligence
 
@@ -414,7 +414,7 @@ The final prompt must not allow the image model to invent a different face or co
 - Ranked table of all 10 concepts
 - Text intelligence fields for every concept
 - Text Option A, Text Option B, and Text Option C for every concept
-- Text-option scoring for Research Integrity, Medical Safety, Mobile Readability, Information Gap, Emotional Trigger, Internal Question, Self Identification, Promise Coverage, Instant Visual Comprehension, and Packaging Score
+- Text-option scoring for Research Integrity, Medical Safety, Mobile Readability, Senior Comprehension / Semantic Completeness, Information Gap, Emotional Trigger, Internal Question, Self Identification, Promise Coverage, Instant Visual Comprehension, and Packaging Score
 - Score breakdown for each concept, including Visual Uniqueness and Mobile Eye-Catch
 - Visual similarity estimate for each concept against common competitor layouts
 - Overlap notes against the selected title
