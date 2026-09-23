@@ -96,7 +96,7 @@ Create:
 19. Save the mandatory Historical Channel Examples Used audit section, all concepts, text options, text-option scores, text intelligence fields, similarity estimates, finalist reasoning, winner, winner differentiation explanation, Text Overlay Specification, and final prompt. Before saving, verify every historical-pattern claim against that audit section; unsupported claims make the output invalid.
 20. **Single Source of Truth / Summary Sync Lock:** For each concept, the detailed scoring block is the source of truth for that concept's `Recommended Winner` and its `Packaging Score`. The Ranked Concept Table, Top 3 Finalists, Recommended Winner, Safest Alternative, Highest-Upside Experiment, and Final Title-Thumbnail Pairing must be derived only from those finalized detailed winners. Never preserve an earlier option text or score after detailed scoring selects a different winner. Before emitting the file, verify every summary/reference against the detailed winner. Any mismatch makes the output invalid and must be synchronized before output.
 21. **Terminology Lock:** Never label an internal thumbnail-quality score as `CTR Score`, `Overall CTR Score`, predicted CTR, CTR percentage, or any equivalent CTR estimate. Use only `Packaging Score: N/100` for the agent's internal packaging-quality score. Actual CTR is measured post-publication from YouTube analytics; Thumbnail_Agent does not predict or guarantee CTR.
-22. End `04_thumbnail_concepts.md` with `Ranked-table ↔ detailed-winner sync: PASS` only after the deterministic cross-check in Rule 20 succeeds. If it does not succeed, repair the summary fields first; do not emit `PASS` on inconsistent output.
+22. End `04_thumbnail_concepts.md` with `Ranked-table <-> detailed-winner sync: PASS` only after the deterministic cross-check in Rule 20 succeeds. If it does not succeed, repair the summary fields first; do not emit `PASS` on inconsistent output.
 
 ## 5. Thumbnail Text Intelligence
 
@@ -362,7 +362,7 @@ The final prompt must not allow the image model to invent a different face or co
 
 **Glasses identity rule:** If glasses are present in the supplied presenter reference, preserve them. If glasses are absent, do not add them.
 
-**No-reference fallback:** If no presenter reference image is supplied, a generic realistic older-adult non-clinician model may be used. Do not represent that model as the channel presenter. Do not use a white coat, stethoscope, clinical badge, or other clinician-coded cue. The output must visibly state: `PRESENTER_REFERENCE: NOT SUPPLIED — generic model used`.
+**No-reference fallback:** If no presenter reference image is supplied, a generic realistic older-adult non-clinician model may be used. Do not represent that model as the channel presenter. Do not use a white coat, stethoscope, clinical badge, or other clinician-coded cue. The output must visibly state: `PRESENTER_REFERENCE: NOT SUPPLIED - generic model used`.
 
 ## 8. Validation Rules
 
@@ -383,6 +383,7 @@ The final prompt must not allow the image model to invent a different face or co
 - Penalize concepts with low Visual Uniqueness even if they are otherwise clear.
 - Penalize concepts with weak Mobile Eye-Catch even if they are medically safe.
 - The winner must be both high-Packaging-Score and visibly differentiated from common competitor layouts.
+- The selected winning text option must have `Senior Comprehension / Semantic Completeness >= 7/10`; this is a text-option minimum, not a concept-category score.
 - No misleading before/after transformation, fake diagnosis screen, or fear-based medical misinformation.
 - There is no fixed thumbnail word-count maximum. Validation fails if text is shortened into ambiguous shorthand merely to satisfy brevity, or if longer text becomes too small/dense to read quickly on mobile. Choose the shortest wording that preserves clear senior-audience meaning, not the fewest possible words.
 - Validation fails if the overall winner has `Senior Comprehension / Semantic Completeness < 7/10`. Run this test with the video title hidden.
@@ -404,13 +405,14 @@ The final prompt must not allow the image model to invent a different face or co
 - Validation fails if any Ranked Concept Table text/score differs from that concept's finalized detailed `Recommended Winner` / `Packaging Score`.
 - Validation fails if Top 3 Finalists, Recommended Winner, Safest Alternative, Highest-Upside Experiment, or Final Title-Thumbnail Pairing references a stale pre-scoring option instead of the finalized detailed winner.
 - Validation fails if any internal quality score is labeled as CTR. Internal thumbnail-quality scoring must use `Packaging Score: N/100`; actual CTR is analytics-only and must not be predicted or guaranteed.
-- Validation fails if the final `Ranked-table ↔ detailed-winner sync: PASS` verification line is missing.
+- Validation fails if the final `Ranked-table <-> detailed-winner sync: PASS` verification line is missing.
 - Failure routing: if the winning thumbnail is unclear or unsafe, rerun Thumbnail_Agent.
 
 ## 9. Output Format
 
 `04_thumbnail_concepts.md` must include:
 
+- `Thumbnail Contract Version: 2.6` near the top of the file
 - Thumbnail strategy summary
 - Thumbnail Text Intelligence diagnosis: Primary Viewer Problem, Primary Viewer Emotion, Primary Viewer Question, Missing Piece, Internal Question Created, Primary Visual Hook, Emotional Trigger, Title-Thumbnail Information Gap, and Whole-Video Promise Coverage
 - Visual Pattern Intelligence analysis
@@ -430,10 +432,11 @@ The final prompt must not allow the image model to invent a different face or co
 - Explanation of why the winning concept stands out from competitors
 - Text Overlay Specification for the selected winner
 - Final production prompt
-- Final deterministic verification line: `Ranked-table ↔ detailed-winner sync: PASS` (this must be the final line of `04_thumbnail_concepts.md`)
+- Final deterministic verification line: `Ranked-table <-> detailed-winner sync: PASS` (this must be the final line of `04_thumbnail_concepts.md`)
 
 `11_thumbnail_prompt.md` must include:
 
+- `Thumbnail Contract Version: 2.6` near the top of the file
 - Winning concept name
 - Selected title
 - Selected thumbnail text
@@ -448,9 +451,9 @@ The final prompt must not allow the image model to invent a different face or co
 - Information-gap explanation
 - Cross-file sync confirmation that selected title, winning concept, selected thumbnail text, Text Overlay Specification, and final production layout/prompt intent match `04_thumbnail_concepts.md`
 
-Before either output is accepted, verify `04_thumbnail_concepts.md` ↔ `11_thumbnail_prompt.md` synchronization for those fields. A mismatch is a validation failure and must be repaired before PASS.
+Before either output is accepted, verify `04_thumbnail_concepts.md` <-> `11_thumbnail_prompt.md` synchronization for those fields. A mismatch is a validation failure and must be repaired before PASS.
 
-**Legacy package boundary:** Do not retroactively fail a previously completed v2.5 thumbnail package solely because it lacks v2.6 Historical Channel Examples or sync markers. Enforce the v2.6 output contract when a thumbnail package is generated or intentionally regenerated under v2.6.
+**Legacy package boundary:** If `Thumbnail Contract Version` is absent, treat the package as legacy for v2.6 migration purposes. Do not retroactively fail that package solely because it lacks v2.6 Historical Channel Examples, version markers, or sync markers. Enforce the full v2.6 output contract when a thumbnail package is generated or intentionally regenerated under v2.6.
 
 ## 10. Context Discipline and Quality Notes
 
