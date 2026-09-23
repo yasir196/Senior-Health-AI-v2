@@ -159,6 +159,10 @@ The channel serves adults 60+, and the thumbnail may be the viewer's primary rea
 - **Channel Thumbnail-Text Evidence Lock:** Treat ACTIVE rules for `text_length_bucket`, `text_line_count`, `text_density_bucket`, `question_hook`, `number_hook`, or other thumbnail-copy features as measured channel evidence. Before choosing text, explicitly state which ACTIVE text-copy rules apply. If matching historical examples are supplied with the ACTIVE rule, derive the new wording from their recurring structural pattern first (for example: context line + explicit main message + qualifier; or multi-line complete question), while replacing old topic-specific nouns/claims with the current project's evidence-safe language. Generate at least two pattern-derived options when medically and creatively appropriate. A short generic hook must not win merely because it is shorter or easier for the model to invent. If no ACTIVE text-copy rule exists, say that text length/style is not yet channel-learned and do not claim that short or long copy historically wins.
 
 - **Channel Visual/Color Pattern Lock:** Historical channel examples attached to ACTIVE packaging rules are also the primary reference for composition and color. Derive recurring presenter side/size, hero placement/count, text zone, dominant palette, text colors, accent family, background brightness, and contrast from those examples before inventing a new layout. Adapt rather than clone. An applicable learned visual/color pattern should beat generic model aesthetics unless the current title/evidence/medical safety/renderability requires a departure.
+- **Composition Precedence:** Medical safety and the bottom-right timestamp safe zone are hard requirements. After those, applicable ACTIVE historical channel examples take precedence over generic composition guidance. Text should normally have strong visual dominance comparable to roughly 40-55% of the frame, but this is guidance only, never a measured percentage gate, and it must not override applicable channel evidence. Generic editorial composition is the final fallback.
+- **3x3 Composition Map:** Describe the selected layout with named cells rather than exact canvas percentages, for example `text: top-left + middle-left`, `presenter: center-right`, `hero: middle-center`. Do not require a fixed geometric split-screen or fixed maximum text-width percentage unless an applicable ACTIVE channel example specifically supports it.
+- **Bottom-Right Timestamp Safe Zone:** The bottom-right 3x3 grid cell is a hard exclusion zone: no text, no face, and no hero object. Keep it empty or background-only in the final production prompt. The required machine-checkable line is exactly: `Bottom-right timestamp safe zone: CLEAR`.
+- **Top-Right UI Awareness:** Prefer keeping critical small details away from the top-right when practical because interface controls can appear there on some surfaces. This is guidance/warn only, not a blocking validator.
 
 - **Channel Color Evidence Lock:** Treat ACTIVE rules for `background_color_family`, `dominant_palette`, `text_color_scheme`, `accent_color_family`, `palette_temperature`, and `contrast_level` as measured channel packaging evidence, never universal color psychology or a CTR guarantee. Apply an ACTIVE color rule only when it fits the current topic, medical safety, legibility, and creative concept. Do not invent a preferred color scheme when no ACTIVE color evidence exists, and do not copy exact historical thumbnails merely to match a palette.
 - Historical text rules describe packaging associations, not causation. Never copy exact wording from an old thumbnail merely because its bucket/style performed well. Learn the structure (length/density/question/number pattern), then write project-specific copy.
@@ -383,10 +387,9 @@ The final prompt must not allow the image model to invent a different face or co
 - Penalize concepts with low Visual Uniqueness even if they are otherwise clear.
 - Penalize concepts with weak Mobile Eye-Catch even if they are medically safe.
 - The winner must be both high-Packaging-Score and visibly differentiated from common competitor layouts.
-- The selected winning text option must have `Senior Comprehension / Semantic Completeness >= 7/10`; this is a text-option minimum, not a concept-category score.
+- The selected winning text option must have `Senior Comprehension / Semantic Completeness >= 7/10` with the video title hidden; this is a text-option minimum, not a concept-category score.
 - No misleading before/after transformation, fake diagnosis screen, or fear-based medical misinformation.
 - There is no fixed thumbnail word-count maximum. Validation fails if text is shortened into ambiguous shorthand merely to satisfy brevity, or if longer text becomes too small/dense to read quickly on mobile. Choose the shortest wording that preserves clear senior-audience meaning, not the fewest possible words.
-- Validation fails if the overall winner has `Senior Comprehension / Semantic Completeness < 7/10`. Run this test with the video title hidden.
 - Thumbnail text must not reveal the entire payoff.
 - Thumbnail text must not repeat the title's main wording.
 - Thumbnail text must not weaken medical safety or imply cure, guaranteed prevention, reversal, or universal safety.
@@ -412,7 +415,7 @@ The final prompt must not allow the image model to invent a different face or co
 
 `04_thumbnail_concepts.md` must include:
 
-- `Thumbnail Contract Version: 2.6` near the top of the file
+- `Thumbnail Contract Version: 2.7` near the top of the file
 - Thumbnail strategy summary
 - Thumbnail Text Intelligence diagnosis: Primary Viewer Problem, Primary Viewer Emotion, Primary Viewer Question, Missing Piece, Internal Question Created, Primary Visual Hook, Emotional Trigger, Title-Thumbnail Information Gap, and Whole-Video Promise Coverage
 - Visual Pattern Intelligence analysis
@@ -432,11 +435,12 @@ The final prompt must not allow the image model to invent a different face or co
 - Explanation of why the winning concept stands out from competitors
 - Text Overlay Specification for the selected winner
 - Final production prompt
+- `Bottom-right timestamp safe zone: CLEAR`
 - Final deterministic verification line: `Ranked-table <-> detailed-winner sync: PASS` (this must be the final line of `04_thumbnail_concepts.md`)
 
 `11_thumbnail_prompt.md` must include:
 
-- `Thumbnail Contract Version: 2.6` near the top of the file
+- `Thumbnail Contract Version: 2.7` near the top of the file
 - Winning concept name
 - Selected title
 - Selected thumbnail text
@@ -449,15 +453,16 @@ The final prompt must not allow the image model to invent a different face or co
 - Visual uniqueness and competitor-differentiation notes
 - Medical safety notes
 - Information-gap explanation
+- `Bottom-right timestamp safe zone: CLEAR`
 - Cross-file sync confirmation that selected title, winning concept, selected thumbnail text, Text Overlay Specification, and final production layout/prompt intent match `04_thumbnail_concepts.md`
 
 Before either output is accepted, verify `04_thumbnail_concepts.md` <-> `11_thumbnail_prompt.md` synchronization for those fields. A mismatch is a validation failure and must be repaired before PASS.
 
-**Legacy package boundary:** If `Thumbnail Contract Version` is absent, treat the package as legacy for v2.6 migration purposes. Do not retroactively fail that package solely because it lacks v2.6 Historical Channel Examples, version markers, or sync markers. Enforce the full v2.6 output contract when a thumbnail package is generated or intentionally regenerated under v2.6.
+**Legacy package boundary:** If `Thumbnail Contract Version` is absent, treat the package as legacy for v2.6 migration purposes. Do not retroactively fail that package solely because it lacks v2.7 Historical Channel Examples, version markers, or sync markers. Enforce the full v2.7 output contract when a thumbnail package is generated or intentionally regenerated under v2.7.
 
 ## 10. Context Discipline and Quality Notes
 
-The thumbnail files must let Production_Agent understand the visual promise without loading thumbnail system rules. Keep every concept distinct in composition, emotional trigger, information gap, and competitor differentiation. Use clear, quickly readable text overlays; do not force short copy when a slightly fuller phrase is materially easier for a senior viewer to understand. Reserve detailed medical nuance for the title, script, or metadata. When scoring, be strict about mobile clarity: if a viewer cannot understand the image in a quick glance, the concept should lose points even if the idea is clever. When scoring visual uniqueness, reward a fresh composition, unusual but clear prop relationship, distinctive eye path, or safer alternative to a saturated competitor trope. When scoring mobile eye-catch, reward strong silhouette, readable face, immediate focal contrast, and a single clear visual question. The winning prompt should describe subject, layout, lighting, camera style, color contrast, competitor-differentiation strategy, and excluded elements. Keep generated-image text out of the prompt unless the file explicitly instructs overlay text separately.
+The thumbnail files must let Production_Agent understand the visual promise without loading thumbnail system rules. Keep every concept distinct in composition, emotional trigger, information gap, and competitor differentiation. Use clear, quickly readable text overlays; do not force short copy when a slightly fuller phrase is materially easier for a senior viewer to understand. Reserve detailed medical nuance for the title, script, or metadata. When scoring, be strict about mobile clarity: if a viewer cannot understand the image in a quick glance, the concept should lose points even if the idea is clever. When scoring visual uniqueness, reward a fresh composition, unusual but clear prop relationship, distinctive eye path, or safer alternative to a saturated competitor trope. When scoring mobile eye-catch, reward strong silhouette, readable face, immediate focal contrast, and a single clear visual question. The winning prompt should describe subject, 3x3 grid layout, lighting, camera style, color contrast, competitor-differentiation strategy, and excluded elements. It must explicitly keep the bottom-right grid cell empty or background-only with no text, face, or hero object. Keep generated-image text out of the prompt unless the file explicitly instructs overlay text separately.
 
 When selecting thumbnail text, prefer specific, visual, concept-bound wording over broad command text. A phrase is only acceptable if it could not easily be reused on unrelated senior-health videos without losing meaning.
 
