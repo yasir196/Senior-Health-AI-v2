@@ -15,7 +15,7 @@ There is no universal 2–5-word rule, no mandatory arrow/circle, and no mandato
 |-----------|----------|
 | Background | Strong contrast; dark navy/near-black is a common channel pattern when supported by ACTIVE evidence |
 | Text length | As short as possible without becoming cryptic; no universal word-count cap |
-| Presenter | Optional; when used, usually right 35–42% and clearly non-clinician |
+| Presenter | Optional; when used, place according to applicable ACTIVE channel examples and the 3x3 composition map; clearly non-clinician |
 | Hero treatment | One dominant visual idea; a grouped set may count as one hero for list titles |
 | Signal icons | Optional and restrained; use only when they clarify a non-obvious relationship |
 
@@ -50,7 +50,7 @@ Choose the family from the immutable title, approved evidence, medical boundarie
 ## 4. Presenter Positioning
 
 - Presenter is an optional health educator / relatable older adult, never doctor-coded by default.
-- When used, right-side 35–42% is a useful channel structure when it leaves enough room for the hero and copy.
+- When used, presenter placement should follow applicable ACTIVE channel examples and the 3x3 composition map while leaving enough room for the hero and copy. Do not enforce a fixed presenter-width percentage.
 - Gaze may face the viewer or route attention toward the hero.
 - Expression should be clear but believable: concerned-curious, thoughtful, surprised, reassuring, or action-focused as appropriate.
 - Avoid white coats, badges, stethoscopes, exaggerated medical authority, or theatrical suffering unless explicitly justified and compliant.
