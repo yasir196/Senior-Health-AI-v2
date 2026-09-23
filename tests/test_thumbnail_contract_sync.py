@@ -26,9 +26,10 @@ def _norm(label):
     return aliases.get(label, label)
 
 
-def _csv_after(agent, prefix):
-    line = next(line for line in agent.splitlines() if line.startswith(prefix))
-    payload = line.split(prefix, 1)[1].rstrip(".")
+def _metrics_from_instruction(agent, marker):
+    matching = [line for line in agent.splitlines() if marker in line]
+    assert len(matching) == 1, f"Expected one agent metric instruction containing {marker!r}; found {len(matching)}"
+    payload = matching[0].split(marker, 1)[1].rstrip(".")
     parts = [x.strip() for x in payload.split(",")]
     if parts:
         parts[-1] = re.sub(r"^and\s+", "", parts[-1], flags=re.IGNORECASE)
@@ -39,13 +40,17 @@ def test_thumbnail_agent_metrics_match_sys06_authority():
     agent = AGENT.read_text(encoding="utf-8")
     sys06 = _load(SYS06)
 
-    text_metrics = _csv_after(agent, "9. For every text option, score ")
+    text_metrics = _metrics_from_instruction(agent, "For every text option, score ")
     assert text_metrics == sys06["thumbnail_text_intelligence"]["per_text_option_scoring"]["categories"]
 
-    concept_metrics = _csv_after(agent, "13. Score each concept using: ")
+    concept_metrics = _metrics_from_instruction(agent, "Score each concept using: ")
     sys06_concept_metrics = [item["id"] for item in sys06["scoring_model"]["categories"]]
     assert concept_metrics == sys06_concept_metrics
     assert sys06["scoring_model"]["total_score_max"] == 10 * len(sys06_concept_metrics)
+    assert set(sys06["scoring_model"]["winner_minimums"]) <= set(sys06_concept_metrics)
+    assert set(sys06["scoring_model"]["winner_text_minimums"]) <= set(
+        sys06["thumbnail_text_intelligence"]["per_text_option_scoring"]["categories"]
+    )
 
 
 def test_thumbnail_registry_constraints_reference_existing_validators():
@@ -85,8 +90,22 @@ def test_thumbnail_prompt_is_required_across_pipeline_contracts():
 
 
 def test_thumbnail_v26_keeps_legacy_packages_version_aware():
+    agent = AGENT.read_text(encoding="utf-8")
     sys06 = _load(SYS06)
     assert sys06["version"] == "2.6"
-    policy = sys06["output_contract"]["legacy_project_policy"]
-    assert "v2.5" in policy
-    assert "Do not retroactively fail" in policy
+    assert sys06["output_contract"]["contract_version_marker"] == "Thumbnail Contract Version: 2.6"
+    assert agent.count("Thumbnail Contract Version: 2.6") >= 2
+    assert "If Thumbnail Contract Version is absent" in sys06["output_contract"]["legacy_detection_policy"]
+    assert "Do not retroactively fail" in sys06["output_contract"]["legacy_project_policy"]
+
+
+def test_thumbnail_machine_checked_strings_are_ascii_and_synced():
+    agent = AGENT.read_text(encoding="utf-8")
+    sys06 = _load(SYS06)
+    fallback = sys06["reference_presenter_identity"]["fallback_when_reference_not_supplied"]["required_output_flag"]
+    sync = sys06["output_contract"]["final_sync_line"]
+    assert fallback == "PRESENTER_REFERENCE: NOT SUPPLIED - generic model used"
+    assert sync == "Ranked-table <-> detailed-winner sync: PASS"
+    assert fallback in agent
+    assert sync in agent
+    assert all(ord(ch) < 128 for ch in fallback + sync)
