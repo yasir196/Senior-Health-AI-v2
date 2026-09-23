@@ -89,13 +89,14 @@ def test_thumbnail_prompt_is_required_across_pipeline_contracts():
     assert required in sys15["validation_scopes"]["production_readiness"]["required_common_outputs"]
 
 
-def test_thumbnail_v26_keeps_legacy_packages_version_aware():
+def test_thumbnail_v27_keeps_legacy_packages_version_aware():
     agent = AGENT.read_text(encoding="utf-8")
     sys06 = _load(SYS06)
-    assert sys06["version"] == "2.6"
-    assert sys06["output_contract"]["contract_version_marker"] == "Thumbnail Contract Version: 2.6"
-    assert agent.count("Thumbnail Contract Version: 2.6") >= 2
+    assert sys06["version"] == "2.7"
+    assert sys06["output_contract"]["contract_version_marker"] == "Thumbnail Contract Version: 2.7"
+    assert agent.count("Thumbnail Contract Version: 2.7") >= 2
     assert "If Thumbnail Contract Version is absent" in sys06["output_contract"]["legacy_detection_policy"]
+    assert "2.6" in sys06["output_contract"]["legacy_detection_policy"]
     assert "Do not retroactively fail" in sys06["output_contract"]["legacy_project_policy"]
 
 
@@ -109,3 +110,38 @@ def test_thumbnail_machine_checked_strings_are_ascii_and_synced():
     assert fallback in agent
     assert sync in agent
     assert all(ord(ch) < 128 for ch in fallback + sync)
+
+
+def test_thumbnail_v27_composition_has_no_fixed_43_41_tokens():
+    active_paths = [
+        AGENT,
+        SYS06,
+        ROOT / "Knowledge" / "06_Thumbnail_Blueprints.md",
+        ROOT / "System" / "SYS_13_PROMPT_LIBRARY.json",
+        ROOT / "app.py",
+    ]
+    for path in active_paths:
+        text = path.read_text(encoding="utf-8")
+        assert "43%" not in text, f"stale fixed composition token in {path}"
+        assert "41%" not in text, f"stale fixed composition token in {path}"
+
+
+def test_thumbnail_v27_safe_zone_blocks_and_dominance_warns():
+    sys06 = _load(SYS06)
+    validators = {v["id"]: v for v in sys06["validation_rules"]}
+    assert validators["V32"]["rule"] == "bottom_right_timestamp_safe_zone_clear"
+    assert validators["V32"]["severity"] == "block"
+    assert validators["V33"]["rule"] == "channel_led_text_visual_dominance"
+    assert validators["V33"]["severity"] == "warn"
+    assert sys06["composition_policy"]["bottom_right_timestamp_safe_zone"]["severity"] == "block"
+    assert sys06["composition_policy"]["text_visual_dominance_guidance"]["severity"] == "warn"
+
+
+def test_thumbnail_v27_safe_zone_machine_line_is_synced():
+    agent = AGENT.read_text(encoding="utf-8")
+    sys06 = _load(SYS06)
+    line = sys06["output_contract"]["bottom_right_timestamp_safe_zone_line"]
+    assert line == "Bottom-right timestamp safe zone: CLEAR"
+    assert line in agent
+    assert sys06["composition_policy"]["bottom_right_timestamp_safe_zone"]["required_output_line"] == line
+    assert all(ord(ch) < 128 for ch in line)
