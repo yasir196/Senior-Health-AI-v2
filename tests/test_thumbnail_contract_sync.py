@@ -128,6 +128,10 @@ def test_thumbnail_v27_composition_has_no_fixed_43_41_tokens():
         assert "maximum 41%" not in text.lower(), f"stale fixed text-width rule in {path}"
         assert "35–42%" not in text, f"stale fixed presenter-width rule in {path}"
         assert "35-42%" not in text, f"stale fixed presenter-width rule in {path}"
+        assert "Maximum text width" not in text, f"stale maximum text width label in {path}"
+        assert "Maximum text height" not in text, f"stale maximum text height label in {path}"
+        assert "center-right" not in text, f"invalid 3x3 cell name in {path}"
+        assert "\\u2194" not in text, f"non-ASCII sync arrow in {path}"
 
 
 def test_thumbnail_v27_safe_zone_blocks_and_dominance_warns():
@@ -170,13 +174,20 @@ def test_thumbnail_v27_safe_zone_definition_is_consistent():
     sys06 = _load(SYS06)
     zone = sys06["composition_policy"]["bottom_right_timestamp_safe_zone"]
     assert zone["prohibited"] == [
-        "text", "face", "hands_or_gesture", "hero_object", "hero_group", "other_critical_detail"
+        "text", "face", "hands_or_gesture", "hero_object", "hero_group",
+        "anatomical_illustration", "organ_cutaway", "internal_detail",
+        "stool_cue", "card", "icon", "other_critical_detail"
     ]
-    assert zone["allowed"] == ["background", "presenter_torso_or_clothing"]
+    assert zone["allowed"] == ["background", "human_model_noncritical_clothing_or_shoulder"]
     v32 = next(v for v in sys06["validation_rules"] if v["id"] == "V32")
-    for phrase in ("hands/gesture", "presenter torso/clothing"):
+    for phrase in ("hands/gesture", "human model's non-critical clothing/shoulder", "anatomical illustrations", "stool cues"):
         assert phrase in v32["pass_condition"]
         assert phrase in agent
+    assert "presenter torso/clothing" not in v32["pass_condition"]
+    assert "presenter torso/clothing" not in agent
+    assert "Tall-Hero Rule" in agent
+    assert "tall_hero_rule" in sys06["composition_policy"]
+    assert "Do not assign the hero and the face to the same column." in sys06["composition_policy"]["tall_hero_rule"]["rule"]
 
 
 def test_thumbnail_v27_overlay_uses_grid_dimensions_not_percentage_width():
