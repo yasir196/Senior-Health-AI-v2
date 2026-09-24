@@ -1,0 +1,129 @@
+{
+  "version": "0.1.0",
+  "eligibility": {
+    "min_impressions": null,
+    "use_v2_evidence_weight": true,
+    "allowed_attribution_statuses": []
+  },
+  "categorization": {
+    "primary_source": "v2_analysis.hero_category",
+    "fallback": "uncategorized",
+    "keyword_fallback_enabled": false
+  },
+  "winner_loser": {
+    "method": "within_category_median_ctr",
+    "minimum_category_observations": 2
+  },
+  "reliability": {
+    "mode": "v2_evidence_weight",
+    "fallback_mode": "impression_share_within_eligible_set"
+  },
+  "text_taxonomy": {
+    "source": "config",
+    "patterns": {
+      "problem": [
+        "pain",
+        "swollen",
+        "swelling",
+        "hard",
+        "dry",
+        "weak",
+        "difficult",
+        "can't",
+        "cannot",
+        "stuck"
+      ],
+      "action": [
+        "do",
+        "try",
+        "start",
+        "check",
+        "eat",
+        "move",
+        "use",
+        "reheat"
+      ],
+      "command": [
+        "do this",
+        "try this",
+        "start here",
+        "check this",
+        "stop",
+        "don't",
+        "avoid",
+        "never"
+      ],
+      "question": [
+        "what",
+        "why",
+        "where",
+        "how",
+        "which",
+        "?"
+      ],
+      "curiosity": [
+        "hidden",
+        "clue",
+        "next",
+        "inside",
+        "really",
+        "actually",
+        "missed"
+      ],
+      "contrast": [
+        "but",
+        "not",
+        "isn't",
+        "aren't",
+        "instead",
+        "vs"
+      ],
+      "specificity": [
+        "first",
+        "one",
+        "both",
+        "before",
+        "after",
+        "night",
+        "morning"
+      ],
+      "warning": [
+        "warning",
+        "danger",
+        "avoid",
+        "don't",
+        "never",
+        "stop"
+      ],
+      "identity_context": [
+        "after 60",
+        "over 60",
+        "60+",
+        "at night"
+      ]
+    },
+    "stopwords": [
+      "the",
+      "a",
+      "an",
+      "and",
+      "or",
+      "to",
+      "of",
+      "in",
+      "on",
+      "for",
+      "is",
+      "are",
+      "be",
+      "your",
+      "you",
+      "this",
+      "that"
+    ]
+  },
+  "notes": [
+    "Null min_impressions means do not invent a fixed impression cutoff; require positive impressions and preserve V2 attribution/evidence metadata.",
+    "Taxonomy is editable configuration, not executable-code policy."
+  ]
+}
