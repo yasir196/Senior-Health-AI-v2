@@ -10,7 +10,7 @@ def test_full_loser_edit_prompt_contains_required_evidence():
         original_text="OLD TEXT HERE",
         proposed_text="ONE LEG OR BOTH?",
         loser_reasons=[{"feature":"clutter_score","value":0.7,"reason":"higher than category winners"}],
-        winner_evidence=[{"title":"Winner","thumbnail_text":"DO THIS FIRST","pattern":"[ACTION][COMMAND]","ctr":7.1,"impressions":22000}],
+        winner_evidence=[{"title":"Winner","thumbnail_text":"DO THIS FIRST","ctr":7.1,"impressions":22000}],
         original_visual={"clutter_score":0.7},
         target_visual={"layout":"text left, one subject right"},
     )
