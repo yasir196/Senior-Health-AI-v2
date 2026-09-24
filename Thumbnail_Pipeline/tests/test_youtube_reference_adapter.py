@@ -11,7 +11,8 @@ def test_collects_topic_then_category_cross_channel():
     assert [x["search_scope"] for x in rows]==["same_topic","same_category"]
     assert all(x["outlier_status"]=="not_claimed" for x in rows)
 
-def test_new_project_context_combines_winners_and_youtube():
+def test_new_project_context_combines_winners_and_youtube(monkeypatch):
+    monkeypatch.setattr("Thumbnail_Pipeline.intelligence.new_project_context.analyze_youtube_reference_thumbnails",lambda refs:[{**r,"thumbnail_analysis_status":"analyzed"} for r in refs])
     winners=[{"performance":{"title":"Winner","ctr":8,"impressions":10000},"ocr":{"text":"FIRST"},"v2_analysis":{"hero_category":"mobility"}}]
     c=build_new_project_context(title="New title",topic="floor rise",category="mobility",winner_rows=winners,youtube_provider=Fake())
     assert c["primary_learning_source"]=="channel_winners"
