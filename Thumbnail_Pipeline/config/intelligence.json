@@ -19,107 +19,25 @@
     "fallback_mode": "impression_share_within_eligible_set"
   },
   "text_taxonomy": {
-    "source": "config",
-    "patterns": {
-      "problem": [
-        "pain",
-        "swollen",
-        "swelling",
-        "hard",
-        "dry",
-        "weak",
-        "difficult",
-        "can't",
-        "cannot",
-        "stuck"
+    "mode": "discovered_from_channel_data",
+    "seed_labels": [],
+    "seed_cues": [],
+    "discovery": {
+      "source_fields": [
+        "ocr.text",
+        "performance.title",
+        "performance.ctr",
+        "performance.impressions",
+        "v2_analysis.hero_category"
       ],
-      "action": [
-        "do",
-        "try",
-        "start",
-        "check",
-        "eat",
-        "move",
-        "use",
-        "reheat"
-      ],
-      "command": [
-        "do this",
-        "try this",
-        "start here",
-        "check this",
-        "stop",
-        "don't",
-        "avoid",
-        "never"
-      ],
-      "question": [
-        "what",
-        "why",
-        "where",
-        "how",
-        "which",
-        "?"
-      ],
-      "curiosity": [
-        "hidden",
-        "clue",
-        "next",
-        "inside",
-        "really",
-        "actually",
-        "missed"
-      ],
-      "contrast": [
-        "but",
-        "not",
-        "isn't",
-        "aren't",
-        "instead",
-        "vs"
-      ],
-      "specificity": [
-        "first",
-        "one",
-        "both",
-        "before",
-        "after",
-        "night",
-        "morning"
-      ],
-      "warning": [
-        "warning",
-        "danger",
-        "avoid",
-        "don't",
-        "never",
-        "stop"
-      ],
-      "identity_context": [
-        "after 60",
-        "over 60",
-        "60+",
-        "at night"
-      ]
+      "compare_within_category": true,
+      "minimum_pattern_observations": 2,
+      "require_human_review_before_reuse": true
     },
-    "stopwords": [
-      "the",
-      "a",
-      "an",
-      "and",
-      "or",
-      "to",
-      "of",
-      "in",
-      "on",
-      "for",
-      "is",
-      "are",
-      "be",
-      "your",
-      "you",
-      "this",
-      "that"
+    "notes": [
+      "Do not start from a fixed PROBLEM/ACTION/COMMAND vocabulary.",
+      "Discover recurring thumbnail-text mechanisms from this channel's own eligible evidence.",
+      "Names assigned to discovered clusters are descriptive analyzer output and remain human-editable."
     ]
   },
   "notes": [
