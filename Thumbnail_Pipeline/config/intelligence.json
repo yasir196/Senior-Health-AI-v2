@@ -18,7 +18,7 @@
   },
   "reliability": {
     "mode": "v2_evidence_weight",
-    "fallback_mode": "impression_share_within_eligible_set",
+    "fallback_mode": "configured_impression_ramp",
     "impression_floor": 1000,
     "full_reliability_impressions": 10000,
     "locked": true,
