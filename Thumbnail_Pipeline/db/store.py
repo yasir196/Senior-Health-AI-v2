@@ -32,9 +32,10 @@ def _jsonable(v:Any)->Any:
 
 def save_audit(record:dict[str,Any])->int:
     observed,inferred=record.get("observed",{}),record.get("inferred",{})
+    extracted=record.get("extracted",{})
     source=record.get("source",{}); asset_id=source.get("asset_id"); thumb=source.get("thumbnail_path")
     if not thumb: raise ValueError("thumbnail_path is required")
-    vals=(asset_id,thumb,observed.get("title"),observed.get("thumbnail_text_full"),observed.get("ctr"),observed.get("impressions"),inferred.get("category"),_jsonable(inferred.get("pattern_sequence")),json.dumps(inferred,ensure_ascii=False,sort_keys=True))
+    vals=(asset_id,thumb,observed.get("title"),extracted.get("thumbnail_text_full",observed.get("thumbnail_text_full")),observed.get("ctr"),observed.get("impressions"),inferred.get("category"),_jsonable(inferred.get("pattern_sequence")),json.dumps(inferred,ensure_ascii=False,sort_keys=True))
     with connect() as conn:
         existing=conn.execute("SELECT id FROM thumbnail_audit WHERE asset_id IS ? AND thumbnail_path=?",(asset_id,thumb)).fetchone()
         if existing:
