@@ -62,7 +62,7 @@ def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int | N
         "text_psychology_all.json": summarize_psychology(eligible),
         "winner_text_psychology.json": summarize_psychology(winners),
         "loser_text_psychology.json": summarize_psychology(losers),
-        "text_pattern_performance.json": compare_text_patterns(eligible, effective_floor),
+        "text_pattern_performance.json": compare_text_patterns(eligible, effective_floor, settings=settings),
         "next_ideas_from_winners.json": build_next_idea_rules(winners),
         "suggestion_for_loser.json": build_loser_suggestions(losers, winners),
     }
