@@ -10,7 +10,10 @@ def _ngrams(tokens: list[str], n: int) -> list[str]:
     words=[t for t in tokens if t not in {"?","!","."}]
     return [" ".join(words[i:i+n]) for i in range(max(0,len(words)-n+1))]
 
-def discover_text_patterns(rows: list[dict[str,Any]], min_observations: int=2) -> dict[str,Any]:
+def discover_text_patterns(rows: list[dict[str,Any]], min_observations: int|None=None) -> dict[str,Any]:
+    from .settings import load_settings
+    if min_observations is None:
+        min_observations=int(load_settings()["text_taxonomy"]["discovery"]["minimum_pattern_observations"])
     """Discover recurring text mechanisms from channel evidence; no seeded psychology labels/cues."""
     groups=defaultdict(list)
     for row in rows:
