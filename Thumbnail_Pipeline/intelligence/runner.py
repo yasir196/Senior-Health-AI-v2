@@ -12,12 +12,12 @@ from Thumbnail_Pipeline.intelligence.text_psychology import summarize_psychology
 from Thumbnail_Pipeline.intelligence.recommendations import build_next_idea_rules, build_loser_suggestions
 
 
-def _eligible(rows: list[dict[str, Any]], min_impressions: int) -> list[dict[str, Any]]:
+def _eligible(rows: list[dict[str, Any]], min_impressions: int | None) -> list[dict[str, Any]]:
     out = []
     for row in rows:
         perf = row.get("performance") or {}
         try:
-            if float(perf.get("impressions")) >= min_impressions and perf.get("ctr") is not None:
+            if float(perf.get("impressions")) > 0 and (min_impressions is None or float(perf.get("impressions")) >= min_impressions) and perf.get("ctr") is not None:
                 out.append(row)
         except (TypeError, ValueError):
             pass
@@ -30,7 +30,7 @@ def _split_by_category_median(rows: list[dict[str, Any]], patterns: dict[str, An
     thresholds = {k: v["median_ctr"] for k, v in patterns["category_patterns"].items()}
     for row in rows:
         perf = row.get("performance") or {}
-        category = classify_category(perf.get("title"))
+        category = classify_category(row)
         try:
             ctr = float(perf.get("ctr"))
         except (TypeError, ValueError):
@@ -41,11 +41,11 @@ def _split_by_category_median(rows: list[dict[str, Any]], patterns: dict[str, An
     return winners, losers
 
 
-def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int = 1000, output_dir: str = "intelligence") -> dict[str, Any]:
+def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int | None = None, output_dir: str = "intelligence") -> dict[str, Any]:
     root = safe_output(output_dir)
     root.mkdir(parents=True, exist_ok=True)
 
-    patterns = build_patterns(joined_rows, min_impressions)
+    patterns = build_patterns(joined_rows)
     eligible = _eligible(joined_rows, min_impressions)
     winners, losers = _split_by_category_median(eligible, patterns)
 
@@ -55,7 +55,7 @@ def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int = 1
         "text_psychology_all.json": summarize_psychology(eligible),
         "winner_text_psychology.json": summarize_psychology(winners),
         "loser_text_psychology.json": summarize_psychology(losers),
-        "text_pattern_performance.json": compare_text_patterns(eligible, min_impressions),
+        "text_pattern_performance.json": compare_text_patterns(eligible, min_impressions or 0),
         "next_ideas_from_winners.json": build_next_idea_rules(winners),
         "suggestion_for_loser.json": build_loser_suggestions(losers, winners),
     }
