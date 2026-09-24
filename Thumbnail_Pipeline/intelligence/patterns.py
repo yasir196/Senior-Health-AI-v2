@@ -27,7 +27,13 @@ def reliability_weight(row: dict[str,Any], eligible_impressions: float=0.0, sett
         w=_number(perf.get("evidence_weight"))
         if w is not None: return max(0.0,min(1.0,w))
     imp=_number(perf.get("impressions")) or 0.0
-    return round(imp/eligible_impressions,6) if eligible_impressions>0 else 0.0
+    rcfg=cfg.get("reliability",{})
+    floor=float(rcfg.get("impression_floor") or 0.0)
+    full=float(rcfg.get("full_reliability_impressions") or 0.0)
+    if full<=floor: return 1.0 if imp>=floor and floor>0 else 0.0
+    if imp<=floor: return 0.0
+    if imp>=full: return 1.0
+    return round((imp-floor)/(full-floor),6)
 
 def _flatten(row:dict[str,Any])->dict[str,Any]:
     features=dict(row.get("features") or {})
@@ -54,11 +60,10 @@ def build_patterns(joined_rows:list[dict[str,Any]],settings:dict[str,Any]|None=N
         if ctr is None or imp is None or imp<=0 or (min_imp is not None and imp<float(min_imp)) or (allowed and status not in allowed):
             excluded+=1; continue
         eligible_original.append(row)
-    total_imp=sum(_number((r.get("performance") or {}).get("impressions")) or 0 for r in eligible_original)
     by_category=defaultdict(list)
     for original in eligible_original:
         row=_flatten(original); row["category"]=classify_category(original,cfg)
-        row["reliability_weight"]=reliability_weight(original,total_imp,cfg); by_category[row["category"]].append(row)
+        row["reliability_weight"]=reliability_weight(original,settings=cfg); by_category[row["category"]].append(row)
     categories={}; winners=[]; losers=[]
     minimum=int(cfg.get("winner_loser",{}).get("minimum_category_observations") or 2)
     for category,rows in sorted(by_category.items()):
