@@ -1,0 +1,22 @@
+{
+  "version": "0.1.0",
+  "phase": "historical_analyzer",
+  "isolation": {
+    "v2_mode": "read_only",
+    "allowed_write_root": "Thumbnail_Pipeline",
+    "allow_v2_writeback": false
+  },
+  "image": {
+    "target_width": 1280,
+    "target_height": 720,
+    "tiny_preview_width": 168
+  },
+  "features": {
+    "brightness": true,
+    "contrast": true,
+    "edge_density": true,
+    "dominant_colors": true,
+    "thirds_occupancy": true,
+    "timestamp_safe_zone": true
+  }
+}
