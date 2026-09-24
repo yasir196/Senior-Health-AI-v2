@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "phase": "historical_analyzer",
   "isolation": {
     "v2_mode": "read_only",
@@ -17,6 +17,11 @@
     "edge_density": true,
     "dominant_colors": true,
     "thirds_occupancy": true,
-    "timestamp_safe_zone": true
+    "timestamp_safe_zone": true,
+    "face_detection": true,
+    "saliency_proxy": true,
+    "clutter_score": true,
+    "tiny_readability": true,
+    "ocr": "optional"
   }
 }
