@@ -1,105 +1,79 @@
 from __future__ import annotations
-
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Any
 
-PATTERNS = {
-    "problem": ("pain","swollen","swelling","hard","dry","weak","difficult","can't","cannot","stuck"),
-    "action": ("do","try","start","check","eat","move","use","reheat"),
-    "command": ("do this","try this","start here","check this","stop","don't","avoid","never"),
-    "question": ("what","why","where","how","which","?"),
-    "curiosity": ("hidden","clue","next","inside","really","actually","missed"),
-    "contrast": ("but","not","isn't","aren't","instead","vs"),
-    "specificity": ("first","one","both","before","after","night","morning"),
-    "warning": ("warning","danger","avoid","don't","never","stop"),
-    "identity_context": ("after 60","over 60","60+","at night"),
-}
-STOPWORDS = {"the","a","an","and","or","to","of","in","on","for","is","are","be","your","you","this","that"}
+def _tokens(text: str | None) -> list[str]:
+    return re.findall(r"[a-z0-9+'-]+|[?!.]", (text or "").lower())
 
+def _ngrams(tokens: list[str], n: int) -> list[str]:
+    words=[t for t in tokens if t not in {"?","!","."}]
+    return [" ".join(words[i:i+n]) for i in range(max(0,len(words)-n+1))]
 
-def matched_cues(text: str | None) -> dict[str, list[str]]:
-    t = (text or "").lower()
-    return {name: [cue for cue in cues if cue in t] for name, cues in PATTERNS.items() if any(cue in t for cue in cues)}
-
-
-def pattern_word_map(text: str | None) -> dict[str, list[str]]:
-    """Map every full OCR token/phrase to the detected pattern(s); preserve source wording."""
-    raw = (text or "").strip()
-    tokens = re.findall(r"[A-Za-z0-9+'-]+|[?!.]", raw)
-    result: dict[str, list[str]] = {}
-    lowered = raw.lower()
-    for token in tokens:
-        token_lower = token.lower()
-        labels = []
-        for name, cues in PATTERNS.items():
-            for cue in cues:
-                if cue == "?" and token == "?":
-                    labels.append(name)
-                elif " " not in cue and cue == token_lower:
-                    labels.append(name)
-                elif " " in cue and cue in lowered and token_lower in cue.split():
-                    labels.append(name)
-        result[token] = list(dict.fromkeys(labels)) or ["unclassified"]
-    return result
-
-
-def thumbnail_keywords(text: str | None) -> list[str]:
-    words = re.findall(r"[a-z0-9+'-]+", (text or "").lower())
-    return list(dict.fromkeys(w for w in words if w not in STOPWORDS and len(w) > 1))
-
-
-def psychology_tags(text: str | None) -> list[str]:
-    tags = list(matched_cues(text))
-    return tags or ["neutral_statement"]
-
-
-def pattern_sequence(text: str | None) -> str:
-    tags = psychology_tags(text)
-    priority = ("problem","identity_context","contrast","curiosity","question","specificity","action","command","warning")
-    ordered = [x for x in priority if x in tags]
-    return "".join(f"[{x.upper()}]" for x in ordered) or "[NEUTRAL_STATEMENT]"
-
-
-def text_shape(text: str | None) -> dict[str, Any]:
-    raw = text or ""
-    words = re.findall(r"[A-Za-z0-9+'-]+", raw)
-    return {
-        "word_count": len(words),
-        "question_mark": "?" in raw,
-        "exclamation_mark": "!" in raw,
-        "all_caps_ratio": round(sum(w.isupper() for w in words) / max(1, len(words)), 4),
-        "full_thumbnail_text": raw,
-        "thumbnail_keywords": thumbnail_keywords(raw),
-        "matched_pattern_cues": matched_cues(raw),
-        "full_word_pattern_map": pattern_word_map(raw),
-        "psychology_tags": psychology_tags(raw),
-        "pattern_sequence": pattern_sequence(raw),
-    }
-
-
-def summarize_psychology(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    sequences, tags = Counter(), Counter()
-    examples: dict[str, list[dict[str, Any]]] = {}
+def discover_text_patterns(rows: list[dict[str,Any]], min_observations: int=2) -> dict[str,Any]:
+    """Discover recurring text mechanisms from channel evidence; no seeded psychology labels/cues."""
+    groups=defaultdict(list)
     for row in rows:
-        perf, ocr = row.get("performance") or {}, row.get("ocr") or {}
-        text = ocr.get("text") or ""
-        shape = text_shape(text)
-        seq = shape["pattern_sequence"]
-        sequences[seq] += 1
-        tags.update(shape["psychology_tags"])
-        examples.setdefault(seq, []).append({
-            "title": perf.get("title"),
-            "thumbnail_text_full": text,
-            "thumbnail_keywords": shape["thumbnail_keywords"],
-            "matched_pattern_cues": shape["matched_pattern_cues"],
-            "full_word_pattern_map": shape["full_word_pattern_map"],
-            "detected_pattern": seq,
-            "ctr": perf.get("ctr"),
-            "impressions": perf.get("impressions"),
+        perf=row.get("performance") or {}; ocr=row.get("ocr") or {}; v2=row.get("v2_analysis") or {}
+        text=str(ocr.get("text") or "").strip()
+        if not text: continue
+        try: ctr=float(perf.get("ctr")); imp=float(perf.get("impressions"))
+        except (TypeError,ValueError): continue
+        if imp<=0: continue
+        category=str(v2.get("hero_category") or "uncategorized")
+        tokens=_tokens(text)
+        mechanisms=set()
+        for n in (1,2,3):
+            mechanisms.update(_ngrams(tokens,n))
+        if "?" in text: mechanisms.add("<question_mark>")
+        if "!" in text: mechanisms.add("<exclamation_mark>")
+        mechanisms.add(f"<word_count:{len([t for t in tokens if t not in {'?','!','.'}])}>")
+        for mechanism in mechanisms:
+            groups[(category,mechanism)].append({"ctr":ctr,"impressions":imp,"title":perf.get("title"),"thumbnail_text_full":text})
+
+    discovered=[]
+    for (category,mechanism),examples in groups.items():
+        if len(examples)<min_observations: continue
+        total=sum(x["impressions"] for x in examples)
+        weighted=(sum(x["ctr"]*x["impressions"] for x in examples)/total) if total else None
+        discovered.append({
+            "discovered_pattern":mechanism,
+            "category":category,
+            "observations":len(examples),
+            "total_impressions":total,
+            "impression_weighted_ctr":round(weighted,4) if weighted is not None else None,
+            "examples":examples,
+            "label_source":"channel_data_discovery",
+            "human_review_status":"unreviewed",
         })
-    return {
-        "pattern_counts": dict(sequences.most_common()),
-        "psychology_counts": dict(tags.most_common()),
-        "examples_by_pattern": examples,
-    }
+    discovered.sort(key=lambda x:(x["category"],-x["observations"],-x["total_impressions"],x["discovered_pattern"]))
+    return {"method":"channel_data_discovery_no_seeded_psychology_vocabulary","patterns":discovered}
+
+def pattern_word_map(text: str | None, discovered_patterns: list[dict[str,Any]] | None=None) -> list[dict[str,Any]]:
+    """Ordered audit map; preserves duplicate token occurrences. Labels come only from discovered channel patterns."""
+    raw=text or ""; tokens=re.findall(r"[A-Za-z0-9+'-]+|[?!.]",raw)
+    patterns=[str(x.get("discovered_pattern") or "") for x in (discovered_patterns or [])]
+    out=[]
+    for i,token in enumerate(tokens):
+        low=token.lower()
+        matches=[p for p in patterns if p==low or (not p.startswith("<") and low in p.split())]
+        out.append({"index":i,"token":token,"discovered_patterns":matches,"status":"matched" if matches else "unclassified"})
+    return out
+
+def summarize_psychology(rows:list[dict[str,Any]])->dict[str,Any]:
+    discovered=discover_text_patterns(rows)
+    by_category=defaultdict(list)
+    for p in discovered["patterns"]: by_category[p["category"]].append(p)
+    examples=[]
+    all_patterns=discovered["patterns"]
+    for row in rows:
+        perf=row.get("performance") or {}; ocr=row.get("ocr") or {}; v2=row.get("v2_analysis") or {}
+        text=str(ocr.get("text") or "")
+        category=str(v2.get("hero_category") or "uncategorized")
+        relevant=by_category.get(category,[])
+        examples.append({
+            "title":perf.get("title"),"thumbnail_text_full":text,"category":category,
+            "full_word_pattern_map":pattern_word_map(text,relevant),
+            "ctr":perf.get("ctr"),"impressions":perf.get("impressions")
+        })
+    return {**discovered,"examples":examples}
