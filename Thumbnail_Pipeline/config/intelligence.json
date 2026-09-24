@@ -1,9 +1,11 @@
 {
   "version": "0.1.0",
   "eligibility": {
-    "min_impressions": null,
+    "min_impressions": 1000,
     "use_v2_evidence_weight": true,
-    "allowed_attribution_statuses": []
+    "allowed_attribution_statuses": [],
+    "threshold_locked": true,
+    "threshold_note": "User-owned config. 1000-impression eligibility floor must be changed here only, never hardcoded in Python."
   },
   "categorization": {
     "primary_source": "v2_analysis.hero_category",
@@ -16,7 +18,11 @@
   },
   "reliability": {
     "mode": "v2_evidence_weight",
-    "fallback_mode": "impression_share_within_eligible_set"
+    "fallback_mode": "impression_share_within_eligible_set",
+    "impression_floor": 1000,
+    "full_reliability_impressions": 10000,
+    "locked": true,
+    "note": "User-owned config thresholds. Code must read these values and must not redefine them."
   },
   "text_taxonomy": {
     "mode": "discovered_from_channel_data",
