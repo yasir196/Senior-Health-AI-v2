@@ -15,19 +15,25 @@ PATTERNS = {
     "warning": ("warning","danger","avoid","don't","never","stop"),
     "identity_context": ("after 60","over 60","60+","at night"),
 }
+STOPWORDS = {"the","a","an","and","or","to","of","in","on","for","is","are","be","your","you","this","that"}
+
+
+def matched_cues(text: str | None) -> dict[str, list[str]]:
+    t = (text or "").lower()
+    return {name: [cue for cue in cues if cue in t] for name, cues in PATTERNS.items() if any(cue in t for cue in cues)}
+
+
+def thumbnail_keywords(text: str | None) -> list[str]:
+    words = re.findall(r"[a-z0-9+'-]+", (text or "").lower())
+    return list(dict.fromkeys(w for w in words if w not in STOPWORDS and len(w) > 1))
 
 
 def psychology_tags(text: str | None) -> list[str]:
-    t = (text or "").lower()
-    tags = []
-    for name, cues in PATTERNS.items():
-        if any(cue in t for cue in cues):
-            tags.append(name)
+    tags = list(matched_cues(text))
     return tags or ["neutral_statement"]
 
 
 def pattern_sequence(text: str | None) -> str:
-    """Return explicit psychological structure, e.g. [PROBLEM][ACTION][COMMAND]."""
     tags = psychology_tags(text)
     priority = ("problem","identity_context","contrast","curiosity","question","specificity","action","command","warning")
     ordered = [x for x in priority if x in tags]
@@ -42,14 +48,15 @@ def text_shape(text: str | None) -> dict[str, Any]:
         "question_mark": "?" in raw,
         "exclamation_mark": "!" in raw,
         "all_caps_ratio": round(sum(w.isupper() for w in words) / max(1, len(words)), 4),
+        "thumbnail_keywords": thumbnail_keywords(raw),
+        "matched_pattern_cues": matched_cues(raw),
         "psychology_tags": psychology_tags(raw),
         "pattern_sequence": pattern_sequence(raw),
     }
 
 
 def summarize_psychology(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    sequences = Counter()
-    tags = Counter()
+    sequences, tags = Counter(), Counter()
     examples: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         perf, ocr = row.get("performance") or {}, row.get("ocr") or {}
@@ -61,6 +68,9 @@ def summarize_psychology(rows: list[dict[str, Any]]) -> dict[str, Any]:
         examples.setdefault(seq, []).append({
             "title": perf.get("title"),
             "thumbnail_text": text,
+            "thumbnail_keywords": shape["thumbnail_keywords"],
+            "matched_pattern_cues": shape["matched_pattern_cues"],
+            "detected_pattern": seq,
             "ctr": perf.get("ctr"),
             "impressions": perf.get("impressions"),
         })
