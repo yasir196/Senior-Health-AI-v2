@@ -20,7 +20,7 @@ def classify_category(row_or_title: Any, settings: dict[str,Any]|None=None)->str
         if value: return value
     return str(cfg.get("categorization",{}).get("fallback") or "uncategorized")
 
-def reliability_weight(row: dict[str,Any], eligible_impressions: float=0.0, settings: dict[str,Any]|None=None)->float:
+def reliability_weight(row: dict[str,Any], settings: dict[str,Any]|None=None)->float:
     cfg=settings or load_settings()
     perf=row.get("performance") or {}
     if cfg.get("eligibility",{}).get("use_v2_evidence_weight",True):
