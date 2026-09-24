@@ -10,10 +10,11 @@ def _ngrams(tokens: list[str], n: int) -> list[str]:
     words=[t for t in tokens if t not in {"?","!","."}]
     return [" ".join(words[i:i+n]) for i in range(max(0,len(words)-n+1))]
 
-def discover_text_patterns(rows: list[dict[str,Any]], min_observations: int|None=None) -> dict[str,Any]:
+def discover_text_patterns(rows: list[dict[str,Any]], min_observations: int|None=None, settings:dict[str,Any]|None=None) -> dict[str,Any]:
     from .settings import load_settings
+    cfg=settings or load_settings()
     if min_observations is None:
-        min_observations=int(load_settings()["text_taxonomy"]["discovery"]["minimum_pattern_observations"])
+        min_observations=int(cfg["text_taxonomy"]["discovery"]["minimum_pattern_observations"])
     """Discover recurring text mechanisms from channel evidence; no seeded psychology labels/cues."""
     groups=defaultdict(list)
     for row in rows:
@@ -63,8 +64,8 @@ def pattern_word_map(text: str | None, discovered_patterns: list[dict[str,Any]] 
         out.append({"index":i,"token":token,"discovered_patterns":matches,"status":"matched" if matches else "unclassified"})
     return out
 
-def summarize_psychology(rows:list[dict[str,Any]])->dict[str,Any]:
-    discovered=discover_text_patterns(rows)
+def summarize_psychology(rows:list[dict[str,Any]],settings:dict[str,Any]|None=None)->dict[str,Any]:
+    discovered=discover_text_patterns(rows,settings=settings)
     by_category=defaultdict(list)
     for p in discovered["patterns"]: by_category[p["category"]].append(p)
     examples=[]
