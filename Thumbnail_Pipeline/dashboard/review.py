@@ -23,6 +23,7 @@ def effective_view(record: dict[str, Any]) -> dict[str, Any]:
     """AI-consumable view: preserve raw evidence and expose corrections separately."""
     return {
         "observed": record["observed"],
+        "extracted": record.get("extracted", {}),
         "inferred": record["inferred"],
         "human_review": record["human_review"],
         "use_human_corrections_for_future_learning": record["human_review"]["status"] == "reviewed",
