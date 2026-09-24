@@ -47,7 +47,10 @@
     ]
   },
   "notes": [
-    "Null min_impressions means do not invent a fixed impression cutoff; require positive impressions and preserve V2 attribution/evidence metadata.",
     "Taxonomy is editable configuration, not executable-code policy."
-  ]
+  ],
+  "explanation": {
+    "minimum_relative_gap": 0.08,
+    "note": "Dashboard/config-owned display threshold; analyzer code does not assign semantic good/bad feature directions."
+  }
 }
