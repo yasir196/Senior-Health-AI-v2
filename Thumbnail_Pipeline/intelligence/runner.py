@@ -52,7 +52,7 @@ def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int | N
     root = safe_output(output_dir)
     root.mkdir(parents=True, exist_ok=True)
 
-    patterns = build_patterns(joined_rows)
+    patterns = build_patterns(joined_rows, settings=settings)
     eligible = _eligible(joined_rows, effective_floor, settings)
     winners, losers = _split_by_category_median(eligible, patterns)
 
