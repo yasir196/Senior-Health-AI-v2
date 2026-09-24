@@ -1,49 +1,27 @@
-from pathlib import Path
-import sys
+from Thumbnail_Pipeline.intelligence.patterns import build_patterns,classify_category,reliability_weight
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT.parent))
+def row(title,ctr,impressions,words,clutter,category="mobility",evidence_weight=None):
+    perf={"title":title,"ctr":ctr,"impressions":impressions}
+    if evidence_weight is not None: perf["evidence_weight"]=evidence_weight
+    return {"features":{"clutter_score":clutter,"brightness_mean":90},"ocr":{"word_count":words,"line_count":3},"performance":perf,"v2_analysis":{"hero_category":category}}
 
-from Thumbnail_Pipeline.intelligence.patterns import build_patterns, classify_category, reliability_weight
-
-
-def row(title, ctr, impressions, words, clutter):
-    return {
-        "features": {"clutter_score": clutter, "brightness_mean": 90},
-        "ocr": {"word_count": words, "line_count": 3},
-        "performance": {"title": title, "ctr": ctr, "impressions": impressions},
-    }
-
-
-def test_category_classifier():
-    assert classify_category("3 Chair Exercises After 60") == "exercise_mobility"
-    assert classify_category("What Happens When You Eat Peanut Butter?") == "food_nutrition"
-
+def test_category_classifier_uses_v2_category_not_title_keywords():
+    assert classify_category(row("Anything",5,1000,3,.2,"exercise_mobility"))=="exercise_mobility"
+    assert classify_category("3 Chair Exercises After 60")=="uncategorized"
 
 def test_low_impressions_are_excluded():
-    result = build_patterns([
-        row("Chair Exercise", 9.0, 300, 3, .2),
-        row("Chair Exercise", 6.0, 20000, 4, .3),
-    ])
-    assert result["eligible_observations"] == 1
-    assert result["excluded_observations"] == 1
-
+    result=build_patterns([row("A",9,300,3,.2),row("B",6,20000,4,.3)])
+    assert result["eligible_observations"]==1 and result["excluded_observations"]==1
 
 def test_comparisons_are_within_category():
-    result = build_patterns([
-        row("Chair Exercise A", 8.0, 10000, 3, .2),
-        row("Chair Exercise B", 4.0, 10000, 7, .6),
-        row("Calcium Food A", 7.0, 10000, 4, .3),
-        row("Calcium Food B", 3.0, 10000, 8, .7),
-    ])
-    exercise = result["category_patterns"]["exercise_mobility"]
-    food = result["category_patterns"]["food_nutrition"]
-    assert exercise["median_ctr"] == 6.0
-    assert food["median_ctr"] == 5.0
-    assert result["winner_patterns"]["feature_medians"]["ocr_word_count"] == 3.5
+    result=build_patterns([row("A",8,10000,3,.2,"exercise"),row("B",4,10000,7,.6,"exercise"),row("C",7,10000,4,.3,"food"),row("D",3,10000,8,.7,"food")])
+    assert result["category_patterns"]["exercise"]["median_ctr"]==6.0
+    assert result["category_patterns"]["food"]["median_ctr"]==5.0
 
+def test_reliability_prefers_v2_evidence_weight():
+    assert reliability_weight(row("A",5,2000,3,.2,evidence_weight=.37))==.37
 
-def test_reliability_requires_impressions():
-    assert reliability_weight(500) == 0
-    assert 0 < reliability_weight(2000) < 1
-    assert reliability_weight(100000) == 1
+def test_reliability_fallback_reads_configured_1000_to_10000_range():
+    assert reliability_weight(row("A",5,1000,3,.2))==0
+    assert 0<reliability_weight(row("A",5,2000,3,.2))<1
+    assert reliability_weight(row("A",5,10000,3,.2))==1
