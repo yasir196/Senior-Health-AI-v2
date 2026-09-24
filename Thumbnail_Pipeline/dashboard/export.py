@@ -13,7 +13,8 @@ def export_dashboard_payload(records: list[dict[str, Any]], summary: dict[str, A
         "summary": summary,
         "records": records,
         "legend": {
-            "OBSERVED": "Direct source data such as title, OCR text, CTR and impressions.",
+            "OBSERVED": "Direct source data such as title, CTR and impressions.",
+            "EXTRACTED": "Machine-extracted evidence such as OCR thumbnail text; reviewable and correctable.",
             "INFERRED": "Analyzer classification or derived pattern.",
             "HUMAN_CORRECTED": "Explicit review overlay; original evidence remains visible.",
         },
