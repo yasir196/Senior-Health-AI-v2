@@ -1,23 +1,39 @@
 # Winner / Loser Learning Policy
 
-## Normal next ideas
-Only adequately sampled winner observations may seed normal future thumbnail ideas.
+## New projects / new videos — winner-only prior
 
-The unit of learning is not thumbnail image alone. The pipeline must inspect:
+Every new project or new video must build its thumbnail direction from **eligible winner evidence only**.
+
+The learning unit includes:
 - immutable video title;
-- OCR thumbnail text;
-- title ↔ thumbnail-text overlap/complement;
-- thumbnail hook type;
+- full thumbnail text;
+- title ↔ thumbnail-text relationship;
+- discovered text mechanisms from channel data;
 - visual/composition features;
 - category;
-- impressions and CTR.
+- CTR, impressions, attribution status, and evidence weight.
 
-The goal is to learn relationships such as: for a given title style/category, what kind of thumbnail visual and what kind of thumbnail text were associated with stronger channel performance.
+### Selection order
+1. Prefer eligible winners from the same V2 category.
+2. If same-category winner evidence is unavailable or insufficient, return **INSUFFICIENT_WINNER_EVIDENCE** for the learned prior.
+3. Do not silently fall back to loser patterns.
+4. Do not use loser text, loser composition, loser visual direction, or loser discovered mechanisms as positive priors.
+5. The immutable new-project title remains the governing title; winner evidence guides thumbnail treatment, not title replacement.
 
-## Losers
-Losers are never promoted into normal future-idea priors. They are retained as negative evidence and receive a separate output named **Suggestion for Loser**.
+## Losers — repair lane only
 
-A loser suggestion keeps the original title fixed and proposes a new test informed by adequately sampled winner patterns from the same category where possible.
+Losers are retained as negative evidence and are allowed only in the dedicated **Suggestion for Loser / Repair** lane.
+
+A loser may be compared with eligible same-category winners to diagnose what to change. A loser must never seed:
+- a normal new-project concept;
+- a new-video thumbnail direction;
+- a winner pattern;
+- a positive recommendation prior.
+
+## Isolation rule
+
+Normal new-project generation consumes the winner-only output. Loser records and loser-repair outputs are not accepted as inputs to the new-project prior.
 
 ## Guardrail
-Winner/loser differences are observational associations, not causal proof. Low-impression observations remain excluded from learned rules.
+
+Winner/loser differences are observational associations, not causal proof. Configured impression eligibility and V2 attribution/evidence rules still apply.
