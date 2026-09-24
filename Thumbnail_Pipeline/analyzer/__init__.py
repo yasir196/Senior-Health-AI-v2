@@ -1,0 +1,1 @@
+"""Historical thumbnail analyzer package."""
