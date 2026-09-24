@@ -1,18 +1,11 @@
-from pathlib import Path
-import sys
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT.parent))
+from Thumbnail_Pipeline.intelligence.title_text_pair import pair_features,summarize_title_text_pairs
 
-from Thumbnail_Pipeline.intelligence.title_text_pair import pair_features, hook_type
+def test_title_thumbnail_pair_detects_overlap_and_new_tokens():
+    p=pair_features("Swollen Legs at Night? Try These Bed Movements","ONE LEG OR BOTH?")
+    assert "leg" in p["new_thumbnail_tokens"]
+    assert p["thumbnail_adds_new_tokens"] is True
 
-
-def test_title_thumbnail_pair_detects_overlap_and_new_info():
-    p = pair_features("Swollen Legs at Night? Try These Bed Movements", "ONE LEG OR BOTH?")
-    assert "leg" in p["shared_keywords"] or "legs" in p["new_thumbnail_keywords"]
-    assert p["thumbnail_adds_new_information"] is True
-
-
-def test_hook_types():
-    assert hook_type("WHAT HAPPENS NEXT?") == "question"
-    assert hook_type("DO THIS FIRST") == "action"
-    assert hook_type("MISSED CLUE") == "curiosity_gap"
+def test_pair_summary_has_no_seeded_hook_taxonomy():
+    s=summarize_title_text_pairs([{"performance":{"title":"T","ctr":5,"impressions":1000},"ocr":{"text":"WHAT HAPPENS NEXT?"}}])
+    assert s["method"]=="neutral_title_text_overlap_no_seeded_hook_vocabulary"
+    assert "hook_type" not in s["pairs"][0]
