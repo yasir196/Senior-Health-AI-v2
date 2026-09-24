@@ -52,5 +52,8 @@
   "explanation": {
     "minimum_relative_gap": 0.08,
     "note": "Dashboard/config-owned display threshold; analyzer code does not assign semantic good/bad feature directions."
+  },
+  "youtube_reference": {
+    "minimum_comparison_videos": 5
   }
 }
