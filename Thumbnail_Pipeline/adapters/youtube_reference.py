@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any, Protocol
+from Thumbnail_Pipeline.intelligence.youtube_outlier import annotate_outliers, rank_references
 
 class YouTubeReferenceProvider(Protocol):
     def search(self, query:str, limit:int=12)->list[dict[str,Any]]: ...
@@ -33,4 +34,4 @@ def collect_references(*,provider:YouTubeReferenceProvider,topic:str,category:st
                 "outlier_evidence":item.get("outlier_evidence"),
                 "outlier_status":"supported" if item.get("outlier_evidence") else "not_claimed",
             })
-    return out
+    return rank_references(annotate_outliers(out))
