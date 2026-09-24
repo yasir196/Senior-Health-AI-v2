@@ -1,15 +1,12 @@
 # V2 Read-Only Contract
 
-The Thumbnail Pipeline may inspect existing V2 data but must not mutate it.
+Thumbnail Pipeline may read existing V2 evidence but must not mutate V2.
 
-Current approved read source:
-- `Analytics/youtube_assets/<asset_id>/thumbnails/*`
+Approved read sources include:
+- `Analytics/youtube_assets/<asset_id>/thumbnails/*`;
+- the existing V2 analytics SQLite database through URI `mode=ro` + `PRAGMA query_only=ON`;
+- existing V2 YouTube OAuth client/token files through the read-only adapter.
 
-Observed V2 layout is treated as external input. No file is moved, renamed, deduplicated, cleaned, or rewritten.
+OAuth refresh for Thumbnail Pipeline is performed in memory. It must not call V2's persistence path that rewrites the token file.
 
-Performance integration is intentionally adapter-based. The Thumbnail Pipeline accepts a read-only CSV/JSON/JSONL performance export and normalizes common fields:
-`asset_id/project_id`, `video_id`, `title`, `ctr`, `impressions`, `views`, `watch_time`, `avd`, `upload_date`.
-
-All derived data must be written under `Thumbnail_Pipeline/outputs/`.
-
-Important: multiple historical thumbnail snapshots can exist for one asset. They remain separate observations until a reliable effective-date/performance-window mapping is available; the system must not pretend each snapshot caused the same CTR.
+Existing V2 thumbnail/CTR attribution evidence is preferred over assigning lifetime CTR to arbitrary historical snapshots. All derived outputs stay under `Thumbnail_Pipeline/outputs/`. Dashboard-owned Thumbnail Pipeline settings may update only `Thumbnail_Pipeline/config/intelligence.json`.
