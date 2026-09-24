@@ -4,10 +4,12 @@ from .new_project_prior import build_new_project_prior
 from .youtube_outlier_contract import combine_new_project_evidence
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references,YouTubeReferenceProvider
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider,access_token_from_v2_files_read_only
+from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails
 
 def build_new_project_context(*,title:str,topic:str,category:str,winner_rows:list[dict[str,Any]],youtube_provider:YouTubeReferenceProvider|None=None)->dict[str,Any]:
     winner_prior=build_new_project_prior(category=category,winner_rows=winner_rows)
     refs=[] if youtube_provider is None else collect_references(provider=youtube_provider,topic=topic,category=category)
+    if refs: refs=analyze_youtube_reference_thumbnails(refs)
     combined=combine_new_project_evidence(winner_prior=winner_prior,youtube_examples=refs)
     return {
         "immutable_title":title,
