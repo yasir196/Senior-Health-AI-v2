@@ -22,7 +22,7 @@ def build_loser_edit_prompt(
     ) or "- No reliable loser-specific reason available; do not invent one."
 
     winners = "\n".join(
-        f"- Title: {x.get('title','n/a')} | Thumbnail text: {x.get('thumbnail_text','n/a')} | Pattern: {x.get('pattern', x.get('hook_type','n/a'))} | CTR: {x.get('ctr','n/a')} | Impressions: {x.get('impressions','n/a')}"
+        f"- Title: {x.get('title','n/a')} | Thumbnail text: {x.get('thumbnail_text','n/a')} | Pattern: {x.get('pattern','n/a')} | CTR: {x.get('ctr','n/a')} | Impressions: {x.get('impressions','n/a')}"
         for x in winner_evidence
     ) or "- No adequately sampled winner reference available; preserve conservative channel defaults."
 
