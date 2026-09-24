@@ -35,3 +35,18 @@ class V2YouTubeReferenceProvider:
             st=detail.get("statistics") or {}
             out.append({"video_id":vid,"channel_name":sn.get("channelTitle"),"video_title":sn.get("title"),"thumbnail_url_or_path":best.get("url"),"views":st.get("viewCount"),"published_at":sn.get("publishedAt"),"outlier_evidence":None})
         return out
+
+
+def access_token_from_v2_files_read_only(client_json_path,token_path)->str:
+    """Reuse V2 OAuth credentials without calling V2 _access_token, because that function persists refreshed tokens."""
+    from youtube_api_sync import _client_config,_read_json,_form_post,GOOGLE_TOKEN_URL
+    cfg=_client_config(client_json_path); token=_read_json(token_path)
+    refresh=str(token.get("refresh_token") or "").strip()
+    if refresh:
+        refreshed=_form_post(GOOGLE_TOKEN_URL,{"client_id":cfg["client_id"],"client_secret":cfg["client_secret"],"refresh_token":refresh,"grant_type":"refresh_token"})
+        access=str(refreshed.get("access_token") or "").strip()
+        if not access: raise RuntimeError("V2 OAuth refresh did not return an access token")
+        return access
+    access=str(token.get("access_token") or "").strip()
+    if not access: raise RuntimeError("V2 YouTube token is missing")
+    return access
