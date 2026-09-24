@@ -23,6 +23,8 @@ def analyze_text(path: str | Path) -> dict[str, Any]:
         )
     except pytesseract.TesseractNotFoundError:
         return {"available": False, "reason": "tesseract_binary_not_found"}
+    except Exception as exc:
+        return {"available": False, "reason": "ocr_runtime_error", "detail": str(exc)}
 
     words = []
     boxes = []
