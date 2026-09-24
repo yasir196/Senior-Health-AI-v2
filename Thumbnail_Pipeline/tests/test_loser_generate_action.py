@@ -13,6 +13,7 @@ def test_human_prompt_is_sent_exactly_as_visible_override():
     assert card["editable_image_prompt"]==custom
     assert custom in card["generate_now"]["final_prompt_preview"]
     assert card["prompt_human_edited"] is True
+    assert card["verifier_contract_status"]=="requires_structured_review"
 
 
 def test_loser_card_emits_structured_verifier_contract():
