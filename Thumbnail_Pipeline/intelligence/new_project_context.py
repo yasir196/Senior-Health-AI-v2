@@ -3,6 +3,7 @@ from typing import Any
 from .new_project_prior import build_new_project_prior
 from .youtube_outlier_contract import combine_new_project_evidence
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references,YouTubeReferenceProvider
+from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider
 
 def build_new_project_context(*,title:str,topic:str,category:str,winner_rows:list[dict[str,Any]],youtube_provider:YouTubeReferenceProvider|None=None)->dict[str,Any]:
     winner_prior=build_new_project_prior(category=category,winner_rows=winner_rows)
@@ -16,3 +17,9 @@ def build_new_project_context(*,title:str,topic:str,category:str,winner_rows:lis
         "youtube_discovery_status":"provider_not_connected" if youtube_provider is None else "complete",
         "youtube_reference_count":len(refs),
     }
+
+
+def build_new_project_context_from_v2_youtube(*,title:str,topic:str,category:str,winner_rows:list[dict[str,Any]],access_token:str)->dict[str,Any]:
+    """Connected runtime path: reuse V2 OAuth token for external YouTube references."""
+    provider=V2YouTubeReferenceProvider(access_token)
+    return build_new_project_context(title=title,topic=topic,category=category,winner_rows=winner_rows,youtube_provider=provider)
