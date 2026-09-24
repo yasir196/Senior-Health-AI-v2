@@ -5,8 +5,8 @@ from .title_text_pair import pair_features
 from .patterns import classify_category
 from .text_psychology import discover_text_patterns
 
-def _discovered(rows):
-    data=discover_text_patterns(rows)
+def _discovered(rows,settings=None):
+    data=discover_text_patterns(rows,settings=settings)
     pats=data.get("patterns") if isinstance(data,dict) else data
     return pats or []
 
