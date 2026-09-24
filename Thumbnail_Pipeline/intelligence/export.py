@@ -5,9 +5,11 @@ from pathlib import Path
 from typing import Any
 
 from .explain import build_why_report
+from Thumbnail_Pipeline.io_policy import safe_output
 
 
 def export_pattern_files(patterns: dict[str, Any], output_root: Path) -> None:
+    output_root = safe_output(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
     payloads = {
         "winner_patterns.json": patterns["winner_patterns"],
