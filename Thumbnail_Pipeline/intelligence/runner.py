@@ -10,6 +10,7 @@ from Thumbnail_Pipeline.intelligence.explain import build_why_report
 from Thumbnail_Pipeline.intelligence.text_pattern_compare import compare_text_patterns
 from Thumbnail_Pipeline.intelligence.text_psychology import summarize_psychology
 from Thumbnail_Pipeline.intelligence.recommendations import build_next_idea_rules, build_loser_suggestions
+from Thumbnail_Pipeline.intelligence.settings import load_settings
 
 
 def _eligible(rows: list[dict[str, Any]], min_impressions: int | None) -> list[dict[str, Any]]:
@@ -42,11 +43,14 @@ def _split_by_category_median(rows: list[dict[str, Any]], patterns: dict[str, An
 
 
 def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int | None = None, output_dir: str = "intelligence") -> dict[str, Any]:
+    settings = load_settings()
+    configured_floor = int(settings["eligibility"]["min_impressions"])
+    effective_floor = configured_floor if min_impressions is None else int(min_impressions)
     root = safe_output(output_dir)
     root.mkdir(parents=True, exist_ok=True)
 
     patterns = build_patterns(joined_rows)
-    eligible = _eligible(joined_rows, min_impressions)
+    eligible = _eligible(joined_rows, effective_floor)
     winners, losers = _split_by_category_median(eligible, patterns)
 
     reports = {
@@ -55,7 +59,7 @@ def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int | N
         "text_psychology_all.json": summarize_psychology(eligible),
         "winner_text_psychology.json": summarize_psychology(winners),
         "loser_text_psychology.json": summarize_psychology(losers),
-        "text_pattern_performance.json": compare_text_patterns(eligible, min_impressions or 0),
+        "text_pattern_performance.json": compare_text_patterns(eligible, effective_floor),
         "next_ideas_from_winners.json": build_next_idea_rules(winners),
         "suggestion_for_loser.json": build_loser_suggestions(losers, winners),
     }
