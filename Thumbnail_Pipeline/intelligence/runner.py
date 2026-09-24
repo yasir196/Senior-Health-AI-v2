@@ -13,12 +13,15 @@ from Thumbnail_Pipeline.intelligence.recommendations import build_next_idea_rule
 from Thumbnail_Pipeline.intelligence.settings import load_settings
 
 
-def _eligible(rows: list[dict[str, Any]], min_impressions: int | None) -> list[dict[str, Any]]:
+def _eligible(rows: list[dict[str, Any]], min_impressions: int | None, settings: dict[str,Any] | None = None) -> list[dict[str, Any]]:
+    cfg=settings or load_settings()
+    allowed=set((cfg.get("eligibility") or {}).get("allowed_attribution_statuses") or [])
     out = []
     for row in rows:
         perf = row.get("performance") or {}
         try:
-            if float(perf.get("impressions")) > 0 and (min_impressions is None or float(perf.get("impressions")) >= min_impressions) and perf.get("ctr") is not None:
+            status=str(perf.get("attribution_status") or (row.get("attribution") or {}).get("status") or "")
+            if float(perf.get("impressions")) > 0 and (min_impressions is None or float(perf.get("impressions")) >= min_impressions) and perf.get("ctr") is not None and (not allowed or status in allowed):
                 out.append(row)
         except (TypeError, ValueError):
             pass
@@ -50,7 +53,7 @@ def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int | N
     root.mkdir(parents=True, exist_ok=True)
 
     patterns = build_patterns(joined_rows)
-    eligible = _eligible(joined_rows, effective_floor)
+    eligible = _eligible(joined_rows, effective_floor, settings)
     winners, losers = _split_by_category_median(eligible, patterns)
 
     reports = {
@@ -65,4 +68,4 @@ def run_intelligence(joined_rows: list[dict[str, Any]], min_impressions: int | N
     }
     for name, payload in reports.items():
         (root / name).write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    return {"output_dir": str(root), "winner_rows": len(winners), "loser_rows": len(losers), "reports": list(reports)}
+    return {"output_dir": str(root), "winner_rows": len(winners), "loser_rows": len(losers), "winner_records": winners, "loser_records": losers, "reports": list(reports)}
