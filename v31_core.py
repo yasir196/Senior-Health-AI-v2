@@ -2734,7 +2734,8 @@ def clean_production_script(project: Path, config: dict[str,Any], *, log_dir: Pa
     host_tokens=[]
     configured_host=str(config.get("host_name","")).strip()
     if configured_host: host_tokens.append(re.escape(configured_host))
-    host_tokens.extend([r"Health Educator",r"Adrian Westbrook"])
+    configured_host_title=str(config.get("host_title","")).strip()
+    if configured_host_title: host_tokens.append(re.escape(configured_host_title))
     host_pattern=r"(?:"+"|".join(host_tokens)+r")"
     source_spoken_host=bool(re.search(host_pattern,spoken_final_text,re.I))
     voice_spoken_host=bool(re.search(host_pattern,text,re.I))
