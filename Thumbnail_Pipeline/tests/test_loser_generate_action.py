@@ -13,3 +13,13 @@ def test_human_prompt_is_sent_exactly_as_visible_override():
     assert card["editable_image_prompt"]==custom
     assert custom in card["generate_now"]["final_prompt_preview"]
     assert card["prompt_human_edited"] is True
+
+
+def test_loser_card_emits_structured_verifier_contract():
+    card=loser_repair_card(audit_id=9,title="T",original_text="OLD",source_thumbnail_path="x.jpg",why=[],suggestion={},proposed_text="NEW",target_visual={"human_count":1,"safe_zone_clear":True,"forbidden_items":["scrubs"]})
+    contract=card["audit_edit_contract"]
+    assert contract["audit_id"]==9
+    assert contract["proposed_thumbnail_text"]=="NEW"
+    assert contract["human_count"]==1
+    assert contract["safe_zone_clear"] is True
+    assert contract["forbidden_items"]==["scrubs"]
