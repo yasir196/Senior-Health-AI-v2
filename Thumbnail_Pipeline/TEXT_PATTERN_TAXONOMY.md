@@ -1,25 +1,13 @@
-# Thumbnail Text Psychology / Pattern Taxonomy
+# Thumbnail Text Pattern Discovery
 
-Every OCR-readable thumbnail text receives explicit tags and an ordered pattern signature.
+The pipeline does **not** start from a fixed psychology vocabulary such as PROBLEM, ACTION, COMMAND, CURIOSITY, or WARNING.
 
-Supported primitives:
-- `[PROBLEM]` — names pain, difficulty, symptom, friction, or unwanted state.
-- `[ACTION]` — introduces an action verb or behavior.
-- `[COMMAND]` — direct imperative: DO THIS, CHECK THIS, STOP, START HERE.
-- `[QUESTION]` — asks an explicit or interrogative question.
-- `[CURIOSITY]` — opens an information gap: HIDDEN, CLUE, NEXT, INSIDE, MISSED.
-- `[CONTRAST]` — expectation reversal: BUT, NOT, ISN'T, VS.
-- `[SPECIFICITY]` — narrows timing/order/count/context: FIRST, BOTH, BEFORE, AFTER, NIGHT.
-- `[WARNING]` — caution/avoidance framing.
-- `[IDENTITY_CONTEXT]` — audience/context cue such as AFTER 60 or AT NIGHT.
-- `[NEUTRAL_STATEMENT]` — no supported psychological primitive detected.
+Patterns are discovered from eligible channel evidence in `ocr.text`, paired with title, category, CTR and impressions. Current discovery extracts recurring 1/2/3-word phrases plus neutral structural markers such as question mark, exclamation mark and word count.
 
-Examples:
-- KNEE PAIN? DO THIS FIRST → `[PROBLEM][QUESTION][SPECIFICITY][ACTION][COMMAND]`
-- WHAT HAPPENS NEXT? → `[CURIOSITY][QUESTION]`
-- FLOOR ISN'T STEP ONE → `[CONTRAST][SPECIFICITY]`
-- ONE LEG OR BOTH? → `[QUESTION][SPECIFICITY]`
-
-Winner learning must report the exact recurring signatures, their category, observation count, impressions, median CTR, title pair, and examples. Loser signatures remain negative/repair evidence and do not seed normal next ideas.
-
-These labels describe framing mechanisms. Performance associations are observational, not proof of psychological causation.
+Requirements:
+- minimum observations come from `config/intelligence.json`;
+- labels are descriptive channel-data discoveries, not psychological truths;
+- unclassified text remains visible;
+- human review may rename/correct discovered interpretations;
+- winner associations are observational, not causal;
+- loser patterns remain in the repair lane and do not seed normal new-project priors.
