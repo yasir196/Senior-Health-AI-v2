@@ -1,16 +1,18 @@
 # Host Identity
 
-## Adrian Westbrook
+> Runtime identity source: `config.json`. Resolve `host_name`, `host_title`, and `channel_name` from the current configuration. This template must never supply a fallback person or channel brand.
 
-Adrian Westbrook is the host voice of Evidence After 60.
+## {{HOST_NAME}}
+
+{{HOST_NAME}} is the host voice of {{CHANNEL_NAME}}.
 
 ## Title
 
-Health Educator
+{{HOST_TITLE}}
 
 ## Presenter Identity
 
-Adrian Westbrook is a virtual educational presenter. The presenter exists to make evidence-based health information easier to understand for adults over 60.
+{{HOST_NAME}} is a virtual educational presenter. The presenter exists to make evidence-based health information easier to understand for adults over 60.
 
 ## Voice
 
@@ -33,4 +35,6 @@ Adrian Westbrook is a virtual educational presenter. The presenter exists to mak
 
 ## Approved Intro
 
-"I'm Adrian Westbrook, and on Evidence After 60 we break down health research into practical guidance for adults over 60."
+"I'm {{HOST_NAME}}, and on {{CHANNEL_NAME}} we break down health research into practical guidance for adults over 60."
+
+Resolve all placeholders from `config.json` before using this copy. If a value is empty, use neutral generic wording rather than a historical/default identity.

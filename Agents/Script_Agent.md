@@ -62,12 +62,12 @@ When `writer_mode` is `"outline_to_script"`, stop after `05_script_outline.md`. 
 13. Avoid unsupported details, disease-treatment instructions, or medication advice.
 14. Insert `[Visual Cue]` suggestions at major transitions for the external writer and later Production_Agent to consume.
 15. Use `config.json` values for channel name, host name, and host title only when non-empty. Otherwise use placeholders: `{{CHANNEL_NAME}}`, `{{HOST_NAME}}`, and `{{HOST_TITLE}}`.
-16. If `channel_name` is empty or unavailable, use a generic subscribe CTA that does not name a channel. If channel name is present, prefer: `If you value calm, evidence-based health guidance for life after 60, consider subscribing to Evidence After 60.`
+16. If `channel_name` is empty or unavailable, use a generic subscribe CTA that does not name a channel. If channel name is present, prefer: `If you value calm, evidence-based health guidance for life after 60, consider subscribing to {{CHANNEL_NAME}}.`, resolving `{{CHANNEL_NAME}}` from `config.json` at generation time.
 17. Place the CTA naturally after the recap or as part of the final payoff. Never place the CTA before the recap.
 18. When writing an internal final script, end it with Estimated Runtime, Estimated Word Count, Average Speaking Rate, Runtime Advisory, and a Retention Report.
 19. When `writer_mode` is `"outline_to_script"`, report exactly: `Outline complete. Use Templates/Writing/opus_writer_prompt.md together with 05_script_outline.md in Claude Opus. After Opus writes the script, save it as 06_final_script.md, then run Narrative QA.`
 20. Save the outline for the external writer handoff or, when internal writing is enabled, save the outline and final script for Medical Gate 2.
-21. If `doctor_mode` is false or `credentials_claim` is false, the outline and script must identify Adrian Westbrook only as `Health Educator` or as the host of `Evidence After 60`. Never imply medical licensure, medical credentials, patient care, clinic practice, viewer consultations, or private clinical experience.
+21. If `doctor_mode` is false or `credentials_claim` is false, the outline and script must identify the configured `host_name` only by the configured `host_title` or as the host of the configured `channel_name`. Never imply medical licensure, medical credentials, patient care, clinic practice, viewer consultations, or private clinical experience.
 
 ## 5. Retention Engine Rules
 
@@ -200,9 +200,9 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Every medical statement must map to approved research or be clearly general education.
 - No medication changes, cure promises, or guaranteed outcomes.
 - No false credentials, medical-title framing, invented patients, clinic-practice claims, viewer emails, consultations, or private care stories.
-- If `doctor_mode` is false, any wording that presents Adrian Westbrook as a licensed medical clinician is a compliance failure.
-- The approved host identity is Adrian Westbrook, Health Educator, for Evidence After 60.
-- CTA must use the channel brand when available: Evidence After 60.
+- If `doctor_mode` is false, any wording that presents the configured `host_name` as a licensed medical clinician is a compliance failure.
+- The approved host identity is the current `config.json` values `host_name`, `host_title`, and `channel_name`; do not substitute a template default.
+- CTA must use the current `config.json` `channel_name` when non-empty; otherwise use a generic CTA.
 - The script must match title and thumbnail expectations without overpromising.
 - Default target runtime comes from `config.json`; current default is 18-23 minutes, aiming for approximately 20 minutes.
 - Runtime is production-planning metadata only and is ADVISORY ONLY — NON-BLOCKING. Scripts outside the configured target runtime range must NOT fail QA and must not trigger revision, trimming, or upstream routing on the basis of runtime alone.
