@@ -1,7 +1,7 @@
 from Thumbnail_Pipeline.db import store
 
 def rec():
-    return {"source":{"asset_id":"a","thumbnail_path":"x.jpg"},"observed":{"title":"T","thumbnail_text_full":"TXT","ctr":5.5,"impressions":1200},"inferred":{"category":"mobility","pattern_sequence":["one","two"]}}
+    return {"source":{"asset_id":"a","thumbnail_path":"x.jpg"},"observed":{"title":"T","ctr":5.5,"impressions":1200},"extracted":{"thumbnail_text_full":"TXT"},"inferred":{"category":"mobility","pattern_sequence":["one","two"]}}
 
 def test_json_pattern_and_idempotent_save(tmp_path,monkeypatch):
     monkeypatch.setattr(store,"db_path",lambda:tmp_path/"db.sqlite3")
