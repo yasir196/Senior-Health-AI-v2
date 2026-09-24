@@ -20,7 +20,8 @@ class ThumbnailFeatures:
     dark_pixel_ratio: float
     thirds_occupancy: list[float]
     timestamp_safe_zone_edge_density: float
-    dominant_colors_bgr: list[list[int]]
+    dominant_colors_rgb: list[list[int]]
+    dominant_colors_hex: list[str]
     face_count: int
     face_boxes_normalized: list[list[float]]
     face_area_ratio: float
@@ -38,15 +39,12 @@ def _edge_map(gray: np.ndarray) -> np.ndarray:
 
 
 def _dominant_colors(image: np.ndarray, k: int = 5) -> list[list[int]]:
+    """Deterministic dominant RGB colors using fixed quantization, not random k-means seeds."""
     small = cv2.resize(image, (160, 90), interpolation=cv2.INTER_AREA)
-    pixels = small.reshape((-1, 3)).astype(np.float32)
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1.0)
-    _compactness, labels, centers = cv2.kmeans(
-        pixels, k, None, criteria, 3, cv2.KMEANS_PP_CENTERS
-    )
-    counts = Counter(labels.flatten().tolist())
-    order = [idx for idx, _ in counts.most_common()]
-    return [[int(v) for v in centers[idx]] for idx in order]
+    rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
+    quantized=(rgb//32)*32+16
+    counts=Counter(map(tuple,quantized.reshape((-1,3)).tolist()))
+    return [[int(v) for v in color] for color,_ in counts.most_common(k)]
 
 
 def _faces(gray: np.ndarray) -> list[tuple[int, int, int, int]]:
@@ -115,8 +113,10 @@ def analyze_image(path: str | Path) -> dict[str, Any]:
         face_pixels += w * h
 
     edge_density = float(np.mean(edges > 0))
-    occupied_cells = sum(1 for value in cells if value > 0.035)
-    clutter = min(1.0, (edge_density / 0.18) * 0.65 + (occupied_cells / 9) * 0.35)
+    # Neutral measurements only: avoid embedding arbitrary good/bad clutter policy in the analyzer.
+    occupied_cells = sum(1 for value in cells if value > 0.0)
+    clutter = (edge_density + (occupied_cells / 9)) / 2.0
+    dominant_rgb = _dominant_colors(image)
 
     features = ThumbnailFeatures(
         width=width,
@@ -128,7 +128,8 @@ def analyze_image(path: str | Path) -> dict[str, Any]:
         dark_pixel_ratio=round(float(np.mean(gray < 48)), 6),
         thirds_occupancy=cells,
         timestamp_safe_zone_edge_density=round(float(np.mean(safe_edges > 0)), 6),
-        dominant_colors_bgr=_dominant_colors(image),
+        dominant_colors_rgb=dominant_rgb,
+        dominant_colors_hex=["#%02X%02X%02X" % tuple(color) for color in dominant_rgb],
         face_count=len(faces),
         face_boxes_normalized=normalized_faces,
         face_area_ratio=round(face_pixels / (width * height), 6),
