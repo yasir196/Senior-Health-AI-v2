@@ -6,11 +6,17 @@ from pathlib import Path
 
 from .features import analyze_image
 from .ocr import analyze_text
+from Thumbnail_Pipeline.io_policy import safe_output
 
 SUPPORTED = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 def analyze_folder(source: Path, output_jsonl: Path, output_csv: Path) -> int:
+    # All derived writes are forced under Thumbnail_Pipeline/outputs.
+    output_jsonl = safe_output(output_jsonl)
+    output_csv = safe_output(output_csv)
+    output_jsonl.parent.mkdir(parents=True, exist_ok=True)
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
     images = sorted(p for p in source.rglob("*") if p.is_file() and p.suffix.lower() in SUPPORTED)
     rows = []
     with output_jsonl.open("w", encoding="utf-8") as stream:
