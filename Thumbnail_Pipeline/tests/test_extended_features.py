@@ -17,7 +17,8 @@ def test_extended_features_are_bounded(tmp_path):
     assert cv2.imwrite(str(path), image)
     result = analyze_image(path)
 
-    assert len(result["dominant_colors_bgr"]) >= 1
+    assert len(result["dominant_colors_rgb"]) >= 1
+    assert result["dominant_colors_hex"][0].startswith("#")
     assert result["face_count"] >= 0
     assert 0 <= result["face_area_ratio"] <= 1
     assert 0 <= result["saliency_concentration"] <= 1
