@@ -28,7 +28,7 @@ def _eligible(rows: list[dict[str, Any]], min_impressions: int | None) -> list[d
 def _split_by_category_median(rows: list[dict[str, Any]], patterns: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     from Thumbnail_Pipeline.intelligence.patterns import classify_category
     winners, losers = [], []
-    thresholds = {k: v["median_ctr"] for k, v in patterns["category_patterns"].items()}
+    thresholds = {k: v["median_ctr"] for k, v in patterns["category_patterns"].items() if v.get("status")=="comparable" and v.get("median_ctr") is not None}
     for row in rows:
         perf = row.get("performance") or {}
         category = classify_category(row)
