@@ -16,8 +16,13 @@ def _migrate(conn:sqlite3.Connection)->None:
         conn.execute("ALTER TABLE human_corrections ADD COLUMN value_type TEXT NOT NULL DEFAULT 'text'")
     conn.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY,value TEXT NOT NULL)")
     conn.execute("INSERT OR REPLACE INTO schema_meta(key,value) VALUES('schema_version',?)",(str(SCHEMA_VERSION),))
-    try: conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_thumbnail_audit_identity ON thumbnail_audit(asset_id,thumbnail_path)")
-    except sqlite3.IntegrityError: pass
+    duplicates=conn.execute("""SELECT COALESCE(asset_id,''),thumbnail_path,MIN(id) keep_id FROM thumbnail_audit GROUP BY COALESCE(asset_id,''),thumbnail_path HAVING COUNT(*)>1""").fetchall()
+    for asset_key,thumb,keep_id in duplicates:
+        extra=conn.execute("SELECT id FROM thumbnail_audit WHERE COALESCE(asset_id,'')=? AND thumbnail_path=? AND id<>?",(asset_key,thumb,keep_id)).fetchall()
+        for row in extra:
+            conn.execute("UPDATE human_corrections SET thumbnail_audit_id=? WHERE thumbnail_audit_id=?",(keep_id,row[0]))
+            conn.execute("DELETE FROM thumbnail_audit WHERE id=?",(row[0],))
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_thumbnail_audit_identity_strict ON thumbnail_audit(COALESCE(asset_id,''),thumbnail_path)")
 
 def connect()->sqlite3.Connection:
     path=db_path(); path.parent.mkdir(parents=True,exist_ok=True)
