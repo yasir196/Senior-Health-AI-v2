@@ -61,3 +61,17 @@ def test_concept_engine_uses_category_packaging_associations_before_channel():
     assert out["concept"]["composition_layout"]=="category_layout"
     assert out["concept"]["presenter_position"]=="right"
     assert out["concept"]["text_style"]=="bold_condensed"
+
+
+def test_composition_derives_text_placement_and_safe_zone_from_supported_layout():
+    from Thumbnail_Pipeline.composition import build_composition_spec
+    concept={
+        "immutable_title":"Locked","evidence_status":"association_supported",
+        "concept":{"category":"food","composition_layout":"text_left_subject_right","presenter_position":"right","thumbnail_text_examples":[]},
+        "evidence":{},"constraints":{"title_must_remain_unchanged":True},
+    }
+    spec=build_composition_spec(concept)
+    assert spec["composition"]["text_placement"]=="left"
+    assert spec["composition"]["safe_zone"]=="bottom-right timestamp-safe area clear"
+    assert "text_placement" not in spec["human_review_required_for"]
+    assert "safe_zone" not in spec["human_review_required_for"]
