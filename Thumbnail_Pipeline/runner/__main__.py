@@ -15,7 +15,7 @@ from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
 from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
 from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
-from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails
+from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
@@ -137,13 +137,16 @@ def main() -> int:
     parser.add_argument("--thumbnail-text")
     parser.add_argument("--youtube-client-json",default=os.environ.get("V2_YOUTUBE_CLIENT_JSON"),help="Existing V2 OAuth client JSON; read only")
     parser.add_argument("--youtube-token-json",default=os.environ.get("V2_YOUTUBE_TOKEN_JSON"),help="Existing V2 OAuth token JSON; never modified")
+    parser.add_argument("--vision-api-key",default=os.environ.get("OPENAI_API_KEY"),help="Optional OpenAI API key for thumbnail text vision fallback")
+    parser.add_argument("--vision-model",default=os.environ.get("THUMBNAIL_VISION_MODEL","gpt-5-mini"),help="Vision-capable model used only when local OCR has no text")
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
     youtube_provider=None
     if args.youtube_client_json and args.youtube_token_json:
         token=access_token_from_v2_files_read_only(Path(args.youtube_client_json),Path(args.youtube_token_json))
         youtube_provider=V2YouTubeReferenceProvider(token)
-    state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db),youtube_provider=youtube_provider)
+    youtube_text_analyzer=openai_thumbnail_text_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
+    state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db),youtube_provider=youtube_provider,youtube_text_analyzer=youtube_text_analyzer)
     spec=state["composition"]
     corrections={k:v for k,v in {
         "layout":args.layout,
