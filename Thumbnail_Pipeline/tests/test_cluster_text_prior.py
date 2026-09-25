@@ -1,5 +1,5 @@
 from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
-from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms,transformation_text_candidates
+from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms,transformation_text_candidates,constraint_text_candidates
 
 def r(title,text,ctr,imp=2000):
     return {"performance":{"title":title,"ctr":ctr,"impressions":imp,"attribution_status":""},"ocr":{"text":text}}
@@ -52,3 +52,26 @@ def test_recurrent_transformation_remains_eligible():
     m=discover_text_mechanisms([r("Banana at Night","TRUTH ABOUT BANANA",5),r("Milk at Night","TRUTH ABOUT MILK",6)])
     out=transformation_text_candidates("Clove in Coffee Every Morning",m)
     assert out and "TRUTH ABOUT" in out[0]
+
+
+def test_constraint_fallback_uses_only_current_title_words():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning",m,with_audit=True)
+    assert out
+    title_words={"1","clove","in","your","coffee","every","morning"}
+    for item in out:
+        assert set(item["text"].lower().rstrip("?").split())<=title_words
+        assert item["audit"]["source"]=="constraint_fallback"
+
+def test_constraint_fallback_does_not_copy_historical_subject_words():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    joined=" ".join(constraint_text_candidates("1 CLOVE in Your Coffee Every Morning",m))
+    assert "BANANA" not in joined and "MILK" not in joined
+
+def test_constraint_fallback_prefers_title_distinctive_tokens_without_seed_list():
+    winners=[r("Banana Every Morning","BANANA?",5),r("Milk Every Morning","MILK?",6)]
+    m=discover_text_mechanisms(winners)
+    out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning",m)
+    assert out and "CLOVE" in out[0]
