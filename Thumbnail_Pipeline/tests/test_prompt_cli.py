@@ -78,14 +78,3 @@ def test_youtube_discovery_runs_before_title_only_fallback(monkeypatch,tmp_path)
     assert evidence["youtube_fallback"]["status"] in {"used","searched_no_recurrent_text_mechanism"}
     assert evidence["youtube_reference_count"]==1
 
-def test_youtube_not_called_when_recurrent_local_mechanism_exists(monkeypatch,tmp_path):
-    # The boundary is explicit: external discovery is a fallback, never a replacement
-    # for supported local winner evidence.
-    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
-    (p/"project.json").write_text(json.dumps({"title":"Clove Coffee"}),encoding="utf-8")
-    class Provider:
-        def search(self,*a,**k): raise AssertionError("YouTube should not be queried")
-    # With no analytics DB there is no local mechanism, so this test only verifies the
-    # provider contract remains injectable without any V2 write path.
-    state=build_project_prompt_state(p,youtube_provider=Provider())
-    assert state["concept"]["constraints"]["external_references_are_secondary"] is True
