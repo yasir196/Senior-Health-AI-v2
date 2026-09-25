@@ -9,7 +9,7 @@ from Thumbnail_Pipeline.analyzer.ocr import analyze_text
 MAX_THUMBNAIL_BYTES=8*1024*1024
 ALLOWED_THUMBNAIL_HOST_SUFFIXES=("ytimg.com","youtube.com")
 
-def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30)->dict[str,Any]:
+def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30,text_analyzer=None)->dict[str,Any]:
     """Download a public YouTube thumbnail into pipeline outputs and inspect it locally."""
     url=str(reference.get("thumbnail_url_or_path") or "").strip()
     parsed=urllib.parse.urlparse(url)
@@ -30,13 +30,20 @@ def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30
     target.write_bytes(data)
     try:
         features=analyze_image(target); ocr=analyze_text(target)
+        visual_text=None
+        if text_analyzer is not None and (not isinstance(ocr,dict) or not str(ocr.get("text") or "").strip()):
+            candidate=text_analyzer(target,reference)
+            if isinstance(candidate,dict):
+                visual_text=str(candidate.get("text") or "").strip() or None
+            elif candidate is not None:
+                visual_text=str(candidate).strip() or None
     except Exception as exc:
         return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"failed","thumbnail_analysis_reason":str(exc)}
-    return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"analyzed","external_thumbnail_features":features,"external_thumbnail_ocr":ocr}
+    return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"analyzed","external_thumbnail_features":features,"external_thumbnail_ocr":ocr,"external_thumbnail_visual_text":visual_text}
 
-def analyze_youtube_reference_thumbnails(references:list[dict[str,Any]])->list[dict[str,Any]]:
+def analyze_youtube_reference_thumbnails(references:list[dict[str,Any]],*,text_analyzer=None)->list[dict[str,Any]]:
     out=[]
     for ref in references:
-        try: out.append(analyze_youtube_reference_thumbnail(ref))
+        try: out.append(analyze_youtube_reference_thumbnail(ref,text_analyzer=text_analyzer))
         except Exception as exc: out.append({**ref,"thumbnail_analysis_status":"failed","thumbnail_analysis_reason":str(exc)})
     return out
