@@ -1,6 +1,7 @@
 from __future__ import annotations
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,9 @@ from Thumbnail_Pipeline.intelligence.title_clusters import discover_title_cluste
 from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
 from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
 from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates
+from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
+from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails
+from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -39,7 +43,7 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
-def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None, cluster_db: Path | None = None) -> dict[str, Any]:
+def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None, cluster_db: Path | None = None, youtube_provider=None) -> dict[str, Any]:
     meta=_read_project_json(project); title=_title(meta)
     adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
     historical=adapter.to_intelligence_rows() if adapter else []
@@ -52,19 +56,43 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     winner_rows=prior.get("winner_rows") or []
     mechanism=discover_text_mechanisms(winner_rows)
     candidate_audit=transformation_text_candidates(title,mechanism,with_audit=True)
+    youtube_examples=[]
+    youtube_fallback={"status":"not_needed","reason":"recurrent_local_text_mechanism_available"}
+    # If the local cluster cannot produce a recurrent reusable text mechanism, broaden
+    # evidence with same-topic YouTube references before falling back to title-only copy.
+    if not candidate_audit and youtube_provider is not None:
+        refs=collect_references(provider=youtube_provider,topic=title,category="",limit_per_query=12)
+        youtube_examples=analyze_youtube_reference_thumbnails(refs)
+        external_rows=[]
+        for ref in youtube_examples:
+            ocr=ref.get("external_thumbnail_ocr") or {}
+            text=ocr.get("text") if isinstance(ocr,dict) else None
+            if ref.get("video_title") and text:
+                external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":text}})
+        external_mechanism=discover_text_mechanisms(external_rows)
+        external_candidates=transformation_text_candidates(title,external_mechanism,with_audit=True)
+        if external_candidates:
+            candidate_audit=external_candidates
+            mechanism=external_mechanism
+            youtube_fallback={"status":"used","reference_count":len(youtube_examples),"analyzed_text_pairs":len(external_rows)}
+        else:
+            youtube_fallback={"status":"searched_no_recurrent_text_mechanism","reference_count":len(youtube_examples),"analyzed_text_pairs":len(external_rows)}
+    elif not candidate_audit:
+        youtube_fallback={"status":"unavailable","reason":"youtube_provider_not_configured"}
     if not candidate_audit:
         candidate_audit=constraint_text_candidates(title,mechanism,with_audit=True)
     fresh_text_candidates=[x["text"] for x in candidate_audit]
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
     associations=adapter.latest_packaging_associations(None) if adapter else {"run":None,"hero_category":None,"channel":[],"category":[]}
-    context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id","unclustered"),
-             "winner_prior":{"winner_examples":winner_rows},"youtube_examples":[],"packaging_associations":associations}
+    context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id") or "unclustered",
+             "winner_prior":{"winner_examples":winner_rows},"youtube_examples":youtube_examples,"packaging_associations":associations}
     concept=build_concept_direction(context)
     concept["concept"]["thumbnail_text_examples"]=[]
     concept["concept"]["thumbnail_text_candidates"]=fresh_text_candidates
     concept["evidence"]["historical_text_mechanism"]=mechanism
     concept["evidence"]["cluster_prior_status"]={k:v for k,v in prior.items() if k!="winner_rows"}
     concept["evidence"]["thumbnail_text_candidate_ranking"]=candidate_audit
+    concept["evidence"]["youtube_fallback"]=youtube_fallback
     composition=build_composition_spec(concept)
     if fresh_text_candidates:
         composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
@@ -83,9 +111,15 @@ def main() -> int:
     parser.add_argument("--text-placement")
     parser.add_argument("--safe-zone")
     parser.add_argument("--thumbnail-text")
+    parser.add_argument("--youtube-client-json",default=os.environ.get("V2_YOUTUBE_CLIENT_JSON"),help="Existing V2 OAuth client JSON; read only")
+    parser.add_argument("--youtube-token-json",default=os.environ.get("V2_YOUTUBE_TOKEN_JSON"),help="Existing V2 OAuth token JSON; never modified")
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
-    state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db))
+    youtube_provider=None
+    if args.youtube_client_json and args.youtube_token_json:
+        token=access_token_from_v2_files_read_only(Path(args.youtube_client_json),Path(args.youtube_token_json))
+        youtube_provider=V2YouTubeReferenceProvider(token)
+    state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db),youtube_provider=youtube_provider)
     spec=state["composition"]
     corrections={k:v for k,v in {
         "layout":args.layout,
@@ -106,6 +140,7 @@ def main() -> int:
             "discovered_cluster":state.get("discovered_cluster"),
             "cluster_count":state.get("cluster_count"),
             "packaging_association_run":(state["concept"].get("evidence") or {}).get("packaging_association_run"),
+            "youtube_fallback":(state["concept"].get("evidence") or {}).get("youtube_fallback"),
             "instruction":"Resolve only fields not supported by DB evidence. No image generation, upload, or V2 write was performed.",
         },indent=2,ensure_ascii=False))
         return 2
