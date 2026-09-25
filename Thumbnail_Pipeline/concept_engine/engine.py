@@ -48,7 +48,8 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
     ]
     layouts = [
         ((r.get("v2_analysis") or {}).get("composition_layout") if isinstance(r, dict) else None)
-        or ((r.get("visual_analysis") or {}).get("composition_layout") if isinstance(r, dict) else None)\n        or (r.get("composition_layout") if isinstance(r, dict) else None)
+        or ((r.get("visual_analysis") or {}).get("composition_layout") if isinstance(r, dict) else None)
+        or (r.get("composition_layout") if isinstance(r, dict) else None)
         for r in winners
     ]
     hero_categories = [
