@@ -13,7 +13,7 @@ from Thumbnail_Pipeline.adapters.v2_analytics_db import V2AnalyticsReadOnlyAdapt
 from Thumbnail_Pipeline.intelligence.title_clusters import discover_title_clusters, assign_title_cluster
 from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
 from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
-from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates
+from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates, recurrent_observed_text_candidates
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
 from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only
@@ -94,7 +94,12 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             if ref.get("video_title") and effective_text:
                 external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":effective_text}})
         external_mechanism=discover_text_mechanisms(external_rows)
-        external_candidates=transformation_text_candidates(title,external_mechanism,with_audit=True)
+        # External YouTube evidence is not a positional word-replacement template.
+        # First preserve genuinely recurrent observed copy when its words are supported by
+        # the immutable title. Only if none survives do we try the legacy transformation.
+        external_candidates=recurrent_observed_text_candidates(title,external_mechanism,with_audit=True)
+        if not external_candidates:
+            external_candidates=transformation_text_candidates(title,external_mechanism,with_audit=True)
         if external_candidates:
             candidate_audit=external_candidates
             mechanism=external_mechanism
