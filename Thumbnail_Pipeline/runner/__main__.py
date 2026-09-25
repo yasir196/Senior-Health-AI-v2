@@ -35,12 +35,19 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
-def build_project_prompt_state(project: Path, analytics_db: Path | None = None) -> dict[str, Any]:
+def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None) -> dict[str, Any]:
     meta=_read_project_json(project)
     title=_title(meta)
-    category=meta.get("hero_category") or meta.get("category") or meta.get("topic_category") or "uncategorized"
-    associations = V2AnalyticsReadOnlyAdapter(analytics_db).latest_packaging_associations(str(category)) if analytics_db else {"run":None,"hero_category":str(category),"channel":[],"category":[]}
-    historical = V2AnalyticsReadOnlyAdapter(analytics_db).to_intelligence_rows() if analytics_db else []
+    metadata_category=meta.get("hero_category")
+    adapter = V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
+    support = adapter.hero_category_support() if adapter else []
+    supported_categories = {str(r["hero_category"]) for r in support}
+    category = hero_category or (str(metadata_category) if metadata_category in supported_categories else None)
+    if category is None and len(supported_categories) == 1:
+        category = next(iter(supported_categories))
+    category = category or "uncategorized"
+    associations = adapter.latest_packaging_associations(str(category)) if adapter else {"run":None,"hero_category":str(category),"channel":[],"category":[]}
+    historical = adapter.to_intelligence_rows() if adapter else []
     same_category = [r for r in historical if str((r.get("v2_analysis") or {}).get("hero_category") or "") == str(category)]
     context={"immutable_title":title,"requested_category":str(category),"winner_prior":{"winner_examples":same_category},"youtube_examples":[],"packaging_associations":associations}
     concept=build_concept_direction(context)
@@ -49,7 +56,9 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None) 
         "project":project.name,
         "immutable_title":title,
         "concept":concept,
-        "composition":composition
+        "composition":composition,
+        "hero_category":category,
+        "hero_category_support":support
     }
 
 def main() -> int:
@@ -57,6 +66,7 @@ def main() -> int:
     parser.add_argument("--project",required=True,help="Exact folder name under Projects/")
     parser.add_argument("--projects-root",default="Projects")
     parser.add_argument("--analytics-db",default="Analytics/senior_health_analytics.db",help="Read-only historical analytics DB")
+    parser.add_argument("--hero-category",help="Explicit DB hero category for this new thumbnail")
     parser.add_argument("--layout")
     parser.add_argument("--subject-placement")
     parser.add_argument("--text-placement")
@@ -64,7 +74,10 @@ def main() -> int:
     parser.add_argument("--thumbnail-text")
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
-    state=build_project_prompt_state(project,Path(args.analytics_db))
+    state=build_project_prompt_state(project,Path(args.analytics_db),args.hero_category)
+    if state["hero_category"] == "uncategorized":
+        print(json.dumps({"status":"needs_hero_category","project":state["project"],"immutable_title":state["immutable_title"],"available_hero_categories":state["hero_category_support"],"instruction":"Re-run with --hero-category using one observed DB category. No category was guessed from topic/title."},indent=2,ensure_ascii=False))
+        return 2
     spec=state["composition"]
     corrections={k:v for k,v in {
         "layout":args.layout,
