@@ -30,6 +30,29 @@ def _mode(values: list[Any]) -> Any | None:
     return Counter(clean).most_common(1)[0][0] if clean else None
 
 
+def _association_choice(rows: list[dict[str, Any]], feature: str) -> Any | None:
+    """Prefer category evidence (caller order), then strongest supported association."""
+    candidates = []
+    for r in rows:
+        if r.get("feature_name") != feature:
+            continue
+        direction = str(r.get("association_direction") or "").lower()
+        if direction in {"negative", "lower"}:
+            continue
+        try:
+            weight = float(r.get("evidence_weight") or 0)
+            videos = int(r.get("video_count") or 0)
+            impressions = float(r.get("total_impressions") or 0)
+            delta = float(r.get("ctr_delta_points") or 0)
+        except (TypeError, ValueError):
+            continue
+        candidates.append((weight, videos, impressions, delta, r.get("feature_value")))
+    if not candidates:
+        return None
+    candidates.sort(reverse=True, key=lambda x: (x[0], x[1], x[2], x[3]))
+    return candidates[0][4]
+
+
 def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
     """Turn evidence context into a conservative, traceable concept brief.
 
@@ -59,7 +82,18 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
         ((r.get("visual_analysis") or {}).get("hero_category") or classify_category(r)) for r in winners if isinstance(r, dict)
     ]
 
-    association_layouts = [r.get("feature_value") for r in category_associations + channel_associations if r.get("feature_name") == "composition_layout" and r.get("association_direction") not in ("negative","lower")]
+    # Category lane is intentionally considered before channel-wide fallback.
+    association_rows = category_associations or channel_associations
+    association_layout = _association_choice(association_rows, "composition_layout")
+    presenter_position = _association_choice(association_rows, "presenter_position")
+    text_style = _association_choice(association_rows, "text_style")
+    title_thumbnail_relationship = _association_choice(association_rows, "title_thumbnail_relationship")
+    question_hook = _association_choice(association_rows, "question_hook")
+    number_hook = _association_choice(association_rows, "number_hook")
+    background_style = _association_choice(association_rows, "background_style")
+    background_brightness = _association_choice(association_rows, "background_brightness")
+    text_color_scheme = _association_choice(association_rows, "text_color_scheme")
+    accent_color_family = _association_choice(association_rows, "accent_color_family")
     supported = bool(winners or category_associations or channel_associations)
 
     return {
@@ -69,11 +103,18 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
         "evidence_status": "winner_supported" if winners else ("association_supported" if supported else "no_winner_evidence"),
         "concept": {
             "category": _mode(hero_categories) or requested_category,
-            "composition_layout": _mode(layouts) or (association_layouts[0] if association_layouts else None),
+            "composition_layout": _mode(layouts) or association_layout,
             "thumbnail_text_examples": [t for t in winner_texts if t][:5],
-            "title_text_relationship": [
-                pair_features(title, t) for t in winner_texts if t
-            ][:5],
+            "title_text_relationship": [pair_features(title, t) for t in winner_texts if t][:5],
+            "presenter_position": presenter_position,
+            "text_style": text_style,
+            "title_thumbnail_relationship": title_thumbnail_relationship,
+            "question_hook": question_hook,
+            "number_hook": number_hook,
+            "background_style": background_style,
+            "background_brightness": background_brightness,
+            "text_color_scheme": text_color_scheme,
+            "accent_color_family": accent_color_family,
         },
         "evidence": {
             "channel_winner_count": len(winners),
