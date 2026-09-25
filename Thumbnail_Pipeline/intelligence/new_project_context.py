@@ -30,3 +30,16 @@ def build_new_project_context_from_v2_youtube(*,title:str,topic:str,category:str
 def build_new_project_context_from_v2_oauth_files(*,title:str,topic:str,category:str,winner_rows:list[dict[str,Any]],client_json_path,token_path)->dict[str,Any]:
     token=access_token_from_v2_files_read_only(client_json_path,token_path)
     return build_new_project_context_from_v2_youtube(title=title,topic=topic,category=category,winner_rows=winner_rows,access_token=token)
+
+
+def build_new_project_concept(*, title: str, topic: str, category: str, winner_rows: list[dict[str, Any]], youtube_provider: YouTubeReferenceProvider | None = None) -> dict[str, Any]:
+    """Phase 2 orchestration: evidence context -> traceable concept direction."""
+    from Thumbnail_Pipeline.concept_engine import build_concept_direction
+    context = build_new_project_context(
+        title=title,
+        topic=topic,
+        category=category,
+        winner_rows=winner_rows,
+        youtube_provider=youtube_provider,
+    )
+    return {"context": context, "concept_direction": build_concept_direction(context)}
