@@ -43,7 +43,7 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
-def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None, cluster_db: Path | None = None, youtube_provider=None) -> dict[str, Any]:
+def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None, cluster_db: Path | None = None, youtube_provider=None, youtube_text_analyzer=None) -> dict[str, Any]:
     meta=_read_project_json(project); title=_title(meta)
     adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
     historical=adapter.to_intelligence_rows() if adapter else []
@@ -62,7 +62,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     # evidence with same-topic YouTube references before falling back to title-only copy.
     if not candidate_audit and youtube_provider is not None:
         refs=collect_references(provider=youtube_provider,topic=title,category="",limit_per_query=12)
-        youtube_examples=analyze_youtube_reference_thumbnails(refs)
+        youtube_examples=analyze_youtube_reference_thumbnails(refs,text_analyzer=youtube_text_analyzer)
         external_rows=[]
         diagnostics={
             "reference_count":len(youtube_examples),
@@ -71,6 +71,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             "ocr_available":0,
             "ocr_unavailable":0,
             "ocr_text_found":0,
+            "visual_text_found":0,
         }
         for ref in youtube_examples:
             status=ref.get("thumbnail_analysis_status")
@@ -86,8 +87,12 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
                 diagnostics["ocr_unavailable"]+=1
             if text:
                 diagnostics["ocr_text_found"]+=1
-            if ref.get("video_title") and text:
-                external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":text}})
+            visual_text=str(ref.get("external_thumbnail_visual_text") or "").strip()
+            if visual_text:
+                diagnostics["visual_text_found"]+=1
+            effective_text=str(text or visual_text or "").strip()
+            if ref.get("video_title") and effective_text:
+                external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":effective_text}})
         external_mechanism=discover_text_mechanisms(external_rows)
         external_candidates=transformation_text_candidates(title,external_mechanism,with_audit=True)
         if external_candidates:
