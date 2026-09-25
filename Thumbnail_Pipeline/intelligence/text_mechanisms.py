@@ -154,8 +154,12 @@ def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
         # that keeps that modifier when available; otherwise prefer an edge-anchored span.
         numeric_prefix = si > 0 and words[si-1].isdigit()
         if numeric_prefix:
+            # Keep the numeric modifier only when the span can also carry the full
+            # evidence-sized subject context. If the width cap makes that impossible,
+            # prefer the complete lexical context rather than a clipped "1 SUBJECT IN YOUR".
             with_modifier=[x for x in complete if x["start"] <= si-1 <= x["end"]]
-            contexts=with_modifier[:1] if with_modifier else complete[:1]
+            after_subject=[x for x in complete if x["start"]==si]
+            contexts=(after_subject or with_modifier or complete)[:1]
         else:
             complete.sort(key=lambda x:(min(x["subject_offset"],x["word_count"]-1-x["subject_offset"]),x["start"]))
             contexts=complete[:1]
