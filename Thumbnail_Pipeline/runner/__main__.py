@@ -34,6 +34,12 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
+def _read_artifact(project: Path, name: str) -> str:
+    path=project/name
+    if not path.is_file():
+        return ""
+    return path.read_text(encoding="utf-8")
+
 def build_project_prompt_state(project: Path) -> dict[str, Any]:
     meta=_read_project_json(project)
     title=_title(meta)
@@ -41,7 +47,16 @@ def build_project_prompt_state(project: Path) -> dict[str, Any]:
     context={"immutable_title":title,"requested_category":str(category),"winner_prior":{"winner_examples":[]},"youtube_examples":[]}
     concept=build_concept_direction(context)
     composition=build_composition_spec(concept)
-    return {"project":project.name,"immutable_title":title,"concept":concept,"composition":composition}
+    return {
+        "project":project.name,
+        "immutable_title":title,
+        "concept":concept,
+        "composition":composition,
+        "source_artifacts":{
+            "04_thumbnail_concepts.md":_read_artifact(project,"04_thumbnail_concepts.md"),
+            "11_thumbnail_prompt.md":_read_artifact(project,"11_thumbnail_prompt.md"),
+        },
+    }
 
 def main() -> int:
     parser=argparse.ArgumentParser(description="Thumbnail Pipeline prompt-only project CLI")
@@ -55,6 +70,22 @@ def main() -> int:
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
     state=build_project_prompt_state(project)
+    prompt_artifact=state["source_artifacts"]["11_thumbnail_prompt.md"]
+    concept_artifact=state["source_artifacts"]["04_thumbnail_concepts.md"]
+    if prompt_artifact.strip():
+        print("FINAL THUMBNAIL PROMPT")
+        print("======================")
+        print(prompt_artifact.rstrip())
+        return 0
+    if concept_artifact.strip():
+        print(json.dumps({
+            "status":"prompt_artifact_missing",
+            "project":state["project"],
+            "immutable_title":state["immutable_title"],
+            "source_artifact":"04_thumbnail_concepts.md",
+            "instruction":"Winning concept exists, but 11_thumbnail_prompt.md is missing. No values were guessed.",
+        },indent=2,ensure_ascii=False))
+        return 2
     spec=state["composition"]
     corrections={k:v for k,v in {
         "layout":args.layout,
