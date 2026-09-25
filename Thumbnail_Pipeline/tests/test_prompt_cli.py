@@ -78,3 +78,24 @@ def test_youtube_discovery_runs_before_title_only_fallback(monkeypatch,tmp_path)
     assert evidence["youtube_fallback"]["status"] in {"used","searched_no_recurrent_text_mechanism"}
     assert evidence["youtube_reference_count"]==1
 
+
+
+def test_youtube_recurrent_observed_copy_is_not_positional_rewritten(monkeypatch,tmp_path):
+    import Thumbnail_Pipeline.runner.__main__ as runner
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"1 CLOVE in Your COFFEE Every Morning"}),encoding="utf-8")
+    class Provider:
+        def search(self,query,limit=12):
+            return [
+                {"video_id":"a","channel_name":"A","video_title":"Clove Coffee A","thumbnail_url_or_path":"https://i.ytimg.com/vi/a/hqdefault.jpg"},
+                {"video_id":"b","channel_name":"B","video_title":"Clove Coffee B","thumbnail_url_or_path":"https://i.ytimg.com/vi/b/hqdefault.jpg"},
+            ]
+    monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
+        {**refs[0],"thumbnail_analysis_status":"analyzed","external_thumbnail_visual_text":"CLOVE + COFFEE?"},
+        {**refs[1],"thumbnail_analysis_status":"analyzed","external_thumbnail_visual_text":"CLOVE + COFFEE?"},
+    ])
+    state=build_project_prompt_state(p,youtube_provider=Provider())
+    candidates=state["concept"]["concept"]["thumbnail_text_candidates"]
+    assert candidates[0]=="CLOVE + COFFEE?"
+    assert "1 CLOVE?" not in candidates
+    assert "ONE 1 DAILY" not in candidates
