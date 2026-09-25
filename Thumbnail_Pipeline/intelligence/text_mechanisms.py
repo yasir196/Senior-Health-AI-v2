@@ -119,11 +119,35 @@ def _observed_title_token_frequency(mechanism:dict[str,Any])->Counter:
         freq.update(set(_tokens(str(o.get("title") or ""))))
     return freq
 
-def _observed_title_token_frequency(mechanism:dict[str,Any])->Counter:
-    freq=Counter()
-    for o in mechanism.get("observations") or []:
-        freq.update(set(_tokens(str(o.get("title") or ""))))
-    return freq
+def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
+    """Infer subject/context/promise spans from corpus novelty and title structure.
+
+    No topic or hook vocabulary is seeded here. The least-observed lexical token is the
+    subject anchor; surrounding contiguous spans provide context; a parenthetical or
+    trailing clause is retained as a promise candidate.
+    """
+    words=re.findall(r"[A-Za-z0-9']+",title or "")
+    lexical=[(i,w,w.lower().strip("'")) for i,w in enumerate(words)
+             if w.lower().strip("'") and not w.lower().strip("'").isdigit()]
+    if not lexical:
+        return {"subject":None,"context":[],"promise":None}
+    freq=_observed_title_token_frequency(mechanism)
+    subject=min(lexical,key=lambda x:(freq.get(x[2],0),x[0]))
+    si=subject[0]
+    contexts=[]
+    for width in (3,4):
+        for start in range(max(0,si-width+1),min(si+1,len(words)-width+1)):
+            phrase=" ".join(words[start:start+width])
+            if phrase and phrase.lower()!=subject[1].lower():
+                contexts.append({"text":phrase,"start":start,"word_count":width})
+    promise=None
+    m=re.search(r"\(([^()]+)\)\s*$",title or "")
+    if m:
+        promise=m.group(1).strip()
+    elif len(words)>=3:
+        # Trailing clause is only a candidate; scoring below decides whether to use it.
+        promise=" ".join(words[-3:])
+    return {"subject":subject[1],"subject_index":si,"context":contexts,"promise":promise}
 
 def _current_title_spans(title:str, mechanism:dict[str,Any], max_words:int=4)->list[dict[str,Any]]:
     """Rank coherent contiguous title spans using only historical corpus distinctiveness."""
@@ -158,23 +182,27 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
     # Learn the normal overlay size, but do not let a very short historical overlay force
     # an incomplete title fragment.
     fallback_width=min(4,max(3,target))
+    roles=_title_roles(title,mechanism)
     spans=_current_title_spans(title,mechanism,max_words=fallback_width)
     if not spans: return []
-    # Prefer coherent contiguous spans. Single-token anchors remain a fallback only.
-    # Prefer the observed winner word-count when the title can supply it; this avoids
-    # promoting arbitrary shorter fragments such as "CLOVE IN" when a fuller contiguous
-    # phrase is available.
+    candidates=[]
+    # Role-aware ordering: subject-bearing context first, then the title's explicit
+    # promise clause, then generic evidence-sized spans. This avoids sliding-window output.
+    for x in roles.get("context") or []:
+        candidates.append(x["text"])
+    if roles.get("promise"):
+        candidates.append(str(roles["promise"]))
     exact=[s for s in spans if s["word_count"]==fallback_width]
-    multi=[s for s in spans if s["word_count"]>1]
-    ranked_spans=(exact or multi or spans)[:max(limit,2)]
-    candidates=[s["text"] for s in ranked_spans]
+    candidates.extend(s["text"] for s in exact)
+    if roles.get("subject"):
+        candidates.append(str(roles["subject"]))
     question_rate=float(profile.get("question_form_rate") or 0)
     out=[]
     for text in candidates:
         rendered=text.upper()
         if question_rate>=0.5: rendered=rendered.rstrip("?!")+"?"
         audit={"valid":True,"source":"constraint_fallback","uses_current_title_words_only":True,
-               "target_word_count":target,"fallback_span_width":fallback_width,"question_form_rate":round(question_rate,4)}
+               "target_word_count":target,"fallback_span_width":fallback_width,"semantic_roles":roles,"question_form_rate":round(question_rate,4)}
         item={"text":rendered,"score":1.0 if len(_tokens(rendered))==target else 0.5,"audit":audit}
         if rendered not in [x["text"] for x in out]: out.append(item)
         if len(out)>=limit: break
