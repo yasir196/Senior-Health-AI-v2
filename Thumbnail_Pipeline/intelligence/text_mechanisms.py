@@ -119,24 +119,28 @@ def _observed_title_token_frequency(mechanism:dict[str,Any])->Counter:
         freq.update(set(_tokens(str(o.get("title") or ""))))
     return freq
 
-def _current_title_subject_tokens(title:str, mechanism:dict[str,Any], limit:int=2)->list[str]:
-    """Choose current-title anchor tokens by corpus distinctiveness, not a seeded subject vocabulary."""
+def _observed_title_token_frequency(mechanism:dict[str,Any])->Counter:
+    freq=Counter()
+    for o in mechanism.get("observations") or []:
+        freq.update(set(_tokens(str(o.get("title") or ""))))
+    return freq
+
+def _current_title_spans(title:str, mechanism:dict[str,Any], max_words:int=4)->list[dict[str,Any]]:
+    """Rank coherent contiguous title spans using only historical corpus distinctiveness."""
     raw=re.findall(r"[A-Za-z0-9']+",title or "")
-    if not raw: return []
     freq=_observed_title_token_frequency(mechanism)
-    indexed=[]
-    for i,w in enumerate(raw):
-        t=w.lower().strip("'")
-        if not t: continue
-        # Numeric tokens are modifiers, not semantic anchors. This is a token-type rule,
-        # not a seeded topic/hook vocabulary.
-        if t.isdigit(): continue
-        # Prefer tokens rare in historical winner titles. When rarity ties, preserve
-        # current-title order; do not invent a semantic preference from token length.
-        indexed.append((freq.get(t,0),i,w))
-    indexed.sort(key=lambda x:(x[0],x[1]))
-    chosen=sorted(indexed[:max(1,limit)],key=lambda x:x[1])
-    return [x[2] for x in chosen]
+    lexical=[(i,w,w.lower().strip("'")) for i,w in enumerate(raw) if w.lower().strip("'") and not w.lower().strip("'").isdigit()]
+    spans=[]
+    for a in range(len(lexical)):
+        for b in range(a,min(len(lexical),a+max_words)):
+            idxs=[lexical[k][0] for k in range(a,b+1)]
+            if idxs != list(range(idxs[0],idxs[-1]+1)): break
+            words=[lexical[k][1] for k in range(a,b+1)]
+            toks=[lexical[k][2] for k in range(a,b+1)]
+            rarity=sum(1.0/(1.0+freq.get(t,0)) for t in toks)/len(toks)
+            spans.append({"text":" ".join(words),"start":idxs[0],"word_count":len(words),"rarity":rarity})
+    spans.sort(key=lambda x:(-x["rarity"],-x["word_count"],x["start"]))
+    return spans
 
 def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     """Fallback composer: learn structural constraints, then use only current-title words.
@@ -148,21 +152,12 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
     if mechanism.get("status")!="ready": return []
     profile=mechanism.get("profile") or {}
     target=max(1,int(profile.get("typical_overlay_word_count") or 1))
-    anchors=_current_title_subject_tokens(title,mechanism,limit=min(2,target))
-    if not anchors: return []
-    title_words=re.findall(r"[A-Za-z0-9']+",title or "")
-    candidates=[]
-    # Anchor-only candidate.
-    candidates.append(" ".join(anchors))
-    # Evidence-sized current-title phrase around the strongest anchor, without invented words.
-    anchor=anchors[0].lower()
-    lower=[w.lower().strip("'") for w in title_words]
-    try: center=lower.index(anchor)
-    except ValueError: center=0
-    width=min(target,len(title_words))
-    start=max(0,min(center-width//2,len(title_words)-width))
-    phrase=" ".join(title_words[start:start+width])
-    if phrase and phrase.lower()!=" ".join(anchors).lower(): candidates.append(phrase)
+    spans=_current_title_spans(title,mechanism,max_words=max(1,min(4,target)))
+    if not spans: return []
+    # Prefer coherent contiguous spans. Single-token anchors remain a fallback only.
+    multi=[s for s in spans if s["word_count"]>1]
+    ranked_spans=(multi or spans)[:max(limit,2)]
+    candidates=[s["text"] for s in ranked_spans]
     question_rate=float(profile.get("question_form_rate") or 0)
     out=[]
     for text in candidates:
