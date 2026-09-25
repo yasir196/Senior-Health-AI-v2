@@ -38,9 +38,11 @@ def _title(meta: dict[str, Any]) -> str:
 def build_project_prompt_state(project: Path, analytics_db: Path | None = None) -> dict[str, Any]:
     meta=_read_project_json(project)
     title=_title(meta)
-    category=meta.get("category") or meta.get("topic_category") or "uncategorized"
+    category=meta.get("hero_category") or meta.get("category") or meta.get("topic_category") or "uncategorized"
     associations = V2AnalyticsReadOnlyAdapter(analytics_db).latest_packaging_associations(str(category)) if analytics_db else {"run":None,"hero_category":str(category),"channel":[],"category":[]}
-    context={"immutable_title":title,"requested_category":str(category),"winner_prior":{"winner_examples":[]},"youtube_examples":[],"packaging_associations":associations}
+    historical = V2AnalyticsReadOnlyAdapter(analytics_db).to_intelligence_rows() if analytics_db else []
+    same_category = [r for r in historical if str((r.get("v2_analysis") or {}).get("hero_category") or "") == str(category)]
+    context={"immutable_title":title,"requested_category":str(category),"winner_prior":{"winner_examples":same_category},"youtube_examples":[],"packaging_associations":associations}
     concept=build_concept_direction(context)
     composition=build_composition_spec(concept)
     return {
