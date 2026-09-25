@@ -46,3 +46,13 @@ def test_project_state_does_not_read_v2_thumbnail_markdown(tmp_path):
     state=build_project_prompt_state(p)
     assert "source_artifacts" not in state
     assert state["immutable_title"]=="LOCKED"
+
+
+def test_cluster_state_has_no_legacy_hero_category_gate(tmp_path):
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"Clove in Coffee Every Morning"}),encoding="utf-8")
+    state=build_project_prompt_state(p)
+    assert "hero_category" not in state
+    assert "hero_category_support" not in state
+    assert "discovered_cluster" in state
+    assert "cluster_count" in state
