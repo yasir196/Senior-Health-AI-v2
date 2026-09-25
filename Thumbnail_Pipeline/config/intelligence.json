@@ -1,0 +1,59 @@
+{
+  "version": "0.1.0",
+  "eligibility": {
+    "min_impressions": 1000,
+    "use_v2_evidence_weight": true,
+    "allowed_attribution_statuses": [],
+    "threshold_locked": true,
+    "threshold_note": "User-owned config. 1000-impression eligibility floor must be changed here only, never hardcoded in Python."
+  },
+  "categorization": {
+    "primary_source": "v2_analysis.hero_category",
+    "fallback": "uncategorized",
+    "keyword_fallback_enabled": false
+  },
+  "winner_loser": {
+    "method": "within_category_median_ctr",
+    "minimum_category_observations": 2
+  },
+  "reliability": {
+    "mode": "v2_evidence_weight",
+    "fallback_mode": "configured_impression_ramp",
+    "impression_floor": 1000,
+    "full_reliability_impressions": 10000,
+    "locked": true,
+    "note": "User-owned config thresholds. Code must read these values and must not redefine them."
+  },
+  "text_taxonomy": {
+    "mode": "discovered_from_channel_data",
+    "seed_labels": [],
+    "seed_cues": [],
+    "discovery": {
+      "source_fields": [
+        "ocr.text",
+        "performance.title",
+        "performance.ctr",
+        "performance.impressions",
+        "v2_analysis.hero_category"
+      ],
+      "compare_within_category": true,
+      "minimum_pattern_observations": 2,
+      "require_human_review_before_reuse": true
+    },
+    "notes": [
+      "Do not start from a fixed PROBLEM/ACTION/COMMAND vocabulary.",
+      "Discover recurring thumbnail-text mechanisms from this channel's own eligible evidence.",
+      "Names assigned to discovered clusters are descriptive analyzer output and remain human-editable."
+    ]
+  },
+  "notes": [
+    "Taxonomy is editable configuration, not executable-code policy."
+  ],
+  "explanation": {
+    "minimum_relative_gap": 0.08,
+    "note": "Dashboard/config-owned display threshold; analyzer code does not assign semantic good/bad feature directions."
+  },
+  "youtube_reference": {
+    "minimum_comparison_videos": 5
+  }
+}

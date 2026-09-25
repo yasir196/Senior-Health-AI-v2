@@ -1,0 +1,146 @@
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any
+
+import cv2
+import numpy as np
+
+
+@dataclass(frozen=True)
+class ThumbnailFeatures:
+    width: int
+    height: int
+    aspect_ratio: float
+    brightness_mean: float
+    contrast_std: float
+    edge_density: float
+    dark_pixel_ratio: float
+    thirds_occupancy: list[float]
+    timestamp_safe_zone_edge_density: float
+    dominant_colors_rgb: list[list[int]]
+    dominant_colors_hex: list[str]
+    face_count: int
+    face_boxes_normalized: list[list[float]]
+    face_area_ratio: float
+    saliency_concentration: float
+    clutter_score: float
+    tiny_readability_edge_retention: float
+
+
+def _gray(image: np.ndarray) -> np.ndarray:
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+
+def _edge_map(gray: np.ndarray) -> np.ndarray:
+    return cv2.Canny(gray, 100, 200)
+
+
+def _dominant_colors(image: np.ndarray, k: int = 5) -> list[list[int]]:
+    """Deterministic dominant RGB colors using fixed quantization, not random k-means seeds."""
+    small = cv2.resize(image, (160, 90), interpolation=cv2.INTER_AREA)
+    rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
+    quantized=(rgb//32)*32+16
+    counts=Counter(map(tuple,quantized.reshape((-1,3)).tolist()))
+    return [[int(v) for v in color] for color,_ in counts.most_common(k)]
+
+
+def _faces(gray: np.ndarray) -> list[tuple[int, int, int, int]]:
+    """Optional face feature: degrade cleanly when the installed OpenCV build omits objdetect."""
+    cascade_cls = getattr(cv2, "CascadeClassifier", None)
+    data = getattr(cv2, "data", None)
+    haarcascades = getattr(data, "haarcascades", None) if data is not None else None
+    if cascade_cls is None or not haarcascades:
+        return []
+    cascade_path = haarcascades + "haarcascade_frontalface_default.xml"
+    detector = cascade_cls(cascade_path)
+    if detector.empty():
+        return []
+    found = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
+    return [tuple(int(v) for v in box) for box in found]
+
+
+def _saliency_concentration(gray: np.ndarray) -> float:
+    # Spectral-residual style proxy without opencv-contrib dependency:
+    # local contrast energy concentrated in the strongest 10% of pixels.
+    blur = cv2.GaussianBlur(gray, (0, 0), 7)
+    residual = cv2.absdiff(gray, blur).astype(np.float32)
+    total = float(residual.sum())
+    if total == 0:
+        return 0.0
+    threshold = float(np.percentile(residual, 90))
+    strong = float(residual[residual >= threshold].sum())
+    return round(strong / total, 6)
+
+
+def _tiny_edge_retention(gray: np.ndarray, target_width: int = 168) -> float:
+    full = _edge_map(gray)
+    full_density = float(np.mean(full > 0))
+    if full_density == 0:
+        return 1.0
+    target_height = max(1, round(gray.shape[0] * target_width / gray.shape[1]))
+    tiny = cv2.resize(gray, (target_width, target_height), interpolation=cv2.INTER_AREA)
+    tiny_density = float(np.mean(_edge_map(tiny) > 0))
+    return round(min(tiny_density / full_density, 2.0), 6)
+
+
+def analyze_image(path: str | Path) -> dict[str, Any]:
+    """Extract deterministic, local-only visual features from one thumbnail."""
+    image = cv2.imread(str(path))
+    if image is None:
+        raise ValueError(f"Could not read image: {path}")
+
+    height, width = image.shape[:2]
+    gray = _gray(image)
+    edges = _edge_map(gray)
+
+    cells: list[float] = []
+    for row in range(3):
+        for col in range(3):
+            y0, y1 = row * height // 3, (row + 1) * height // 3
+            x0, x1 = col * width // 3, (col + 1) * width // 3
+            cell = edges[y0:y1, x0:x1]
+            cells.append(round(float(np.mean(cell > 0)), 6))
+
+    y0 = int(height * 0.78)
+    x0 = int(width * 0.78)
+    safe_edges = edges[y0:height, x0:width]
+
+    faces = _faces(gray)
+    normalized_faces: list[list[float]] = []
+    face_pixels = 0
+    for x, y, w, h in faces:
+        normalized_faces.append([
+            round(x / width, 6), round(y / height, 6),
+            round(w / width, 6), round(h / height, 6),
+        ])
+        face_pixels += w * h
+
+    edge_density = float(np.mean(edges > 0))
+    # Neutral measurements only: avoid embedding arbitrary good/bad clutter policy in the analyzer.
+    occupied_cells = sum(1 for value in cells if value > 0.0)
+    clutter = (edge_density + (occupied_cells / 9)) / 2.0
+    dominant_rgb = _dominant_colors(image)
+
+    features = ThumbnailFeatures(
+        width=width,
+        height=height,
+        aspect_ratio=round(width / height, 6),
+        brightness_mean=round(float(np.mean(gray)), 4),
+        contrast_std=round(float(np.std(gray)), 4),
+        edge_density=round(edge_density, 6),
+        dark_pixel_ratio=round(float(np.mean(gray < 48)), 6),
+        thirds_occupancy=cells,
+        timestamp_safe_zone_edge_density=round(float(np.mean(safe_edges > 0)), 6),
+        dominant_colors_rgb=dominant_rgb,
+        dominant_colors_hex=["#%02X%02X%02X" % tuple(color) for color in dominant_rgb],
+        face_count=len(faces),
+        face_boxes_normalized=normalized_faces,
+        face_area_ratio=round(face_pixels / (width * height), 6),
+        saliency_concentration=_saliency_concentration(gray),
+        clutter_score=round(clutter, 6),
+        tiny_readability_edge_retention=_tiny_edge_retention(gray),
+    )
+    return asdict(features)
