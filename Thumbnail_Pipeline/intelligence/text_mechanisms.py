@@ -111,3 +111,62 @@ def transformation_text_candidates(title:str, mechanism:dict[str,Any], limit:int
         seen.add(item["text"]); unique.append(item)
         if len(unique)>=limit: break
     return unique if with_audit else [x["text"] for x in unique]
+
+
+def _observed_title_token_frequency(mechanism:dict[str,Any])->Counter:
+    freq=Counter()
+    for o in mechanism.get("observations") or []:
+        freq.update(set(_tokens(str(o.get("title") or ""))))
+    return freq
+
+def _current_title_subject_tokens(title:str, mechanism:dict[str,Any], limit:int=2)->list[str]:
+    """Choose current-title anchor tokens by corpus distinctiveness, not a seeded subject vocabulary."""
+    raw=re.findall(r"[A-Za-z0-9']+",title or "")
+    if not raw: return []
+    freq=_observed_title_token_frequency(mechanism)
+    indexed=[]
+    for i,w in enumerate(raw):
+        t=w.lower().strip("'")
+        if not t: continue
+        # Prefer tokens rare in historical winner titles; ties preserve current-title order.
+        indexed.append((freq.get(t,0),i,w))
+    indexed.sort(key=lambda x:(x[0],x[1]))
+    chosen=sorted(indexed[:max(1,limit)],key=lambda x:x[1])
+    return [x[2] for x in chosen]
+
+def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
+    """Fallback composer: learn structural constraints, then use only current-title words.
+
+    It intentionally adds no fixed hook vocabulary. When recurrent literal transformations
+    are unavailable, candidates are concise current-title anchors shaped by observed winner
+    word-count/question-form constraints.
+    """
+    if mechanism.get("status")!="ready": return []
+    profile=mechanism.get("profile") or {}
+    target=max(1,int(profile.get("typical_overlay_word_count") or 1))
+    anchors=_current_title_subject_tokens(title,mechanism,limit=min(2,target))
+    if not anchors: return []
+    title_words=re.findall(r"[A-Za-z0-9']+",title or "")
+    candidates=[]
+    # Anchor-only candidate.
+    candidates.append(" ".join(anchors))
+    # Evidence-sized current-title phrase around the strongest anchor, without invented words.
+    anchor=anchors[0].lower()
+    lower=[w.lower().strip("'") for w in title_words]
+    try: center=lower.index(anchor)
+    except ValueError: center=0
+    width=min(target,len(title_words))
+    start=max(0,min(center-width//2,len(title_words)-width))
+    phrase=" ".join(title_words[start:start+width])
+    if phrase and phrase.lower()!=" ".join(anchors).lower(): candidates.append(phrase)
+    question_rate=float(profile.get("question_form_rate") or 0)
+    out=[]
+    for text in candidates:
+        rendered=text.upper()
+        if question_rate>=0.5: rendered=rendered.rstrip("?!")+"?"
+        audit={"valid":True,"source":"constraint_fallback","uses_current_title_words_only":True,
+               "target_word_count":target,"question_form_rate":round(question_rate,4)}
+        item={"text":rendered,"score":1.0 if len(_tokens(rendered))==target else 0.5,"audit":audit}
+        if rendered not in [x["text"] for x in out]: out.append(item)
+        if len(out)>=limit: break
+    return out if with_audit else [x["text"] for x in out]
