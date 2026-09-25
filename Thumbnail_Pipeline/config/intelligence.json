@@ -55,5 +55,10 @@
   },
   "youtube_reference": {
     "minimum_comparison_videos": 5
+  },
+  "title_clustering": {
+    "method": "tfidf_title_similarity_connected_components",
+    "similarity_threshold": 0.24,
+    "note": "Migrated existing behavior into pipeline-owned config; code must not redefine this threshold."
   }
 }
