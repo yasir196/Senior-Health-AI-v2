@@ -36,3 +36,18 @@ def test_match_reports_threshold_and_status():
     a=assign_title_cluster("Clove Coffee Every Morning Here's What Happens",d)
     assert a["status"]=="matched"
     assert a["similarity"]>=a["minimum_similarity"]
+
+
+def test_cluster_ids_are_stable_when_input_order_changes():
+    rows=[row("a","Coffee Every Morning Here's What Happens"),row("b","Tea Every Morning Here's What Happens"),row("c","Chair Exercise for Stronger Legs")]
+    first=discover_title_clusters(rows,similarity_threshold=.2)
+    second=discover_title_clusters(list(reversed(rows)),similarity_threshold=.2)
+    def signatures(d):
+        return {frozenset(d["rows"][i]["asset_id"] for i in c["member_indexes"]):c["cluster_id"] for c in d["clusters"]}
+    assert signatures(first)==signatures(second)
+
+def test_cluster_store_persists_source_run_id(tmp_path):
+    d=discover_title_clusters([row("1","Coffee Every Morning"),row("2","Tea Every Morning")],similarity_threshold=.1)
+    db=tmp_path/"thumbnail_intelligence.db"; persist_title_clusters(db,d,42)
+    with sqlite3.connect(db) as con:
+        assert {r[0] for r in con.execute("select source_run_id from title_clusters")}=={42}
