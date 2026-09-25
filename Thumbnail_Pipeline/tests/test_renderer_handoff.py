@@ -62,10 +62,11 @@ def test_explicit_execute_calls_provider_once():
         def __init__(self): self.calls=0
         def render(self,handoff):
             self.calls+=1
-            return {"asset_id":"fake-1"}
+            return {"asset_id":"fake-1","output_path":"Thumbnail_Pipeline/outputs/test/fake-1.png","width":1280,"height":720,"mime_type":"image/png","immutable_title":"LOCKED"}
     provider=FakeProvider()
     handoff=build_generation_handoff(_reviewed_spec(),_gate(),selected_text="START HERE")
     result=dispatch_renderer(handoff,provider=provider,execute=True)
     assert provider.calls==1
     assert result["renderer_invoked"] is True
-    assert result["result"]["asset_id"]=="fake-1"
+    assert result["artifact"]["asset"]["asset_id"]=="fake-1"
+    assert result["artifact"]["qa_status"]=="pending"
