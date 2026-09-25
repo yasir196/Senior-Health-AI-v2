@@ -18,3 +18,21 @@ def test_cluster_store_is_pipeline_owned_derived_schema(tmp_path):
     with sqlite3.connect(db) as con:
         assert con.execute("select count(*) from title_clusters").fetchone()[0]>=1
         assert con.execute("select count(*) from title_cluster_members").fetchone()[0]==2
+
+
+def test_weak_title_is_unmatched_instead_of_force_fit():
+    rows=[row("1","Coffee Every Morning Here's What Happens"),row("2","Tea Every Morning Here's What Happens"),row("3","Chair Exercise for Stronger Legs")]
+    d=discover_title_clusters(rows,similarity_threshold=.24)
+    a=assign_title_cluster("Understanding Medicare Enrollment Deadlines",d)
+    assert a is not None
+    assert a["status"]=="unmatched"
+    assert a["cluster_id"] is None
+    assert a["member_indexes"]==[]
+    assert a["nearest_cluster_id"].startswith("cluster_")
+
+def test_match_reports_threshold_and_status():
+    rows=[row("1","Coffee Every Morning Here's What Happens"),row("2","Tea Every Morning Here's What Happens")]
+    d=discover_title_clusters(rows,similarity_threshold=.2)
+    a=assign_title_cluster("Clove Coffee Every Morning Here's What Happens",d)
+    assert a["status"]=="matched"
+    assert a["similarity"]>=a["minimum_similarity"]
