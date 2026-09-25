@@ -9,6 +9,8 @@ from Thumbnail_Pipeline.composition import build_composition_spec
 from Thumbnail_Pipeline.qa import apply_composition_review, evaluate_generation_gate
 from Thumbnail_Pipeline.prompt_export import export_final_thumbnail_prompt
 from Thumbnail_Pipeline.adapters.v2_analytics_db import V2AnalyticsReadOnlyAdapter
+from Thumbnail_Pipeline.intelligence.title_clusters import discover_title_clusters, assign_title_cluster
+from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -35,38 +37,30 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
-def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None) -> dict[str, Any]:
-    meta=_read_project_json(project)
-    title=_title(meta)
-    metadata_category=meta.get("hero_category")
-    adapter = V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
-    support = adapter.hero_category_support() if adapter else []
-    supported_categories = {str(r["hero_category"]) for r in support}
-    category = hero_category or (str(metadata_category) if metadata_category in supported_categories else None)
-    if category is None and len(supported_categories) == 1:
-        category = next(iter(supported_categories))
-    category = category or "uncategorized"
-    associations = adapter.latest_packaging_associations(str(category)) if adapter else {"run":None,"hero_category":str(category),"channel":[],"category":[]}
-    historical = adapter.to_intelligence_rows() if adapter else []
-    same_category = [r for r in historical if str((r.get("v2_analysis") or {}).get("hero_category") or "") == str(category)]
-    context={"immutable_title":title,"requested_category":str(category),"winner_prior":{"winner_examples":same_category},"youtube_examples":[],"packaging_associations":associations}
-    concept=build_concept_direction(context)
-    composition=build_composition_spec(concept)
-    return {
-        "project":project.name,
-        "immutable_title":title,
-        "concept":concept,
-        "composition":composition,
-        "hero_category":category,
-        "hero_category_support":support
-    }
+def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None, cluster_db: Path | None = None) -> dict[str, Any]:
+    meta=_read_project_json(project); title=_title(meta)
+    adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
+    historical=adapter.to_intelligence_rows() if adapter else []
+    discovered=discover_title_clusters(historical) if historical else {"method":"tfidf_title_similarity_connected_components","similarity_threshold":0.24,"clusters":[],"rows":[]}
+    assignment=assign_title_cluster(title,discovered)
+    if cluster_db is not None and historical:
+        persist_title_clusters(cluster_db,discovered)
+    cluster_rows=[discovered["rows"][i] for i in (assignment or {}).get("member_indexes",[])]
+    # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
+    associations=adapter.latest_packaging_associations(None) if adapter else {"run":None,"hero_category":None,"channel":[],"category":[]}
+    context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id","unclustered"),
+             "winner_prior":{"winner_examples":cluster_rows},"youtube_examples":[],"packaging_associations":associations}
+    concept=build_concept_direction(context); composition=build_composition_spec(concept)
+    return {"project":project.name,"immutable_title":title,"concept":concept,"composition":composition,
+            "discovered_cluster":assignment,"cluster_count":len(discovered.get("clusters") or [])}
 
 def main() -> int:
     parser=argparse.ArgumentParser(description="Thumbnail Pipeline prompt-only project CLI")
     parser.add_argument("--project",required=True,help="Exact folder name under Projects/")
     parser.add_argument("--projects-root",default="Projects")
     parser.add_argument("--analytics-db",default="Analytics/senior_health_analytics.db",help="Read-only historical analytics DB")
-    parser.add_argument("--hero-category",help="Explicit DB hero category for this new thumbnail")
+    parser.add_argument("--hero-category",help=argparse.SUPPRESS)
+    parser.add_argument("--cluster-db",default="Thumbnail_Pipeline/db/thumbnail_intelligence.db",help="Pipeline-owned derived intelligence DB")
     parser.add_argument("--layout")
     parser.add_argument("--subject-placement")
     parser.add_argument("--text-placement")
@@ -74,7 +68,7 @@ def main() -> int:
     parser.add_argument("--thumbnail-text")
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
-    state=build_project_prompt_state(project,Path(args.analytics_db),args.hero_category)
+    state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db))
     if state["hero_category"] == "uncategorized":
         print(json.dumps({"status":"needs_hero_category","project":state["project"],"immutable_title":state["immutable_title"],"available_hero_categories":state["hero_category_support"],"instruction":"Re-run with --hero-category using one observed DB category. No category was guessed from topic/title."},indent=2,ensure_ascii=False))
         return 2
@@ -95,6 +89,8 @@ def main() -> int:
             "immutable_title":state["immutable_title"],
             "unresolved_fields":gate["unresolved_fields"],
             "thumbnail_text_candidates":(spec.get("composition") or {}).get("thumbnail_text_candidates") or [],
+            "discovered_cluster":state.get("discovered_cluster"),
+            "cluster_count":state.get("cluster_count"),
             "packaging_association_run":(state["concept"].get("evidence") or {}).get("packaging_association_run"),
             "instruction":"Resolve only fields not supported by DB evidence. No image generation, upload, or V2 write was performed.",
         },indent=2,ensure_ascii=False))
