@@ -75,3 +75,21 @@ def test_constraint_fallback_prefers_title_distinctive_tokens_without_seed_list(
     m=discover_text_mechanisms(winners)
     out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning",m)
     assert out and "CLOVE" in out[0]
+
+
+def test_constraint_fallback_does_not_emit_broken_preposition_span():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning",m)
+    assert out
+    assert "CLOVE IN?" not in out
+
+def test_constraint_fallback_candidates_are_contiguous_current_title_spans():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    title="1 CLOVE in Your Coffee Every Morning"
+    out=constraint_text_candidates(title,m)
+    normalized=title.lower()
+    for candidate in out:
+        phrase=candidate.lower().rstrip("?")
+        assert phrase in normalized
