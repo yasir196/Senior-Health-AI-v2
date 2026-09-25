@@ -128,11 +128,15 @@ def _current_title_subject_tokens(title:str, mechanism:dict[str,Any], limit:int=
     for i,w in enumerate(raw):
         t=w.lower().strip("'")
         if not t: continue
-        # Prefer tokens rare in historical winner titles; ties preserve current-title order.
-        indexed.append((freq.get(t,0),i,w))
-    indexed.sort(key=lambda x:(x[0],x[1]))
-    chosen=sorted(indexed[:max(1,limit)],key=lambda x:x[1])
-    return [x[2] for x in chosen]
+        # Numeric tokens are modifiers, not semantic anchors. This is a token-type rule,
+        # not a seeded topic/hook vocabulary.
+        if t.isdigit(): continue
+        # Prefer tokens rare in historical winner titles; ties prefer more informative
+        # lexical tokens, then preserve current-title order.
+        indexed.append((freq.get(t,0),-len(t),i,w))
+    indexed.sort(key=lambda x:(x[0],x[1],x[2]))
+    chosen=sorted(indexed[:max(1,limit)],key=lambda x:x[2])
+    return [x[3] for x in chosen]
 
 def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     """Fallback composer: learn structural constraints, then use only current-title words.
