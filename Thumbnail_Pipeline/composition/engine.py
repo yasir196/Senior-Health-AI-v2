@@ -24,7 +24,7 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
     constraints = concept_direction.get("constraints") or {}
     examples = _clean_examples(concept_direction)
     layout = concept.get("composition_layout")
-    supported = concept_direction.get("evidence_status") == "winner_supported"
+    supported = concept_direction.get("evidence_status") in ("winner_supported", "association_supported")
 
     return {
         "schema_version": "0.3.0",
