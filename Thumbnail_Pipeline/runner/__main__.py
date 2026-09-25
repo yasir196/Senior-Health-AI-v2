@@ -64,9 +64,28 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         refs=collect_references(provider=youtube_provider,topic=title,category="",limit_per_query=12)
         youtube_examples=analyze_youtube_reference_thumbnails(refs)
         external_rows=[]
+        diagnostics={
+            "reference_count":len(youtube_examples),
+            "thumbnail_analyzed":0,
+            "thumbnail_failed":0,
+            "ocr_available":0,
+            "ocr_unavailable":0,
+            "ocr_text_found":0,
+        }
         for ref in youtube_examples:
+            status=ref.get("thumbnail_analysis_status")
+            if status=="analyzed":
+                diagnostics["thumbnail_analyzed"]+=1
+            elif status in ("failed","unavailable"):
+                diagnostics["thumbnail_failed"]+=1
             ocr=ref.get("external_thumbnail_ocr") or {}
             text=ocr.get("text") if isinstance(ocr,dict) else None
+            if isinstance(ocr,dict) and ocr.get("available") is True:
+                diagnostics["ocr_available"]+=1
+            elif isinstance(ocr,dict) and ocr.get("available") is False:
+                diagnostics["ocr_unavailable"]+=1
+            if text:
+                diagnostics["ocr_text_found"]+=1
             if ref.get("video_title") and text:
                 external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":text}})
         external_mechanism=discover_text_mechanisms(external_rows)
@@ -74,9 +93,9 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         if external_candidates:
             candidate_audit=external_candidates
             mechanism=external_mechanism
-            youtube_fallback={"status":"used","reference_count":len(youtube_examples),"analyzed_text_pairs":len(external_rows)}
+            youtube_fallback={"status":"used",**diagnostics,"analyzed_text_pairs":len(external_rows)}
         else:
-            youtube_fallback={"status":"searched_no_recurrent_text_mechanism","reference_count":len(youtube_examples),"analyzed_text_pairs":len(external_rows)}
+            youtube_fallback={"status":"searched_no_recurrent_text_mechanism",**diagnostics,"analyzed_text_pairs":len(external_rows)}
     elif not candidate_audit:
         youtube_fallback={"status":"unavailable","reason":"youtube_provider_not_configured"}
     if not candidate_audit:
