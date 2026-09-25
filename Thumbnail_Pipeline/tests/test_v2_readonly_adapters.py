@@ -53,3 +53,16 @@ def test_packaging_associations_are_read_from_latest_run_only(tmp_path):
     assert out["run"]["id"]==2
     assert [x["feature_value"] for x in out["category"]]==["food_layout"]
     assert [x["feature_value"] for x in out["channel"]]==["channel_layout"]
+
+
+def test_hero_category_support_uses_latest_evidence_per_video(tmp_path):
+    db=tmp_path/"analytics.db"; con=sqlite3.connect(db)
+    con.executescript("""
+    CREATE TABLE thumbnail_analyses(id INTEGER PRIMARY KEY,hero_category TEXT);
+    CREATE TABLE thumbnail_ctr_evidence(id INTEGER PRIMARY KEY,analytics_id TEXT,thumbnail_analysis_id INTEGER,impressions REAL,joined_at TEXT);
+    INSERT INTO thumbnail_analyses VALUES(1,'food'); INSERT INTO thumbnail_analyses VALUES(2,'mixed');
+    INSERT INTO thumbnail_ctr_evidence VALUES(1,'a',1,1000,'2026-01-01');
+    INSERT INTO thumbnail_ctr_evidence VALUES(2,'a',2,2000,'2026-02-01');
+    """); con.commit(); con.close()
+    out=V2AnalyticsReadOnlyAdapter(db).hero_category_support()
+    assert out==[{"hero_category":"mixed","video_count":1,"total_impressions":2000.0}]
