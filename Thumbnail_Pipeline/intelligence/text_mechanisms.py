@@ -135,11 +135,23 @@ def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
     subject=min(lexical,key=lambda x:(freq.get(x[2],0),x[0]))
     si=subject[0]
     contexts=[]
+    # Subject context is cumulative: for each direction retain only the most complete
+    # subject-bearing span. Shorter prefixes are intermediate fragments, not final copy.
+    containing=[]
     for width in (3,4):
         for start in range(max(0,si-width+1),min(si+1,len(words)-width+1)):
             phrase=" ".join(words[start:start+width])
             if phrase and phrase.lower()!=subject[1].lower():
-                contexts.append({"text":phrase,"start":start,"word_count":width})
+                containing.append({"text":phrase,"start":start,"word_count":width,
+                                   "end":start+width-1,
+                                   "subject_offset":si-start})
+    if containing:
+        max_width=max(x["word_count"] for x in containing)
+        complete=[x for x in containing if x["word_count"]==max_width]
+        # Prefer spans where the subject appears near an edge: these preserve a complete
+        # following/preceding context instead of clipping both sides around the anchor.
+        complete.sort(key=lambda x:(min(x["subject_offset"],x["word_count"]-1-x["subject_offset"]),x["start"]))
+        contexts=complete
     promise=None
     m=re.search(r"\(([^()]+)\)\s*$",title or "")
     if m:
@@ -188,13 +200,17 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
     candidates=[]
     # Role-aware ordering: subject-bearing context first, then the title's explicit
     # promise clause, then generic evidence-sized spans. This avoids sliding-window output.
-    for x in roles.get("context") or []:
+    role_contexts=roles.get("context") or []
+    for x in role_contexts:
         candidates.append(x["text"])
     if roles.get("promise"):
         candidates.append(str(roles["promise"]))
-    exact=[s for s in spans if s["word_count"]==fallback_width]
-    candidates.extend(s["text"] for s in exact)
-    if roles.get("subject"):
+    # Generic spans are fallback-only. Once a subject role has a complete context, do not
+    # reintroduce shorter sliding-window fragments into the final candidate list.
+    if not role_contexts:
+        exact=[s for s in spans if s["word_count"]==fallback_width]
+        candidates.extend(s["text"] for s in exact)
+    if roles.get("subject") and not role_contexts:
         candidates.append(str(roles["subject"]))
     question_rate=float(profile.get("question_form_rate") or 0)
     out=[]
