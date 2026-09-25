@@ -93,3 +93,18 @@ def test_constraint_fallback_candidates_are_contiguous_current_title_spans():
     for candidate in out:
         phrase=candidate.lower().rstrip("?")
         assert phrase in normalized
+
+
+def test_role_fallback_prioritizes_subject_bearing_context():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning (Here's What Happens)",m)
+    assert out
+    assert "CLOVE" in out[0]
+    assert out[0]!="CLOVE IN YOUR?"
+
+def test_role_fallback_retains_explicit_parenthetical_promise():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning (Here's What Happens)",m)
+    assert any("HERE'S WHAT HAPPENS" in x for x in out)
