@@ -40,6 +40,9 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
     requested_category = str(context.get("requested_category") or "uncategorized")
     winners = _winner_evidence(context)
     refs = _reference_evidence(context)
+    associations = context.get("packaging_associations") or {}
+    category_associations = associations.get("category") or []
+    channel_associations = associations.get("channel") or []
 
     winner_texts = [
         (r.get("thumbnail_text") if isinstance(r, dict) else None)
@@ -56,14 +59,17 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
         ((r.get("visual_analysis") or {}).get("hero_category") or classify_category(r)) for r in winners if isinstance(r, dict)
     ]
 
+    association_layouts = [r.get("feature_value") for r in category_associations + channel_associations if r.get("feature_name") == "composition_layout" and r.get("association_direction") not in ("negative","lower")]
+    supported = bool(winners or category_associations or channel_associations)
+
     return {
         "schema_version": "0.2.0",
         "immutable_title": title,
         "requested_category": requested_category,
-        "evidence_status": "winner_supported" if winners else "no_winner_evidence",
+        "evidence_status": "winner_supported" if winners else ("association_supported" if supported else "no_winner_evidence"),
         "concept": {
             "category": _mode(hero_categories) or requested_category,
-            "composition_layout": _mode(layouts),
+            "composition_layout": _mode(layouts) or (association_layouts[0] if association_layouts else None),
             "thumbnail_text_examples": [t for t in winner_texts if t][:5],
             "title_text_relationship": [
                 pair_features(title, t) for t in winner_texts if t
@@ -74,6 +80,9 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
             "youtube_reference_count": len(refs),
             "channel_winners": winners[:10],
             "youtube_references": refs[:10],
+            "packaging_association_run": associations.get("run"),
+            "hero_category_associations": category_associations,
+            "channel_associations": channel_associations,
         },
         "constraints": {
             "title_must_remain_unchanged": True,
