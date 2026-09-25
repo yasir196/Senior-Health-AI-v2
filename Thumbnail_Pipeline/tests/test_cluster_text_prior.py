@@ -108,3 +108,19 @@ def test_role_fallback_retains_explicit_parenthetical_promise():
     m=discover_text_mechanisms(winners)
     out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning (Here's What Happens)",m)
     assert any("HERE'S WHAT HAPPENS" in x for x in out)
+
+
+def test_role_complete_context_suppresses_shorter_subject_fragments():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning (Here's What Happens)",m)
+    assert "1 CLOVE IN?" not in out
+    assert "CLOVE IN YOUR?" not in out
+    assert "1 CLOVE IN YOUR?" not in out
+    assert any("CLOVE" in x and len(x.rstrip("?").split())==4 for x in out)
+
+def test_role_complete_context_keeps_explicit_promise_candidate():
+    winners=[r("Banana at Night","INSIDE YOU?",5),r("Milk at Night","NIGHT CUP?",6)]
+    m=discover_text_mechanisms(winners)
+    out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning (Here's What Happens)",m)
+    assert "HERE'S WHAT HAPPENS?" in out
