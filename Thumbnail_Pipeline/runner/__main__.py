@@ -43,7 +43,7 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
-def build_project_prompt_state(project: Path, analytics_db: Path | None = None, hero_category: str | None = None, cluster_db: Path | None = None, youtube_provider=None, youtube_text_analyzer=None) -> dict[str, Any]:
+def build_project_prompt_state(project: Path, analytics_db: Path | None = None, cluster_db: Path | None = None, youtube_provider=None, youtube_text_analyzer=None) -> dict[str, Any]:
     meta=_read_project_json(project); title=_title(meta)
     adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
     historical=adapter.to_intelligence_rows() if adapter else []
@@ -140,7 +140,6 @@ def main() -> int:
     parser.add_argument("--project",required=True,help="Exact folder name under Projects/")
     parser.add_argument("--projects-root",default="Projects")
     parser.add_argument("--analytics-db",default="Analytics/senior_health_analytics.db",help="Read-only historical analytics DB")
-    parser.add_argument("--hero-category",help=argparse.SUPPRESS)
     parser.add_argument("--cluster-db",default="Thumbnail_Pipeline/db/thumbnail_intelligence.db",help="Pipeline-owned derived intelligence DB")
     parser.add_argument("--layout")
     parser.add_argument("--subject-placement")
