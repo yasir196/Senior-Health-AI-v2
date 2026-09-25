@@ -99,3 +99,16 @@ def test_youtube_recurrent_observed_copy_is_not_positional_rewritten(monkeypatch
     assert candidates[0]=="CLOVE + COFFEE?"
     assert "1 CLOVE?" not in candidates
     assert "ONE 1 DAILY" not in candidates
+
+
+def test_runner_signature_has_no_legacy_hero_category():
+    import inspect
+    import Thumbnail_Pipeline.runner.__main__ as runner
+    assert "hero_category" not in inspect.signature(runner.build_project_prompt_state).parameters
+
+def test_concept_category_is_dynamic_cluster_not_legacy_taxonomy(tmp_path):
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"Clove Coffee"}),encoding="utf-8")
+    state=build_project_prompt_state(p)
+    assert state["concept"]["concept"]["category"]=="unclustered"
+    assert "hero_category_associations" not in state["concept"]["evidence"]
