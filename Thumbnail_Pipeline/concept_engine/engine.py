@@ -18,7 +18,7 @@ def _winner_evidence(context: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _reference_evidence(context: dict[str, Any]) -> list[dict[str, Any]]:
-    for key in ("youtube_examples", "external_references", "references"):
+    for key in ("youtube_reference_examples", "youtube_examples", "external_references", "references"):
         value = context.get(key)
         if isinstance(value, list):
             return value
@@ -48,11 +48,11 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
     ]
     layouts = [
         ((r.get("v2_analysis") or {}).get("composition_layout") if isinstance(r, dict) else None)
-        or (r.get("composition_layout") if isinstance(r, dict) else None)
+        or ((r.get("visual_analysis") or {}).get("composition_layout") if isinstance(r, dict) else None)\n        or (r.get("composition_layout") if isinstance(r, dict) else None)
         for r in winners
     ]
     hero_categories = [
-        classify_category(r) for r in winners if isinstance(r, dict)
+        ((r.get("visual_analysis") or {}).get("hero_category") or classify_category(r)) for r in winners if isinstance(r, dict)
     ]
 
     return {
