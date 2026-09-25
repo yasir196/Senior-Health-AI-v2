@@ -48,8 +48,14 @@ def _dominant_colors(image: np.ndarray, k: int = 5) -> list[list[int]]:
 
 
 def _faces(gray: np.ndarray) -> list[tuple[int, int, int, int]]:
-    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    detector = cv2.CascadeClassifier(cascade_path)
+    """Optional face feature: degrade cleanly when the installed OpenCV build omits objdetect."""
+    cascade_cls = getattr(cv2, "CascadeClassifier", None)
+    data = getattr(cv2, "data", None)
+    haarcascades = getattr(data, "haarcascades", None) if data is not None else None
+    if cascade_cls is None or not haarcascades:
+        return []
+    cascade_path = haarcascades + "haarcascade_frontalface_default.xml"
+    detector = cascade_cls(cascade_path)
     if detector.empty():
         return []
     found = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
