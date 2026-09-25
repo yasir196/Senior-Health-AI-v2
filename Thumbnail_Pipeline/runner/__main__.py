@@ -47,7 +47,13 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     meta=_read_project_json(project); title=_title(meta)
     adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
     historical=adapter.to_intelligence_rows() if adapter else []
-    discovered=discover_title_clusters(historical) if historical else {"method":"tfidf_title_similarity_connected_components","similarity_threshold":0.24,"clusters":[],"rows":[]}
+    if historical:
+        discovered=discover_title_clusters(historical)
+    else:
+        from Thumbnail_Pipeline.intelligence.settings import load_settings
+        cluster_cfg=load_settings().get("title_clustering") or {}
+        discovered={"method":cluster_cfg.get("method","tfidf_title_similarity_connected_components"),
+                    "similarity_threshold":float(cluster_cfg["similarity_threshold"]),"clusters":[],"rows":[]}
     assignment=assign_title_cluster(title,discovered)
     if cluster_db is not None and historical:
         persist_title_clusters(cluster_db,discovered)
