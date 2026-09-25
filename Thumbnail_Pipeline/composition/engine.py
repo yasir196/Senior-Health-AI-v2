@@ -26,6 +26,11 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
     layout = concept.get("composition_layout")
     supported = concept_direction.get("evidence_status") in ("winner_supported", "association_supported")
     subject_placement = concept.get("presenter_position")
+    # Text placement can be derived only when the observed layout explicitly encodes it.
+    layout_lower = str(layout or "").lower()
+    text_placement = "left" if ("text_left" in layout_lower or layout_lower.startswith("left_")) else ("right" if "text_right" in layout_lower else None)
+    # Timestamp-safe bottom-right is a renderer/platform contract, not a CTR claim.
+    safe_zone = "bottom-right timestamp-safe area clear" if text_placement == "left" and subject_placement not in (None, "bottom-right") else None
 
     return {
         "schema_version": "0.3.0",
@@ -36,8 +41,8 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
             "layout": layout,
             "thumbnail_text_candidates": examples[:5],
             "subject_placement": subject_placement,
-            "text_placement": None,
-            "safe_zone": None,
+            "text_placement": text_placement,
+            "safe_zone": safe_zone,
         },
         "provenance": {
             "source": "phase2_concept_direction",
@@ -46,6 +51,8 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
             "layout_supported_by_winner_evidence": bool(layout and supported),
             "text_candidates_supported_by_winner_evidence": bool(examples and supported),
             "subject_placement_supported_by_association_evidence": bool(subject_placement),
+            "text_placement_derived_from_layout": bool(text_placement),
+            "safe_zone_source": "render_contract" if safe_zone else None,
         },
         "constraints": {
             "title_must_remain_unchanged": constraints.get("title_must_remain_unchanged", True),
@@ -59,8 +66,8 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
             for key, value in {
                 "layout": layout,
                 "subject_placement": subject_placement,
-                "text_placement": None,
-                "safe_zone": None,
+                "text_placement": text_placement,
+                "safe_zone": safe_zone,
             }.items()
             if value is None
         ],
