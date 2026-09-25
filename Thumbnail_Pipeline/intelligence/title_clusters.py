@@ -2,6 +2,7 @@ from __future__ import annotations
 import math, re
 from collections import Counter
 from typing import Any
+from Thumbnail_Pipeline.intelligence.settings import load_settings
 
 _STOP={"the","a","an","and","or","of","to","in","on","for","with","your","you","this","that","is","are"}
 
@@ -24,8 +25,11 @@ def _cos(a: dict[str,float], b: dict[str,float]) -> float:
     if len(a)>len(b): a,b=b,a
     return sum(v*b.get(k,0.0) for k,v in a.items())
 
-def discover_title_clusters(rows: list[dict[str,Any]], similarity_threshold: float=0.24) -> dict[str,Any]:
+def discover_title_clusters(rows: list[dict[str,Any]], similarity_threshold: float|None=None) -> dict[str,Any]:
     """Discover title clusters from historical evidence. No semantic category names are seeded."""
+    if similarity_threshold is None:
+        cfg=load_settings().get("title_clustering") or {}
+        similarity_threshold=float(cfg["similarity_threshold"])
     usable=[r for r in rows if str((r.get("performance") or {}).get("title") or "").strip()]
     titles=[str((r.get("performance") or {}).get("title") or "") for r in usable]
     vecs=_vectors(titles); parent=list(range(len(usable)))
