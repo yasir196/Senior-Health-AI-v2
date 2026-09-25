@@ -139,7 +139,9 @@ def _current_title_spans(title:str, mechanism:dict[str,Any], max_words:int=4)->l
             toks=[lexical[k][2] for k in range(a,b+1)]
             rarity=sum(1.0/(1.0+freq.get(t,0)) for t in toks)/len(toks)
             spans.append({"text":" ".join(words),"start":idxs[0],"word_count":len(words),"rarity":rarity})
-    spans.sort(key=lambda x:(-x["rarity"],-x["word_count"],x["start"]))
+    # Rank complete evidence-sized spans ahead of shorter fragments. Rarity is a
+    # tie-breaker, not a reason to truncate a phrase.
+    spans.sort(key=lambda x:(-x["word_count"],-x["rarity"],x["start"]))
     return spans
 
 def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
@@ -155,8 +157,12 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
     spans=_current_title_spans(title,mechanism,max_words=max(1,min(4,target)))
     if not spans: return []
     # Prefer coherent contiguous spans. Single-token anchors remain a fallback only.
+    # Prefer the observed winner word-count when the title can supply it; this avoids
+    # promoting arbitrary shorter fragments such as "CLOVE IN" when a fuller contiguous
+    # phrase is available.
+    exact=[s for s in spans if s["word_count"]==min(target,4)]
     multi=[s for s in spans if s["word_count"]>1]
-    ranked_spans=(multi or spans)[:max(limit,2)]
+    ranked_spans=(exact or multi or spans)[:max(limit,2)]
     candidates=[s["text"] for s in ranked_spans]
     question_rate=float(profile.get("question_form_rate") or 0)
     out=[]
