@@ -68,4 +68,5 @@ def test_explicit_execute_calls_provider_once():
     result=dispatch_renderer(handoff,provider=provider,execute=True)
     assert provider.calls==1
     assert result["renderer_invoked"] is True
-    assert result["artifact"]["asset"]["asset_id"]=="fake-1"\n    assert result["artifact"]["qa_status"]=="pending"
+    assert result["artifact"]["asset"]["asset_id"]=="fake-1"
+    assert result["artifact"]["qa_status"]=="pending"
