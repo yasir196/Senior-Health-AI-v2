@@ -69,9 +69,6 @@ def main() -> int:
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
     state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db))
-    if state["hero_category"] == "uncategorized":
-        print(json.dumps({"status":"needs_hero_category","project":state["project"],"immutable_title":state["immutable_title"],"available_hero_categories":state["hero_category_support"],"instruction":"Re-run with --hero-category using one observed DB category. No category was guessed from topic/title."},indent=2,ensure_ascii=False))
-        return 2
     spec=state["composition"]
     corrections={k:v for k,v in {
         "layout":args.layout,
