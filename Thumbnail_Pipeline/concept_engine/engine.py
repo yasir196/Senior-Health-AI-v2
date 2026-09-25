@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from Thumbnail_Pipeline.intelligence.patterns import classify_category
 from Thumbnail_Pipeline.intelligence.title_text_pair import pair_features
 
 
@@ -78,10 +77,6 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
         or (r.get("composition_layout") if isinstance(r, dict) else None)
         for r in winners
     ]
-    hero_categories = [
-        ((r.get("visual_analysis") or {}).get("hero_category") or classify_category(r)) for r in winners if isinstance(r, dict)
-    ]
-
     # Category lane is intentionally considered before channel-wide fallback.
     association_rows = category_associations or channel_associations
     association_layout = _association_choice(association_rows, "composition_layout")
@@ -102,7 +97,7 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
         "requested_category": requested_category,
         "evidence_status": "winner_supported" if winners else ("association_supported" if supported else "no_winner_evidence"),
         "concept": {
-            "category": _mode(hero_categories) or requested_category,
+            "category": requested_category,
             "composition_layout": _mode(layouts) or association_layout,
             "thumbnail_text_examples": [t for t in winner_texts if t][:5],
             "title_text_relationship": [pair_features(title, t) for t in winner_texts if t][:5],
@@ -122,7 +117,7 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
             "channel_winners": winners[:10],
             "youtube_references": refs[:10],
             "packaging_association_run": associations.get("run"),
-            "hero_category_associations": category_associations,
+            "cluster_associations": category_associations,
             "channel_associations": channel_associations,
         },
         "constraints": {
