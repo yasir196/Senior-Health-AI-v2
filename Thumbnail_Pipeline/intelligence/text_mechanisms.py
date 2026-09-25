@@ -73,11 +73,32 @@ def _instantiate(title:str, pattern:dict[str,Any])->str|None:
     if pattern.get("question_rate",0)>=0.5: text=text.rstrip("?!")+"?"
     return text.upper()
 
-def transformation_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5)->list[str]:
-    candidates=[]
+def _candidate_score(text:str, title:str, mechanism:dict[str,Any])->tuple[float,dict[str,Any]]:
+    words=_tokens(text); title_words=set(_tokens(title))
+    if not words: return (-1.0,{"valid":False,"reason":"empty"})
+    observed_literals={str(x) for p in (mechanism.get("patterns") or []) for x in (p.get("skeleton") or []) if x!="<TITLE>"}
+    unsupported=[w for w in words if w not in title_words and w not in observed_literals]
+    if unsupported: return (-1.0,{"valid":False,"reason":"unsupported_vocabulary","tokens":unsupported})
+    profile=mechanism.get("profile") or {}
+    target=float(profile.get("typical_overlay_word_count") or len(words))
+    length_fit=1.0-(abs(len(words)-target)/max(1.0,target))
+    title_overlap=sum(1 for w in words if w in title_words)/len(words)
+    duplicate_penalty=(len(words)-len(set(words)))/len(words)
+    score=length_fit+title_overlap-duplicate_penalty
+    return (score,{"valid":True,"length_fit":round(length_fit,4),"title_overlap":round(title_overlap,4),"duplicate_penalty":round(duplicate_penalty,4)})
+
+def transformation_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
+    ranked=[]
     for pattern in mechanism.get("patterns") or []:
         text=_instantiate(title,pattern)
-        if text and text not in candidates:
-            candidates.append(text)
-        if len(candidates)>=limit: break
-    return candidates
+        if not text: continue
+        score,audit=_candidate_score(text,title,mechanism)
+        if audit.get("valid"):
+            ranked.append({"text":text,"score":round(score,4),"audit":audit})
+    ranked.sort(key=lambda x:(x["score"],x["text"]),reverse=True)
+    unique=[]; seen=set()
+    for item in ranked:
+        if item["text"] in seen: continue
+        seen.add(item["text"]); unique.append(item)
+        if len(unique)>=limit: break
+    return unique if with_audit else [x["text"] for x in unique]
