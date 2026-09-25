@@ -101,6 +101,50 @@ def _candidate_score(text:str, title:str, mechanism:dict[str,Any])->tuple[float,
     score=length_fit+title_overlap-duplicate_penalty
     return (score,{"valid":True,"length_fit":round(length_fit,4),"title_overlap":round(title_overlap,4),"duplicate_penalty":round(duplicate_penalty,4),"pattern_observations":recurrence})
 
+
+def recurrent_observed_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
+    """Reuse recurrent observed overlays when they are already supported by the current title.
+
+    This lane is intentionally conservative: it never substitutes positional title slots.
+    Every lexical word in the observed overlay must occur in the immutable current title;
+    punctuation/symbols may be preserved. Thus evidence such as CLOVE + COFFEE? can survive
+    unchanged, while ONE CLOVE DAILY is not rewritten into ONE 1 DAILY.
+    """
+    title_words=set(_tokens(title))
+    counts=Counter()
+    originals={}
+    for obs in mechanism.get("observations") or []:
+        raw=str(obs.get("historical_overlay") or "").strip()
+        if not raw:
+            continue
+        key=" ".join(_tokens(raw))
+        if not key:
+            continue
+        counts[key]+=1
+        originals.setdefault(key,raw)
+    ranked=[]
+    for key,count in counts.items():
+        if count < 2:
+            continue
+        raw=originals[key]
+        words=_tokens(raw)
+        if not words or any(w not in title_words for w in words):
+            continue
+        rendered=raw.upper()
+        ranked.append({"text":rendered,"score":float(count),
+                       "audit":{"valid":True,"source":"recurrent_observed_overlay",
+                                "observations":count,"unchanged_observed_text":True,
+                                "all_words_supported_by_current_title":True}})
+    ranked.sort(key=lambda x:(x["score"],len(_tokens(x["text"]))),reverse=True)
+    out=[]; seen=set()
+    for item in ranked:
+        if item["text"] in seen:
+            continue
+        seen.add(item["text"]); out.append(item)
+        if len(out)>=limit:
+            break
+    return out if with_audit else [x["text"] for x in out]
+
 def transformation_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     ranked=[]
     for pattern in mechanism.get("patterns") or []:
