@@ -1,5 +1,5 @@
 from __future__ import annotations
-import hashlib, urllib.request, urllib.parse
+import base64, hashlib, json, urllib.request, urllib.parse
 from pathlib import Path
 from typing import Any
 from Thumbnail_Pipeline.io_policy import safe_output
@@ -8,6 +8,44 @@ from Thumbnail_Pipeline.analyzer.ocr import analyze_text
 
 MAX_THUMBNAIL_BYTES=8*1024*1024
 ALLOWED_THUMBNAIL_HOST_SUFFIXES=("ytimg.com","youtube.com")
+
+def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:int=60):
+    """Return a callable that transcribes only visible thumbnail text.
+
+    The model is deliberately instructed not to infer, rewrite, or improve copy. An empty
+    string means no text can be read confidently. This is a fallback for local OCR only.
+    """
+    key=str(api_key or "").strip()
+    if not key:
+        raise ValueError("OpenAI API key is required for vision thumbnail text analysis.")
+    def analyze(path:Path,reference:dict[str,Any])->dict[str,Any]:
+        raw=Path(path).read_bytes()
+        data_url="data:image/jpeg;base64,"+base64.b64encode(raw).decode("ascii")
+        payload={
+            "model":model,
+            "input":[{
+                "role":"user",
+                "content":[
+                    {"type":"input_text","text":"Transcribe ONLY text visibly printed in this YouTube thumbnail. Preserve words and punctuation as seen. Do not infer text from the video title, objects, or topic. If no text is confidently readable, return an empty string. Return JSON only: {\\\"text\\\":\\\"...\\\"}"},
+                    {"type":"input_image","image_url":data_url},
+                ],
+            }],
+            "text":{"format":{"type":"json_schema","name":"thumbnail_text","strict":True,"schema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"],"additionalProperties":False}}},
+        }
+        req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
+        with urllib.request.urlopen(req,timeout=timeout) as response:
+            body=json.loads(response.read().decode("utf-8"))
+        output_text=str(body.get("output_text") or "").strip()
+        if not output_text:
+            for item in body.get("output") or []:
+                for part in item.get("content") or []:
+                    if part.get("type")=="output_text":
+                        output_text=str(part.get("text") or "").strip()
+                        if output_text: break
+                if output_text: break
+        parsed=json.loads(output_text) if output_text else {"text":""}
+        return {"text":str(parsed.get("text") or "").strip(),"source":"openai_vision","model":model}
+    return analyze
 
 def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30,text_analyzer=None)->dict[str,Any]:
     """Download a public YouTube thumbnail into pipeline outputs and inspect it locally."""
