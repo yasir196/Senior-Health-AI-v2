@@ -1,5 +1,5 @@
 from __future__ import annotations
-import math, re
+import hashlib, math, re
 from collections import Counter
 from typing import Any
 from Thumbnail_Pipeline.intelligence.settings import load_settings
@@ -25,6 +25,16 @@ def _cos(a: dict[str,float], b: dict[str,float]) -> float:
     if len(a)>len(b): a,b=b,a
     return sum(v*b.get(k,0.0) for k,v in a.items())
 
+def _stable_cluster_id(idxs: list[int], rows: list[dict[str,Any]], titles: list[str]) -> str:
+    """Content-addressed cluster identity: stable across row/group ordering changes."""
+    members=[]
+    for i in idxs:
+        asset=str(rows[i].get("asset_id") or "").strip()
+        title=" ".join(_tokens(titles[i]))
+        members.append(f"{asset}|{title}")
+    digest=hashlib.sha256("\n".join(sorted(members)).encode("utf-8")).hexdigest()[:12]
+    return f"cluster_{digest}"
+
 def discover_title_clusters(rows: list[dict[str,Any]], similarity_threshold: float|None=None) -> dict[str,Any]:
     """Discover title clusters from historical evidence. No semantic category names are seeded."""
     if similarity_threshold is None:
@@ -47,8 +57,8 @@ def discover_title_clusters(rows: list[dict[str,Any]], similarity_threshold: flo
     for i in range(len(usable)): groups.setdefault(find(i),[]).append(i)
     ordered=sorted(groups.values(), key=lambda g:(-len(g), min(g)))
     clusters=[]
-    for num,idxs in enumerate(ordered,1):
-        cid=f"cluster_{num:03d}"
+    for idxs in ordered:
+        cid=_stable_cluster_id(idxs,usable,titles)
         centroid={}
         for i in idxs:
             for k,v in vecs[i].items(): centroid[k]=centroid.get(k,0.0)+v/len(idxs)
