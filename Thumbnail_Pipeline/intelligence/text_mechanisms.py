@@ -65,6 +65,11 @@ def _instantiate(title:str, pattern:dict[str,Any])->str|None:
     if slot_count<=0: return None
     # Slot values are selected from the current immutable title only. Literal transformation
     # tokens are admitted only because they were discovered in eligible historical winners.
+    # A discovered external pattern can contain more title-derived slots than the
+    # current immutable title has tokens. Such a pattern is not instantiable here;
+    # reject it rather than crashing or fabricating/repeating title words.
+    if slot_count > len(words):
+        return None
     selected=words[:slot_count]
     it=iter(selected); out=[]
     for token in skeleton:
