@@ -11,6 +11,8 @@ from Thumbnail_Pipeline.prompt_export import export_final_thumbnail_prompt
 from Thumbnail_Pipeline.adapters.v2_analytics_db import V2AnalyticsReadOnlyAdapter
 from Thumbnail_Pipeline.intelligence.title_clusters import discover_title_clusters, assign_title_cluster
 from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
+from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
+from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, title_bound_text_candidates
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -46,11 +48,22 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     if cluster_db is not None and historical:
         persist_title_clusters(cluster_db,discovered)
     cluster_rows=[discovered["rows"][i] for i in (assignment or {}).get("member_indexes",[])]
+    prior=eligible_cluster_winners(cluster_rows)
+    winner_rows=prior.get("winner_rows") or []
+    mechanism=discover_text_mechanisms(winner_rows)
+    fresh_text_candidates=title_bound_text_candidates(title,mechanism)
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
     associations=adapter.latest_packaging_associations(None) if adapter else {"run":None,"hero_category":None,"channel":[],"category":[]}
     context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id","unclustered"),
-             "winner_prior":{"winner_examples":cluster_rows},"youtube_examples":[],"packaging_associations":associations}
-    concept=build_concept_direction(context); composition=build_composition_spec(concept)
+             "winner_prior":{"winner_examples":winner_rows},"youtube_examples":[],"packaging_associations":associations}
+    concept=build_concept_direction(context)
+    concept["concept"]["thumbnail_text_examples"]=[]
+    concept["concept"]["thumbnail_text_candidates"]=fresh_text_candidates
+    concept["evidence"]["historical_text_mechanism"]=mechanism
+    concept["evidence"]["cluster_prior_status"]={k:v for k,v in prior.items() if k!="winner_rows"}
+    composition=build_composition_spec(concept)
+    if fresh_text_candidates:
+        composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
     return {"project":project.name,"immutable_title":title,"concept":concept,"composition":composition,
             "discovered_cluster":assignment,"cluster_count":len(discovered.get("clusters") or [])}
 
