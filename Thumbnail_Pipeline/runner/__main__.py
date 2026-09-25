@@ -55,8 +55,10 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         discovered={"method":cluster_cfg.get("method","tfidf_title_similarity_connected_components"),
                     "similarity_threshold":float(cluster_cfg["similarity_threshold"]),"clusters":[],"rows":[]}
     assignment=assign_title_cluster(title,discovered)
+    associations=adapter.latest_packaging_associations(None) if adapter else {"run":None,"hero_category":None,"channel":[],"category":[]}
+    source_run_id=((associations.get("run") or {}).get("id"))
     if cluster_db is not None and historical:
-        persist_title_clusters(cluster_db,discovered)
+        persist_title_clusters(cluster_db,discovered,source_run_id=source_run_id)
     cluster_rows=[discovered["rows"][i] for i in (assignment or {}).get("member_indexes",[])]
     prior=eligible_cluster_winners(cluster_rows)
     winner_rows=prior.get("winner_rows") or []
@@ -118,7 +120,6 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         candidate_audit=constraint_text_candidates(title,mechanism,with_audit=True)
     fresh_text_candidates=[x["text"] for x in candidate_audit]
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
-    associations=adapter.latest_packaging_associations(None) if adapter else {"run":None,"hero_category":None,"channel":[],"category":[]}
     context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id") or "unclustered",
              "winner_prior":{"winner_examples":winner_rows},"youtube_examples":youtube_examples,"packaging_associations":associations}
     concept=build_concept_direction(context)
