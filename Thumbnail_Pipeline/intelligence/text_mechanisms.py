@@ -84,8 +84,17 @@ def _candidate_score(text:str, title:str, mechanism:dict[str,Any])->tuple[float,
     length_fit=1.0-(abs(len(words)-target)/max(1.0,target))
     title_overlap=sum(1 for w in words if w in title_words)/len(words)
     duplicate_penalty=(len(words)-len(set(words)))/len(words)
+    # Reject transformations that are not recurrent across eligible winners. A one-off
+    # historical overlay is evidence, but not a reusable transformation rule.
+    matching=[p for p in (mechanism.get("patterns") or []) if all(str(x) in words or str(x)=="<TITLE>" for x in (p.get("skeleton") or []))]
+    recurrence=max([int(p.get("observations") or 0) for p in matching] or [0])
+    if recurrence < 2:
+        return (-1.0,{"valid":False,"reason":"insufficient_pattern_recurrence","observations":recurrence})
+    # Structural sanity comes from the observed profile, not a hook-word blacklist.
+    if length_fit < 0:
+        return (-1.0,{"valid":False,"reason":"length_outside_observed_profile","length_fit":round(length_fit,4)})
     score=length_fit+title_overlap-duplicate_penalty
-    return (score,{"valid":True,"length_fit":round(length_fit,4),"title_overlap":round(title_overlap,4),"duplicate_penalty":round(duplicate_penalty,4)})
+    return (score,{"valid":True,"length_fit":round(length_fit,4),"title_overlap":round(title_overlap,4),"duplicate_penalty":round(duplicate_penalty,4),"pattern_observations":recurrence})
 
 def transformation_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     ranked=[]
