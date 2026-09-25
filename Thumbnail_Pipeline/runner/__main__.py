@@ -8,6 +8,7 @@ from Thumbnail_Pipeline.concept_engine import build_concept_direction
 from Thumbnail_Pipeline.composition import build_composition_spec
 from Thumbnail_Pipeline.qa import apply_composition_review, evaluate_generation_gate
 from Thumbnail_Pipeline.prompt_export import export_final_thumbnail_prompt
+from Thumbnail_Pipeline.adapters.v2_analytics_db import V2AnalyticsReadOnlyAdapter
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -34,34 +35,26 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
-def _read_artifact(project: Path, name: str) -> str:
-    path=project/name
-    if not path.is_file():
-        return ""
-    return path.read_text(encoding="utf-8")
-
-def build_project_prompt_state(project: Path) -> dict[str, Any]:
+def build_project_prompt_state(project: Path, analytics_db: Path | None = None) -> dict[str, Any]:
     meta=_read_project_json(project)
     title=_title(meta)
     category=meta.get("category") or meta.get("topic_category") or "uncategorized"
-    context={"immutable_title":title,"requested_category":str(category),"winner_prior":{"winner_examples":[]},"youtube_examples":[]}
+    associations = V2AnalyticsReadOnlyAdapter(analytics_db).latest_packaging_associations(str(category)) if analytics_db else {"run":None,"hero_category":str(category),"channel":[],"category":[]}
+    context={"immutable_title":title,"requested_category":str(category),"winner_prior":{"winner_examples":[]},"youtube_examples":[],"packaging_associations":associations}
     concept=build_concept_direction(context)
     composition=build_composition_spec(concept)
     return {
         "project":project.name,
         "immutable_title":title,
         "concept":concept,
-        "composition":composition,
-        "source_artifacts":{
-            "04_thumbnail_concepts.md":_read_artifact(project,"04_thumbnail_concepts.md"),
-            "11_thumbnail_prompt.md":_read_artifact(project,"11_thumbnail_prompt.md"),
-        },
+        "composition":composition
     }
 
 def main() -> int:
     parser=argparse.ArgumentParser(description="Thumbnail Pipeline prompt-only project CLI")
     parser.add_argument("--project",required=True,help="Exact folder name under Projects/")
     parser.add_argument("--projects-root",default="Projects")
+    parser.add_argument("--analytics-db",default="Analytics/senior_health_analytics.db",help="Read-only historical analytics DB")
     parser.add_argument("--layout")
     parser.add_argument("--subject-placement")
     parser.add_argument("--text-placement")
