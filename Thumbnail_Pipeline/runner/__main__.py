@@ -62,23 +62,7 @@ def main() -> int:
     parser.add_argument("--thumbnail-text")
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
-    state=build_project_prompt_state(project)
-    prompt_artifact=state["source_artifacts"]["11_thumbnail_prompt.md"]
-    concept_artifact=state["source_artifacts"]["04_thumbnail_concepts.md"]
-    if prompt_artifact.strip():
-        print("FINAL THUMBNAIL PROMPT")
-        print("======================")
-        print(prompt_artifact.rstrip())
-        return 0
-    if concept_artifact.strip():
-        print(json.dumps({
-            "status":"prompt_artifact_missing",
-            "project":state["project"],
-            "immutable_title":state["immutable_title"],
-            "source_artifact":"04_thumbnail_concepts.md",
-            "instruction":"Winning concept exists, but 11_thumbnail_prompt.md is missing. No values were guessed.",
-        },indent=2,ensure_ascii=False))
-        return 2
+    state=build_project_prompt_state(project,Path(args.analytics_db))
     spec=state["composition"]
     corrections={k:v for k,v in {
         "layout":args.layout,
@@ -96,11 +80,11 @@ def main() -> int:
             "immutable_title":state["immutable_title"],
             "unresolved_fields":gate["unresolved_fields"],
             "thumbnail_text_candidates":(spec.get("composition") or {}).get("thumbnail_text_candidates") or [],
-            "instruction":"Re-run with explicit review arguments for unresolved fields. No image generation or upload was performed.",
+            "packaging_association_run":(state["concept"].get("evidence") or {}).get("packaging_association_run"),
+            "instruction":"Resolve only fields not supported by DB evidence. No image generation, upload, or V2 write was performed.",
         },indent=2,ensure_ascii=False))
         return 2
-    selected=args.thumbnail_text
-    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected)
+    result=export_final_thumbnail_prompt(spec,gate,selected_text=args.thumbnail_text)
     print("FINAL THUMBNAIL PROMPT")
     print("======================")
     print(result["final_prompt"])
