@@ -69,7 +69,7 @@ def test_youtube_discovery_runs_before_title_only_fallback(monkeypatch,tmp_path)
             return [{"video_id":"x","channel_name":"Other","video_title":"Clove Coffee Morning",
                      "thumbnail_url_or_path":"https://i.ytimg.com/vi/x/hqdefault.jpg","views":"100"}]
     provider=Provider()
-    monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs:[
+    monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
         {**refs[0],"thumbnail_analysis_status":"analyzed","external_thumbnail_ocr":{"text":"CLOVE COFFEE?"}}
     ])
     state=build_project_prompt_state(p,youtube_provider=provider)
