@@ -154,13 +154,17 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
     if mechanism.get("status")!="ready": return []
     profile=mechanism.get("profile") or {}
     target=max(1,int(profile.get("typical_overlay_word_count") or 1))
-    spans=_current_title_spans(title,mechanism,max_words=max(1,min(4,target)))
+    # A fallback copied only from the current title needs enough context to stand alone.
+    # Learn the normal overlay size, but do not let a very short historical overlay force
+    # an incomplete title fragment.
+    fallback_width=min(4,max(3,target))
+    spans=_current_title_spans(title,mechanism,max_words=fallback_width)
     if not spans: return []
     # Prefer coherent contiguous spans. Single-token anchors remain a fallback only.
     # Prefer the observed winner word-count when the title can supply it; this avoids
     # promoting arbitrary shorter fragments such as "CLOVE IN" when a fuller contiguous
     # phrase is available.
-    exact=[s for s in spans if s["word_count"]==min(target,4)]
+    exact=[s for s in spans if s["word_count"]==fallback_width]
     multi=[s for s in spans if s["word_count"]>1]
     ranked_spans=(exact or multi or spans)[:max(limit,2)]
     candidates=[s["text"] for s in ranked_spans]
@@ -170,7 +174,7 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
         rendered=text.upper()
         if question_rate>=0.5: rendered=rendered.rstrip("?!")+"?"
         audit={"valid":True,"source":"constraint_fallback","uses_current_title_words_only":True,
-               "target_word_count":target,"question_form_rate":round(question_rate,4)}
+               "target_word_count":target,"fallback_span_width":fallback_width,"question_form_rate":round(question_rate,4)}
         item={"text":rendered,"score":1.0 if len(_tokens(rendered))==target else 0.5,"audit":audit}
         if rendered not in [x["text"] for x in out]: out.append(item)
         if len(out)>=limit: break
