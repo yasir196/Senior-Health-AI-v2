@@ -42,3 +42,13 @@ def test_candidate_filter_rejects_vocabulary_not_in_title_or_discovered_pattern(
     m=discover_text_mechanisms([r("Banana at Night","TRUTH ABOUT BANANA",5),r("Milk at Night","TRUTH ABOUT MILK",6)])
     score,audit=_candidate_score("SECRET CLOVE","Clove in Coffee",m)
     assert score<0 and audit["reason"]=="unsupported_vocabulary"
+
+
+def test_one_off_cluster_overlay_is_not_promoted_as_reusable_rule():
+    m=discover_text_mechanisms([r("Banana at Night","INSIDE YOU?",5)])
+    assert transformation_text_candidates("Clove in Coffee Every Morning",m)==[]
+
+def test_recurrent_transformation_remains_eligible():
+    m=discover_text_mechanisms([r("Banana at Night","TRUTH ABOUT BANANA",5),r("Milk at Night","TRUTH ABOUT MILK",6)])
+    out=transformation_text_candidates("Clove in Coffee Every Morning",m)
+    assert out and "TRUTH ABOUT" in out[0]
