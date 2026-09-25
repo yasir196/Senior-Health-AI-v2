@@ -57,6 +57,24 @@ class V2AnalyticsReadOnlyAdapter:
         with self._connect() as con:
             return [dict(r) for r in con.execute(sql).fetchall()]
 
+    def hero_category_support(self) -> list[dict[str, Any]]:
+        """Return observed support for DB hero categories from latest thumbnail evidence."""
+        sql = """
+        SELECT a.hero_category AS hero_category, COUNT(DISTINCT e.analytics_id) AS video_count,
+               SUM(e.impressions) AS total_impressions
+        FROM thumbnail_ctr_evidence e
+        JOIN thumbnail_analyses a ON a.id=e.thumbnail_analysis_id
+        WHERE e.id=(SELECT e2.id FROM thumbnail_ctr_evidence e2
+                    WHERE e2.analytics_id=e.analytics_id
+                    ORDER BY e2.joined_at DESC,e2.id DESC LIMIT 1)
+          AND a.hero_category IS NOT NULL AND TRIM(a.hero_category)<>''
+          AND e.impressions IS NOT NULL AND e.impressions>0
+        GROUP BY a.hero_category
+        ORDER BY video_count DESC,total_impressions DESC,a.hero_category
+        """
+        with self._connect() as con:
+            return [dict(r) for r in con.execute(sql).fetchall()]
+
     def latest_packaging_associations(self, hero_category: str | None = None) -> dict[str, Any]:
         """Read latest persisted packaging associations without mutating V2."""
         run_sql = """
