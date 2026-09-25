@@ -53,7 +53,7 @@ def discover_title_clusters(rows: list[dict[str,Any]], similarity_threshold: flo
     return {"method":"tfidf_title_similarity_connected_components","similarity_threshold":similarity_threshold,
             "clusters":clusters,"rows":usable}
 
-def assign_title_cluster(title: str, discovered: dict[str,Any]) -> dict[str,Any]|None:
+def assign_title_cluster(title: str, discovered: dict[str,Any], minimum_similarity: float|None=None) -> dict[str,Any]|None:
     rows=discovered.get("rows") or []; clusters=discovered.get("clusters") or []
     if not rows or not clusters: return None
     historical=[str((r.get("performance") or {}).get("title") or "") for r in rows]
@@ -65,5 +65,11 @@ def assign_title_cluster(title: str, discovered: dict[str,Any]) -> dict[str,Any]
         candidate=(score,c["member_count"],c["cluster_id"],c)
         if best is None or candidate[:3]>best[:3]: best=candidate
     if best is None: return None
-    return {"cluster_id":best[2],"similarity":round(best[0],6),"member_count":best[1],
+    threshold=float(discovered.get("similarity_threshold") if minimum_similarity is None else minimum_similarity)
+    if best[0] < threshold:
+        return {"cluster_id":None,"status":"unmatched","similarity":round(best[0],6),
+                "minimum_similarity":threshold,"nearest_cluster_id":best[2],
+                "nearest_example_titles":best[3]["example_titles"],"member_indexes":[]}
+    return {"cluster_id":best[2],"status":"matched","similarity":round(best[0],6),
+            "minimum_similarity":threshold,"member_count":best[1],
             "example_titles":best[3]["example_titles"],"member_indexes":best[3]["member_indexes"]}
