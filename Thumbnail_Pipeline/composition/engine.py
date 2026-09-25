@@ -25,6 +25,7 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
     examples = _clean_examples(concept_direction)
     layout = concept.get("composition_layout")
     supported = concept_direction.get("evidence_status") in ("winner_supported", "association_supported")
+    subject_placement = concept.get("presenter_position")
 
     return {
         "schema_version": "0.3.0",
@@ -34,7 +35,7 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
         "composition": {
             "layout": layout,
             "thumbnail_text_candidates": examples[:5],
-            "subject_placement": None,
+            "subject_placement": subject_placement,
             "text_placement": None,
             "safe_zone": None,
         },
@@ -44,6 +45,7 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
             "youtube_reference_count": int(evidence.get("youtube_reference_count") or 0),
             "layout_supported_by_winner_evidence": bool(layout and supported),
             "text_candidates_supported_by_winner_evidence": bool(examples and supported),
+            "subject_placement_supported_by_association_evidence": bool(subject_placement),
         },
         "constraints": {
             "title_must_remain_unchanged": constraints.get("title_must_remain_unchanged", True),
@@ -56,7 +58,7 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
             key
             for key, value in {
                 "layout": layout,
-                "subject_placement": None,
+                "subject_placement": subject_placement,
                 "text_placement": None,
                 "safe_zone": None,
             }.items()
