@@ -51,7 +51,8 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     prior=eligible_cluster_winners(cluster_rows)
     winner_rows=prior.get("winner_rows") or []
     mechanism=discover_text_mechanisms(winner_rows)
-    fresh_text_candidates=transformation_text_candidates(title,mechanism)
+    candidate_audit=transformation_text_candidates(title,mechanism,with_audit=True)
+    fresh_text_candidates=[x["text"] for x in candidate_audit]
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
     associations=adapter.latest_packaging_associations(None) if adapter else {"run":None,"hero_category":None,"channel":[],"category":[]}
     context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id","unclustered"),
@@ -61,6 +62,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     concept["concept"]["thumbnail_text_candidates"]=fresh_text_candidates
     concept["evidence"]["historical_text_mechanism"]=mechanism
     concept["evidence"]["cluster_prior_status"]={k:v for k,v in prior.items() if k!="winner_rows"}
+    concept["evidence"]["thumbnail_text_candidate_ranking"]=candidate_audit
     composition=build_composition_spec(concept)
     if fresh_text_candidates:
         composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
