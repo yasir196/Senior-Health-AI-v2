@@ -12,7 +12,7 @@ from Thumbnail_Pipeline.adapters.v2_analytics_db import V2AnalyticsReadOnlyAdapt
 from Thumbnail_Pipeline.intelligence.title_clusters import discover_title_clusters, assign_title_cluster
 from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
 from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
-from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates
+from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -52,6 +52,8 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     winner_rows=prior.get("winner_rows") or []
     mechanism=discover_text_mechanisms(winner_rows)
     candidate_audit=transformation_text_candidates(title,mechanism,with_audit=True)
+    if not candidate_audit:
+        candidate_audit=constraint_text_candidates(title,mechanism,with_audit=True)
     fresh_text_candidates=[x["text"] for x in candidate_audit]
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
     associations=adapter.latest_packaging_associations(None) if adapter else {"run":None,"hero_category":None,"channel":[],"category":[]}
