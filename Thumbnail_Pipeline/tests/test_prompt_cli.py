@@ -38,14 +38,11 @@ def test_missing_title_fails_instead_of_guessing(tmp_path):
     with pytest.raises(ValueError): build_project_prompt_state(p)
 
 
-def test_project_state_reads_existing_thumbnail_artifacts_read_only(tmp_path):
+def test_project_state_does_not_read_v2_thumbnail_markdown(tmp_path):
     p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
     (p/"project.json").write_text(json.dumps({"title":"LOCKED"}),encoding="utf-8")
-    concepts=p/"04_thumbnail_concepts.md"; prompt=p/"11_thumbnail_prompt.md"
-    concepts.write_text("WINNING CONCEPT: coffee hero",encoding="utf-8")
-    prompt.write_text("Create a 16:9 thumbnail.\\nTEXT: CLOVE + COFFEE",encoding="utf-8")
-    cb,pb=concepts.read_bytes(),prompt.read_bytes()
+    (p/"04_thumbnail_concepts.md").write_text("OLD CONCEPT",encoding="utf-8")
+    (p/"11_thumbnail_prompt.md").write_text("OLD PROMPT",encoding="utf-8")
     state=build_project_prompt_state(p)
-    assert "coffee hero" in state["source_artifacts"]["04_thumbnail_concepts.md"]
-    assert "CLOVE + COFFEE" in state["source_artifacts"]["11_thumbnail_prompt.md"]
-    assert concepts.read_bytes()==cb and prompt.read_bytes()==pb
+    assert "source_artifacts" not in state
+    assert state["immutable_title"]=="LOCKED"
