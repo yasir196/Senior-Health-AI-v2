@@ -28,3 +28,17 @@ def test_literal_hook_vocabulary_comes_from_observed_winner_not_code_seed():
 def test_no_observed_transformation_means_no_invented_hook():
     m=discover_text_mechanisms([])
     assert transformation_text_candidates("Clove in Coffee Every Morning",m)==[]
+
+
+def test_candidates_are_ranked_and_auditable_without_seeded_hook_list():
+    winners=[r("Banana at Night","TRUTH ABOUT BANANA",5),r("Milk at Night","TRUTH ABOUT MILK",6)]
+    m=discover_text_mechanisms(winners)
+    out=transformation_text_candidates("Clove in Coffee Every Morning",m,with_audit=True)
+    assert out and all(x["audit"]["valid"] for x in out)
+    assert out==sorted(out,key=lambda x:(x["score"],x["text"]),reverse=True)
+
+def test_candidate_filter_rejects_vocabulary_not_in_title_or_discovered_pattern():
+    from Thumbnail_Pipeline.intelligence.text_mechanisms import _candidate_score
+    m=discover_text_mechanisms([r("Banana at Night","TRUTH ABOUT BANANA",5),r("Milk at Night","TRUTH ABOUT MILK",6)])
+    score,audit=_candidate_score("SECRET CLOVE","Clove in Coffee",m)
+    assert score<0 and audit["reason"]=="unsupported_vocabulary"
