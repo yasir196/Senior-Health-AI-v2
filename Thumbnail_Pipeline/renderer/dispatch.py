@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from Thumbnail_Pipeline.outputs import validate_render_result
+
 
 class RendererProvider(Protocol):
     def render(self, handoff: dict[str, Any]) -> dict[str, Any]:
@@ -19,7 +21,7 @@ def dispatch_renderer(
         raise ValueError("Invalid renderer handoff state.")
     if not execute:
         return {
-            "schema_version": "0.5.0",
+            "schema_version": "0.6.0",
             "status": "dry_run",
             "renderer_invoked": False,
             "handoff": handoff,
@@ -27,10 +29,11 @@ def dispatch_renderer(
     if provider is None:
         raise ValueError("Renderer provider is required when execute=True.")
 
-    result = provider.render(handoff)
+    raw_result = provider.render(handoff)
+    artifact = validate_render_result(raw_result, handoff)
     return {
-        "schema_version": "0.5.0",
+        "schema_version": "0.6.0",
         "status": "rendered",
         "renderer_invoked": True,
-        "result": result,
+        "artifact": artifact,
     }
