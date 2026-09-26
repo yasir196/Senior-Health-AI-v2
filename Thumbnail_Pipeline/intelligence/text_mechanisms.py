@@ -102,6 +102,23 @@ def _candidate_score(text:str, title:str, mechanism:dict[str,Any])->tuple[float,
     return (score,{"valid":True,"length_fit":round(length_fit,4),"title_overlap":round(title_overlap,4),"duplicate_penalty":round(duplicate_penalty,4),"pattern_observations":recurrence})
 
 
+def _structurally_complete_overlay(text:str)->bool:
+    """Reject dangling symbol fragments while preserving internal punctuation."""
+    stripped=(text or "").strip()
+    if not stripped:
+        return False
+    lines=[x.strip() for x in stripped.splitlines() if x.strip()]
+    if not lines:
+        return False
+    # Symbols can connect lexical content (e.g. A + B?) but cannot stand alone
+    # as a line or terminate the copy after the final lexical phrase.
+    if any(not _tokens(line) for line in lines):
+        return False
+    tail=re.sub(r"[?!.,:;]+$","",stripped).rstrip()
+    if tail and not re.search(r"[A-Za-z0-9'\"]$",tail):
+        return False
+    return True
+
 def recurrent_observed_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     """Reuse recurrent observed overlays when they are already supported by the current title.
 
@@ -115,7 +132,7 @@ def recurrent_observed_text_candidates(title:str, mechanism:dict[str,Any], limit
     originals={}
     for obs in mechanism.get("observations") or []:
         raw=str(obs.get("historical_overlay") or "").strip()
-        if not raw:
+        if not raw or not _structurally_complete_overlay(raw):
             continue
         key=" ".join(_tokens(raw))
         if not key:
