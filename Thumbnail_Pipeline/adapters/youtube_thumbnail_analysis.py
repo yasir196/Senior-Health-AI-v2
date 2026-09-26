@@ -10,10 +10,10 @@ MAX_THUMBNAIL_BYTES=8*1024*1024
 ALLOWED_THUMBNAIL_HOST_SUFFIXES=("ytimg.com","youtube.com")
 
 def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:int=60):
-    """Return a callable that transcribes only visible thumbnail text.
+    """Return a callable that transcribes visible copy and its coarse placement only.
 
-    The model is deliberately instructed not to infer, rewrite, or improve copy. An empty
-    string means no text can be read confidently. This is a fallback for local OCR only.
+    Placement is descriptive visual evidence, not a CTR claim. The model must not infer
+    from the video title/topic and may return unknown when the text region is ambiguous.
     """
     key=str(api_key or "").strip()
     if not key:
@@ -26,11 +26,11 @@ def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:
             "input":[{
                 "role":"user",
                 "content":[
-                    {"type":"input_text","text":"Transcribe ONLY text visibly printed in this YouTube thumbnail. Preserve words and punctuation as seen. Do not infer text from the video title, objects, or topic. If no text is confidently readable, return an empty string. Return JSON only: {\\\"text\\\":\\\"...\\\"}"},
+                    {"type":"input_text","text":"Inspect ONLY this YouTube thumbnail. Transcribe the visibly printed thumbnail text, preserving words, punctuation, and line breaks. Also classify where the main text block is visibly placed: left, center, right, or unknown. Do not infer either field from the video title, objects, or topic. If text is unreadable return empty text; if placement is ambiguous return unknown. Return JSON only."},
                     {"type":"input_image","image_url":data_url},
                 ],
             }],
-            "text":{"format":{"type":"json_schema","name":"thumbnail_text","strict":True,"schema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"],"additionalProperties":False}}},
+            "text":{"format":{"type":"json_schema","name":"thumbnail_visual_text","strict":True,"schema":{"type":"object","properties":{"text":{"type":"string"},"text_placement":{"type":"string","enum":["left","center","right","unknown"]}},"required":["text","text_placement"],"additionalProperties":False}}},
         }
         req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
         with urllib.request.urlopen(req,timeout=timeout) as response:
@@ -43,8 +43,10 @@ def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:
                         output_text=str(part.get("text") or "").strip()
                         if output_text: break
                 if output_text: break
-        parsed=json.loads(output_text) if output_text else {"text":""}
-        return {"text":str(parsed.get("text") or "").strip(),"source":"openai_vision","model":model}
+        parsed=json.loads(output_text) if output_text else {"text":"","text_placement":"unknown"}
+        placement=str(parsed.get("text_placement") or "unknown").lower()
+        if placement not in {"left","center","right"}: placement="unknown"
+        return {"text":str(parsed.get("text") or "").strip(),"text_placement":placement,"source":"openai_vision","model":model}
     return analyze
 
 def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30,text_analyzer=None)->dict[str,Any]:
@@ -69,15 +71,18 @@ def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30
     try:
         features=analyze_image(target); ocr=analyze_text(target)
         visual_text=None
+        visual_text_placement=None
         if text_analyzer is not None and (not isinstance(ocr,dict) or not str(ocr.get("text") or "").strip()):
             candidate=text_analyzer(target,reference)
             if isinstance(candidate,dict):
                 visual_text=str(candidate.get("text") or "").strip() or None
+                placement=str(candidate.get("text_placement") or "").strip().lower()
+                visual_text_placement=placement if placement in {"left","center","right"} else None
             elif candidate is not None:
                 visual_text=str(candidate).strip() or None
     except Exception as exc:
         return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"failed","thumbnail_analysis_reason":str(exc)}
-    return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"analyzed","external_thumbnail_features":features,"external_thumbnail_ocr":ocr,"external_thumbnail_visual_text":visual_text}
+    return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"analyzed","external_thumbnail_features":features,"external_thumbnail_ocr":ocr,"external_thumbnail_visual_text":visual_text,"external_thumbnail_text_placement":visual_text_placement}
 
 def analyze_youtube_reference_thumbnails(references:list[dict[str,Any]],*,text_analyzer=None)->list[dict[str,Any]]:
     out=[]
