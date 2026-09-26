@@ -29,8 +29,10 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
     # Text placement can be derived only when the observed layout explicitly encodes it.
     layout_lower = str(layout or "").lower()
     text_placement = "left" if ("text_left" in layout_lower or layout_lower.startswith("left_")) else ("right" if "text_right" in layout_lower else None)
-    # Timestamp-safe bottom-right is a renderer/platform contract, not a CTR claim.
-    safe_zone = "bottom-right timestamp-safe area clear" if text_placement == "left" and subject_placement not in (None, "bottom-right") else None
+    # Safe zone is a deterministic rendering/platform constraint, not winner/CTR evidence.
+    # Keep it independent from text/subject placement: the bottom-right timestamp cell
+    # must remain free of critical text/action in every composition.
+    safe_zone = "bottom-right timestamp-safe area clear"
 
     return {
         "schema_version": "0.3.0",
@@ -52,7 +54,7 @@ def build_composition_spec(concept_direction: dict[str, Any]) -> dict[str, Any]:
             "text_candidates_supported_by_winner_evidence": bool(examples and supported),
             "subject_placement_supported_by_association_evidence": bool(subject_placement),
             "text_placement_derived_from_layout": bool(text_placement),
-            "safe_zone_source": "render_contract" if safe_zone else None,
+            "safe_zone_source": "render_contract",
         },
         "constraints": {
             "title_must_remain_unchanged": constraints.get("title_must_remain_unchanged", True),
