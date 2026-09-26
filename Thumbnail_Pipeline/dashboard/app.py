@@ -86,7 +86,7 @@ with tab_run:
         a.metric("Gate","APPROVED" if gate.get("approved") else "REVIEW")
         b.metric("Cluster",cluster.get("cluster_id") or "unclustered")
         c.metric("Similarity",f"{float(cluster.get('similarity') or 0):.3f}")
-        d.metric("References",len(concept.get("youtube_examples") or []))
+        d.metric("References",int((evidence.get("youtube_fallback") or {}).get("reference_count") or len(evidence.get("youtube_references") or [])))
         st.subheader("Immutable title"); st.info(state["immutable_title"])
 
         l,r=st.columns(2)
@@ -122,7 +122,7 @@ with tab_refs:
     if not state:
         st.info("Run a project analysis first.")
     else:
-        refs=(state["concept"].get("youtube_examples") or [])
+        refs=((state["concept"].get("evidence") or {}).get("youtube_references") or [])
         st.subheader(f"YouTube References ({len(refs)})")
         if not refs: st.caption("No references loaded.")
         cols=st.columns(4)
