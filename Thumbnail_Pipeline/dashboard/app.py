@@ -42,12 +42,24 @@ with tab_run:
                 token=access_token_from_v2_files_read_only(Path(client_json),Path(token_json))
                 provider=V2YouTubeReferenceProvider(token)
                 analyzer=openai_thumbnail_text_analyzer(vision_key,model=vision_model) if vision_key else None
-            progress=st.progress(10,text="Reading project and V2 analytics…")
-            state=build_project_prompt_state(
-                resolve_project(project_name),Path("Analytics/senior_health_analytics.db"),
-                cluster_db=Path("Thumbnail_Pipeline/db/thumbnail_intelligence.db"),
-                youtube_provider=provider,youtube_text_analyzer=analyzer)
-            progress.progress(100,text="Analysis complete")
+            # build_project_prompt_state is intentionally a single authoritative pipeline
+            # call. Streamlit cannot observe its internal stages yet, so do not show a
+            # misleading numeric progress percentage. Show the known current activity and
+            # a live elapsed timer instead; the detailed stage result appears on completion.
+            import time
+            started=time.monotonic()
+            status=st.status("Running thumbnail pipeline…",expanded=True)
+            status.write("Reading project metadata and read-only V2 analytics")
+            if use_youtube:
+                status.write("YouTube search, filtering, thumbnail download and visual analysis will run in this pass")
+            status.write("Cluster, text, composition and final-prompt gates will be evaluated before completion")
+            with st.spinner("Analysis in progress — YouTube/vision can take a little time…"):
+                state=build_project_prompt_state(
+                    resolve_project(project_name),Path("Analytics/senior_health_analytics.db"),
+                    cluster_db=Path("Thumbnail_Pipeline/db/thumbnail_intelligence.db"),
+                    youtube_provider=provider,youtube_text_analyzer=analyzer)
+            elapsed=time.monotonic()-started
+            status.update(label=f"Analysis complete in {elapsed:.1f}s",state="complete",expanded=False)
             st.session_state["thumbnail_state"]=state
             st.session_state["thumbnail_project"]=project_name
         except Exception as exc:
