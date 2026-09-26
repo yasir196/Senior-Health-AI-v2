@@ -65,6 +65,8 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     mechanism=discover_text_mechanisms(winner_rows)
     candidate_audit=transformation_text_candidates(title,mechanism,with_audit=True)
     youtube_examples=[]
+    external_text_placement=None
+    external_text_placement_evidence=None
     youtube_fallback={"status":"not_needed","reason":"recurrent_local_text_mechanism_available"}
     # If the local cluster cannot produce a recurrent reusable text mechanism, broaden
     # evidence with same-topic YouTube references before falling back to title-only copy.
@@ -80,6 +82,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             "ocr_unavailable":0,
             "ocr_text_found":0,
             "visual_text_found":0,
+            "text_placement_found":0,
         }
         for ref in youtube_examples:
             status=ref.get("thumbnail_analysis_status")
@@ -98,9 +101,24 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             visual_text=str(ref.get("external_thumbnail_visual_text") or "").strip()
             if visual_text:
                 diagnostics["visual_text_found"]+=1
+            if ref.get("external_thumbnail_text_placement") in ("left","center","right"):
+                diagnostics["text_placement_found"]+=1
             effective_text=str(text or visual_text or "").strip()
             if ref.get("video_title") and effective_text:
                 external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":effective_text}})
+        placements=[str(r.get("external_thumbnail_text_placement")) for r in youtube_examples
+                    if r.get("external_thumbnail_text_placement") in ("left","center","right")]
+        if placements:
+            from collections import Counter
+            placement_counts=Counter(placements)
+            top,count=placement_counts.most_common(1)[0]
+            total=len(placements)
+            # Resolve only on a recurrent supermajority; otherwise human review remains.
+            if count >= 3 and (count/total) >= 0.60:
+                external_text_placement=top
+                external_text_placement_evidence={"source":"youtube_visual_recurrence","observations":total,
+                                                  "supporting":count,"share":round(count/total,4),
+                                                  "counts":dict(placement_counts)}
         external_mechanism=discover_text_mechanisms(external_rows)
         # External YouTube evidence is not a positional word-replacement template.
         # First preserve genuinely recurrent observed copy when its words are supported by
@@ -130,6 +148,13 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     concept["evidence"]["thumbnail_text_candidate_ranking"]=candidate_audit
     concept["evidence"]["youtube_fallback"]=youtube_fallback
     composition=build_composition_spec(concept)
+    # YouTube visual placement is secondary evidence and can resolve placement only when
+    # recurrent/supermajority support exists. It never overrides DB-derived placement.
+    if composition["composition"].get("text_placement") is None and external_text_placement:
+        composition["composition"]["text_placement"]=external_text_placement
+        composition["provenance"]["text_placement_derived_from_youtube_visual_recurrence"]=True
+        composition["provenance"]["youtube_text_placement_evidence"]=external_text_placement_evidence
+        composition["human_review_required_for"]=[x for x in composition["human_review_required_for"] if x!="text_placement"]
     if fresh_text_candidates:
         composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
     return {"project":project.name,"immutable_title":title,"concept":concept,"composition":composition,
