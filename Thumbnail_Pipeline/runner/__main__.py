@@ -43,6 +43,23 @@ def _title(meta: dict[str, Any]) -> str:
             return value.strip()
     raise ValueError("No immutable project title found in project.json (title/video_title/anchor_title/outlier_title).")
 
+def _rank_visible_subjects(subjects: list[str], title: str) -> list[str]:
+    """Deduplicate visible subjects and rank topic-specific descriptions first."""
+    import re
+    title_tokens={x for x in re.findall(r"[a-z0-9]+",title.lower()) if len(x)>2}
+    seen=set(); ranked=[]
+    for i,raw in enumerate(subjects):
+        value=" ".join(str(raw or "").split()).strip()
+        key=value.casefold()
+        if not value or key in seen: continue
+        seen.add(key)
+        tokens=set(re.findall(r"[a-z0-9]+",key))
+        overlap=len(tokens & title_tokens)
+        specificity=sum(1 for x in tokens if len(x)>=5)
+        ranked.append((overlap,specificity,len(tokens),-i,value))
+    ranked.sort(reverse=True)
+    return [x[-1] for x in ranked]
+
 def build_project_prompt_state(project: Path, analytics_db: Path | None = None, cluster_db: Path | None = None, youtube_provider=None, youtube_text_analyzer=None) -> dict[str, Any]:
     meta=_read_project_json(project); title=_title(meta)
     adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
@@ -193,7 +210,8 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     if fresh_text_candidates:
         composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
     if external_visible_subjects:
-        composition["composition"]["visual_subject_examples"]=external_visible_subjects[:5]
+        ranked_visible_subjects=_rank_visible_subjects(external_visible_subjects,title)
+        composition["composition"]["visual_subject_examples"]=ranked_visible_subjects[:5]
         composition["provenance"]["visual_subject_examples_source"]="youtube_visible_pixels"
     return {"project":project.name,"immutable_title":title,"concept":concept,"composition":composition,
             "discovered_cluster":assignment,"cluster_count":len(discovered.get("clusters") or [])}
