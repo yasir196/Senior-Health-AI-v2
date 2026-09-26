@@ -264,6 +264,27 @@ def _complete_title_span(text:str)->bool:
     dangling={"a","an","and","after","at","before","for","from","in","into","of","on","or","the","to","up","with","your"}
     return toks[-1] not in dangling
 
+def _span_respects_title_boundary(text:str,title:str)->bool:
+    """Reject a title slice that cuts directly before another lexical title word.
+
+    Fallback copy may shorten at punctuation/clause boundaries, but must not simply
+    stop mid-phrase (for example, 'WAKING UP WITH LEG' before 'CRAMPS').
+    """
+    words=re.findall(r"[A-Za-z0-9']+",title or "")
+    span=re.findall(r"[A-Za-z0-9']+",text or "")
+    if not span: return False
+    low=[w.lower() for w in words]; slow=[w.lower() for w in span]
+    for i in range(0,len(low)-len(slow)+1):
+        if low[i:i+len(slow)]==slow:
+            end=i+len(slow)
+            if end>=len(words): return True
+            # A candidate ending immediately before punctuation in the source title
+            # is a natural clause boundary; otherwise it is a clipped phrase.
+            m=re.search(re.escape(words[end-1])+r"([^A-Za-z0-9']+)",title,re.I)
+            sep=m.group(1) if m else ""
+            return any(ch in sep for ch in "?!,:;()")
+    return False
+
 def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     """Fallback composer: learn structural constraints, then use only current-title words.
 
