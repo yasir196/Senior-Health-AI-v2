@@ -54,7 +54,10 @@
     "note": "Dashboard/config-owned display threshold; analyzer code does not assign semantic good/bad feature directions."
   },
   "youtube_reference": {
-    "minimum_comparison_videos": 5
+    "minimum_comparison_videos": 5,
+    "minimum_views": 1000,
+    "exclude_duration_seconds_below": 61,
+    "filter_note": "Exclude low-signal references below 1000 views and videos 60 seconds or shorter before thumbnail download. Thresholds are pipeline-owned config, not hardcoded Python policy."
   },
   "title_clustering": {
     "method": "tfidf_title_similarity_connected_components",
