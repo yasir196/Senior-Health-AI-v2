@@ -68,9 +68,12 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     external_text_placement=None
     external_text_placement_evidence=None
     youtube_fallback={"status":"not_needed","reason":"recurrent_local_text_mechanism_available"}
-    # If the local cluster cannot produce a recurrent reusable text mechanism, broaden
-    # evidence with same-topic YouTube references before falling back to title-only copy.
-    if not candidate_audit and youtube_provider is not None:
+    # YouTube visual composition evidence is independent from the text-copy fallback.
+    # When a provider is configured, analyze same-topic references even if local text
+    # evidence already produced candidates. External text may replace local copy only
+    # when the local lane has no reusable candidate.
+    local_candidate_available=bool(candidate_audit)
+    if youtube_provider is not None:
         refs=collect_references(provider=youtube_provider,topic=title,category="",limit_per_query=12)
         youtube_examples=analyze_youtube_reference_thumbnails(refs,project=project.name,text_analyzer=youtube_text_analyzer)
         external_rows=[]
@@ -126,10 +129,12 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         external_candidates=recurrent_observed_text_candidates(title,external_mechanism,with_audit=True)
         if not external_candidates:
             external_candidates=transformation_text_candidates(title,external_mechanism,with_audit=True)
-        if external_candidates:
+        if not local_candidate_available and external_candidates:
             candidate_audit=external_candidates
             mechanism=external_mechanism
-            youtube_fallback={"status":"used",**diagnostics,"analyzed_text_pairs":len(external_rows)}
+            youtube_fallback={"status":"used","text_source":"youtube",**diagnostics,"analyzed_text_pairs":len(external_rows)}
+        elif local_candidate_available:
+            youtube_fallback={"status":"analyzed_for_composition","text_source":"local_cluster",**diagnostics,"analyzed_text_pairs":len(external_rows)}
         else:
             youtube_fallback={"status":"searched_no_recurrent_text_mechanism",**diagnostics,"analyzed_text_pairs":len(external_rows)}
     elif not candidate_audit:
