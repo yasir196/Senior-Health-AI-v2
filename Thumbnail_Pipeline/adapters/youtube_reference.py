@@ -28,7 +28,7 @@ def collect_references(*,provider:YouTubeReferenceProvider,topic:str,category:st
     min_views=int(ref_cfg.get("minimum_views") or 0)
     exclude_shorter_than=int(ref_cfg.get("exclude_duration_seconds_below") or 0)
     for spec in discovery_queries(topic=topic,category=category):
-        for item in provider.search(spec["query"],limit=limit_per_query):
+        for item in provider.search(spec["query"],limit=min(50,max(limit_per_query,limit_per_query*4))):
             vid=str(item.get("video_id") or "")
             key=vid or (str(item.get("channel_name") or ""),str(item.get("video_title") or ""))
             if key in seen: continue
@@ -52,5 +52,6 @@ def collect_references(*,provider:YouTubeReferenceProvider,topic:str,category:st
                 "outlier_evidence":item.get("outlier_evidence"),
                 "outlier_status":"supported" if item.get("outlier_evidence") else "not_claimed",
             })
+            if len(out) >= limit_per_query: break
     minimum=int(ref_cfg.get("minimum_comparison_videos") or 5)
     return rank_references(annotate_outliers(out,minimum_comparison_videos=minimum))
