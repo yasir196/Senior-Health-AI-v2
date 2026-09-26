@@ -250,3 +250,16 @@ def test_visible_subjects_are_deduped_and_topic_ranked():
     assert ranked.count("man pointing")==1
     assert ranked[0] in {"hand holding a clove above a cup of coffee","hand holding clove over coffee cup"}
     assert ranked.index("man pointing") > ranked.index("man holding clove")
+
+
+def test_visible_subjects_reject_mixed_unsupported_objects():
+    from Thumbnail_Pipeline.runner.__main__ import _rank_visible_subjects
+    ranked=_rank_visible_subjects(
+        ["white coffee mug with clove and blood vessel",
+         "glass cup of coffee with hand holding a clove",
+         "cup of coffee with clove"],
+        "1 CLOVE in Your Coffee Every Morning (Here's What Happens)",
+    )
+    assert "white coffee mug with clove and blood vessel" not in ranked
+    assert "glass cup of coffee with hand holding a clove" in ranked
+    assert "cup of coffee with clove" in ranked
