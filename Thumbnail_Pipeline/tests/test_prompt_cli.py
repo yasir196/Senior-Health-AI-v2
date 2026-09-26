@@ -157,3 +157,11 @@ def test_youtube_visual_text_placement_requires_recurrent_supermajority(tmp_path
     state=build_project_prompt_state(p,youtube_provider=None)
     assert state["composition"]["composition"]["text_placement"] is None
     assert "text_placement" in state["composition"]["human_review_required_for"]
+
+
+def test_youtube_reference_storage_is_project_scoped():
+    from Thumbnail_Pipeline.io_policy import safe_output
+    project="bones-getting-weaker-after-60"
+    target=safe_output(Path("youtube_references")/project/"abc123.jpg")
+    assert target.parent.name==project
+    assert target.parent.parent.name=="youtube_references"
