@@ -14,6 +14,25 @@ def discovery_queries(*,topic:str,category:str)->list[dict[str,str]]:
         q.append({"scope":"same_category","query":category.strip()})
     return q
 
+
+_STOPWORDS={"a","an","and","after","at","before","do","for","from","here","how","in","is","it","of","on","or","the","these","this","to","try","up","with","your","ways","easy","safe","revealed","starts","fading","fast"}
+
+def _topic_terms(value:Any)->set[str]:
+    return {w for w in re.findall(r"[a-z0-9]+",str(value or "").lower()) if len(w)>=3 and w not in _STOPWORDS and not w.isdigit()}
+
+def _same_topic_title(topic:str,candidate:Any)->bool:
+    """Conservative lexical eligibility for external same-topic references.
+
+    Search ranking is discovery only. A result must still share meaningful title
+    vocabulary with the immutable project title before it may become evidence.
+    """
+    wanted=_topic_terms(topic); got=_topic_terms(candidate)
+    if not wanted or not got: return False
+    overlap=wanted & got
+    # Require two meaningful shared terms, or one highly distinctive shared term
+    # when the project itself has very few content terms.
+    return len(overlap)>=2 or (len(wanted)<=2 and len(overlap)>=1)
+
 def _duration_seconds(value:Any)->int|None:
     s=str(value or "").strip()
     m=re.fullmatch(r"P(?:([0-9]+)D)?T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?",s)
@@ -35,6 +54,7 @@ def collect_references(*,provider:YouTubeReferenceProvider,topic:str,category:st
             try: views=int(item.get("views") or 0)
             except (TypeError,ValueError): views=0
             duration=_duration_seconds(item.get("duration"))
+            if spec["scope"]=="same_topic" and not _same_topic_title(topic,item.get("video_title")): continue
             if views < min_views: continue
             if exclude_shorter_than and duration is not None and duration < exclude_shorter_than: continue
             seen.add(key)
