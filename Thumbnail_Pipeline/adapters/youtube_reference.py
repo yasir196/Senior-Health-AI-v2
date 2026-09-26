@@ -8,11 +8,25 @@ class YouTubeReferenceProvider(Protocol):
     def search(self, query:str, limit:int=12)->list[dict[str,Any]]: ...
 
 def discovery_queries(*,topic:str,category:str)->list[dict[str,str]]:
-    q=[]
-    if topic.strip(): q.append({"scope":"same_topic","query":topic.strip()})
-    if category.strip() and category.strip().lower()!=topic.strip().lower():
-        q.append({"scope":"same_category","query":category.strip()})
-    return q
+    """Build a few title-derived discovery queries without a hardcoded topic taxonomy."""
+    raw=topic.strip()
+    if not raw:
+        return []
+    terms=[w for w in re.findall(r"[A-Za-z0-9']+",raw)
+           if len(w)>=3 and w.lower() not in _STOPWORDS and not w.isdigit()]
+    queries=[raw]
+    # Search is discovery only; strict same-topic eligibility is still applied below.
+    # Derive narrower variants from the immutable title itself so an exact long-title
+    # search is not the sole source of candidates.
+    if len(terms)>=2:
+        queries.append(" ".join(terms[:min(4,len(terms))]))
+        queries.append(" ".join(terms[-min(4,len(terms)):]))
+    seen=set(); out=[]
+    for query in queries:
+        key=query.lower().strip()
+        if key and key not in seen:
+            seen.add(key); out.append({"scope":"same_topic","query":query})
+    return out
 
 
 _STOPWORDS={"a","an","and","after","at","before","do","for","from","here","how","in","is","it","of","on","or","the","these","this","to","try","up","with","your","ways","easy","safe","revealed","starts","fading","fast"}
