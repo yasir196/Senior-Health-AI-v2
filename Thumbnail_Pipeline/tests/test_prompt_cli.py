@@ -202,3 +202,20 @@ def test_youtube_composition_analysis_runs_even_with_local_text_candidates(monke
     assert provider.calls==1
     assert state["composition"]["composition"]["text_placement"]=="left"
     assert state["concept"]["evidence"]["youtube_fallback"]["status"]=="analyzed_for_composition"
+
+
+def test_literal_layout_from_packaging_association_is_not_reused():
+    from Thumbnail_Pipeline.concept_engine.engine import build_concept_direction
+    literal="Large text on the left, peanut butter jar on the right, spoonful highlighted in the upper-right, top red banner"
+    ctx={
+        "immutable_title":"1 CLOVE in Your Coffee Every Morning",
+        "requested_category":"cluster_test",
+        "winner_prior":{"winner_examples":[]},
+        "packaging_associations":{"category":[],"channel":[{
+            "feature_name":"composition_layout","feature_value":literal,
+            "association_direction":"positive","evidence_weight":1,
+            "video_count":5,"total_impressions":10000,"ctr_delta_points":1,
+        }]},
+    }
+    out=build_concept_direction(ctx)
+    assert out["concept"]["composition_layout"] is None
