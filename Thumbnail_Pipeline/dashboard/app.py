@@ -128,7 +128,7 @@ with tab_refs:
         cols=st.columns(4)
         for i,ref in enumerate(refs):
             with cols[i%4]:
-                local=ref.get("thumbnail_local_path") or ref.get("local_path") or ref.get("thumbnail_path")
+                local=ref.get("local_thumbnail_path") or ref.get("thumbnail_local_path") or ref.get("local_path") or ref.get("thumbnail_path")
                 if local and Path(str(local)).is_file(): st.image(str(local),use_container_width=True)
                 st.markdown(f"**{ref.get('video_title') or 'Reference'}**")
                 if ref.get("external_thumbnail_visual_text"): st.caption("Text: "+str(ref["external_thumbnail_visual_text"]))
