@@ -257,6 +257,13 @@ def _current_title_spans(title:str, mechanism:dict[str,Any], max_words:int=4)->l
     spans.sort(key=lambda x:(-x["word_count"],-x["rarity"],x["start"]))
     return spans
 
+def _complete_title_span(text:str)->bool:
+    """Reject fallback fragments that visibly end on a connector/modifier."""
+    toks=_tokens(text)
+    if not toks: return False
+    dangling={"a","an","and","after","at","before","for","from","in","into","of","on","or","the","to","up","with","your"}
+    return toks[-1] not in dangling
+
 def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     """Fallback composer: learn structural constraints, then use only current-title words.
 
@@ -292,6 +299,8 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
     question_rate=float(profile.get("question_form_rate") or 0)
     out=[]
     for text in candidates:
+        if not _complete_title_span(text):
+            continue
         rendered=text.upper()
         if question_rate>=0.5: rendered=rendered.rstrip("?!")+"?"
         audit={"valid":True,"source":"constraint_fallback","uses_current_title_words_only":True,
