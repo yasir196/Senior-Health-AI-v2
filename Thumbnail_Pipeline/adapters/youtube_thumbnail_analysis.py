@@ -49,15 +49,18 @@ def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:
         return {"text":str(parsed.get("text") or "").strip(),"text_placement":placement,"source":"openai_vision","model":model}
     return analyze
 
-def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30,text_analyzer=None)->dict[str,Any]:
+def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,project:str,timeout:int=30,text_analyzer=None)->dict[str,Any]:
     """Download a public YouTube thumbnail into pipeline outputs and inspect it locally."""
     url=str(reference.get("thumbnail_url_or_path") or "").strip()
     parsed=urllib.parse.urlparse(url)
     host=(parsed.hostname or "").lower()
     if parsed.scheme!="https" or not any(host==suffix or host.endswith("."+suffix) for suffix in ALLOWED_THUMBNAIL_HOST_SUFFIXES):
         return {**reference,"thumbnail_analysis_status":"unavailable","thumbnail_analysis_reason":"untrusted_thumbnail_url"}
+    project_name=str(project or "").strip()
+    if not project_name or Path(project_name).name != project_name or project_name in {".",".."}:
+        raise ValueError("A safe direct project folder name is required for YouTube thumbnail output.")
     vid=str(reference.get("video_id") or hashlib.sha256(url.encode()).hexdigest()[:16])
-    target=safe_output(Path("youtube_references")/f"{vid}.jpg")
+    target=safe_output(Path(project_name)/f"{vid}.jpg")
     target.parent.mkdir(parents=True,exist_ok=True)
     req=urllib.request.Request(url,headers={"User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"})
     with urllib.request.urlopen(req,timeout=timeout) as response:
@@ -84,9 +87,9 @@ def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,timeout:int=30
         return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"failed","thumbnail_analysis_reason":str(exc)}
     return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"analyzed","external_thumbnail_features":features,"external_thumbnail_ocr":ocr,"external_thumbnail_visual_text":visual_text,"external_thumbnail_text_placement":visual_text_placement}
 
-def analyze_youtube_reference_thumbnails(references:list[dict[str,Any]],*,text_analyzer=None)->list[dict[str,Any]]:
+def analyze_youtube_reference_thumbnails(references:list[dict[str,Any]],*,project:str,text_analyzer=None)->list[dict[str,Any]]:
     out=[]
     for ref in references:
-        try: out.append(analyze_youtube_reference_thumbnail(ref,text_analyzer=text_analyzer))
+        try: out.append(analyze_youtube_reference_thumbnail(ref,project=project,text_analyzer=text_analyzer))
         except Exception as exc: out.append({**ref,"thumbnail_analysis_status":"failed","thumbnail_analysis_reason":str(exc)})
     return out
