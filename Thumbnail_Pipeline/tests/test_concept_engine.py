@@ -46,19 +46,19 @@ def test_concept_engine_uses_category_packaging_associations_before_channel():
         "packaging_associations":{
             "run":{"id":10},
             "category":[
-                row("hero_category","composition_layout","category_layout"),
+                row("hero_category","composition_layout","text_left_subject_right"),
                 row("hero_category","presenter_position","right"),
                 row("hero_category","text_style","bold_condensed"),
             ],
             "channel":[
-                row("channel","composition_layout","channel_layout"),
+                row("channel","composition_layout","subject_left_text_right"),
                 row("channel","presenter_position","left"),
             ],
         },
     }
     out=build_concept_direction(ctx)
     assert out["evidence_status"]=="association_supported"
-    assert out["concept"]["composition_layout"]=="category_layout"
+    assert out["concept"]["composition_layout"]=="text_left_subject_right"
     assert out["concept"]["presenter_position"]=="right"
     assert out["concept"]["text_style"]=="bold_condensed"
 
