@@ -165,3 +165,40 @@ def test_youtube_reference_storage_is_project_scoped():
     target=safe_output(Path("youtube_references")/project/"abc123.jpg")
     assert target.parent.name==project
     assert target.parent.parent.name=="youtube_references"
+
+
+def test_historical_literal_layout_does_not_leak_into_new_project(monkeypatch,tmp_path):
+    from Thumbnail_Pipeline.concept_engine.engine import build_concept_direction
+    context={
+        "immutable_title":"1 CLOVE in Your Coffee Every Morning",
+        "requested_category":"cluster_test",
+        "winner_prior":{"winner_examples":[
+            {"v2_analysis":{"composition_layout":"text upper-left, banana lower-left, anatomical torso center, presenter right"}}
+        ]},
+        "packaging_associations":{"channel":[],"category":[]},
+    }
+    concept=build_concept_direction(context)
+    assert concept["concept"]["composition_layout"] is None
+
+
+def test_youtube_composition_analysis_runs_even_with_local_text_candidates(monkeypatch,tmp_path):
+    import Thumbnail_Pipeline.runner.__main__ as runner
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"Clove Coffee Morning"}),encoding="utf-8")
+    class Provider:
+        def __init__(self): self.calls=0
+        def search(self,query,limit=12):
+            self.calls+=1
+            return [{"video_id":str(i),"channel_name":"A","video_title":"Clove Coffee",
+                     "thumbnail_url_or_path":f"https://i.ytimg.com/vi/{i}/hqdefault.jpg",
+                     "views":"5000","duration":"PT8M"} for i in range(4)]
+    provider=Provider()
+    monkeypatch.setattr(runner,"transformation_text_candidates",lambda *a,**k:[{"text":"CLOVE COFFEE","score":1}])
+    monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
+        {**r,"thumbnail_analysis_status":"analyzed","external_thumbnail_text_placement":"left",
+         "external_thumbnail_visual_text":"CLOVE COFFEE"} for r in refs
+    ])
+    state=runner.build_project_prompt_state(p,youtube_provider=provider)
+    assert provider.calls==1
+    assert state["composition"]["composition"]["text_placement"]=="left"
+    assert state["concept"]["evidence"]["youtube_fallback"]["status"]=="analyzed_for_composition"
