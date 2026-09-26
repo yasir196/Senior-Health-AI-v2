@@ -32,6 +32,23 @@ def _same_topic_title(topic:str,candidate:Any)->bool:
     # when the project itself has very few content terms.
     return len(overlap)>=2 or (len(wanted)<=2 and len(overlap)>=1)
 
+def _expansion_queries(topic:str)->list[str]:
+    """Derive conservative search variants from the immutable topic only."""
+    words=re.findall(r"[A-Za-z0-9']+",topic or "")
+    content=[w for w in words if len(w)>=3 and w.lower() not in _STOPWORDS and not w.isdigit()]
+    if len(content)<3: return []
+    # Keep adjacent title concepts together; no seeded topic/category vocabulary.
+    spans=[]
+    width=min(4,len(content))
+    for start in range(0,len(content)-width+1):
+        spans.append(" ".join(content[start:start+width]))
+    seen={topic.strip().lower()}; out=[]
+    for q in spans:
+        key=q.lower()
+        if key not in seen:
+            seen.add(key); out.append(q)
+    return out[:2]
+
 def _duration_seconds(value:Any)->int|None:
     s=str(value or "").strip()
     m=re.fullmatch(r"P(?:([0-9]+)D)?T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?",s)
@@ -72,5 +89,30 @@ def collect_references(*,provider:YouTubeReferenceProvider,topic:str,category:st
                 "outlier_status":"supported" if item.get("outlier_evidence") else "not_claimed",
             })
             if len(out) >= limit_per_query: break
+    # If the exact title search produced exactly two corroborating same-topic hits,
+    # expand discovery from adjacent immutable-title concepts. This preserves the
+    # established single-hit contract while giving the 3-reference recurrence gate
+    # a chance to resolve. Every expanded result still passes _same_topic_title.
+    if not category.strip() and len(out)==2:
+        for query in _expansion_queries(topic):
+            for item in provider.search(query,limit=min(50,max(limit_per_query,limit_per_query*4))):
+                vid=str(item.get("video_id") or "")
+                key=vid or (str(item.get("channel_name") or ""),str(item.get("video_title") or ""))
+                if key in seen or not _same_topic_title(topic,item.get("video_title")): continue
+                try: views=int(item.get("views") or 0)
+                except (TypeError,ValueError): views=0
+                duration=_duration_seconds(item.get("duration"))
+                if views < min_views: continue
+                if exclude_shorter_than and duration is not None and duration < exclude_shorter_than: continue
+                seen.add(key)
+                out.append({"search_scope":"same_topic","video_id":item.get("video_id"),
+                    "channel_name":item.get("channel_name"),"video_title":item.get("video_title"),
+                    "thumbnail_url_or_path":item.get("thumbnail_url_or_path"),"views":item.get("views"),
+                    "published_at":item.get("published_at"),"duration":item.get("duration"),
+                    "topic_match":item.get("topic_match"),"category_match":item.get("category_match"),
+                    "outlier_evidence":item.get("outlier_evidence"),
+                    "outlier_status":"supported" if item.get("outlier_evidence") else "not_claimed"})
+                if len(out)>=limit_per_query: break
+            if len(out)>=3: break
     minimum=int(ref_cfg.get("minimum_comparison_videos") or 5)
     return rank_references(annotate_outliers(out,minimum_comparison_videos=minimum))
