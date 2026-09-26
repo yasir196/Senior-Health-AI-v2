@@ -55,6 +55,14 @@ def _rank_visible_subjects(subjects: list[str], title: str) -> list[str]:
         seen.add(key)
         tokens=set(re.findall(r"[a-z0-9]+",key))
         overlap=len(tokens & title_tokens)
+        # Keep the original visible phrase, but reject mixed-object descriptions when
+        # topic evidence is diluted by unsupported content nouns (e.g. blood vessel).
+        stop={"with","above","over","under","beside","near","holding","held","hand","hands",
+              "man","woman","person","cup","mug","glass","white","black","small","large"}
+        content={x for x in tokens if len(x)>2 and x not in stop}
+        unsupported=content-title_tokens
+        if overlap and unsupported:
+            continue
         specificity=sum(1 for x in tokens if len(x)>=5)
         ranked.append((overlap,specificity,len(tokens),-i,value))
     ranked.sort(reverse=True)
