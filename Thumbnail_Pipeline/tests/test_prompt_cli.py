@@ -67,7 +67,7 @@ def test_youtube_discovery_runs_before_title_only_fallback(monkeypatch,tmp_path)
         def search(self,query,limit=12):
             self.queries.append(query)
             return [{"video_id":"x","channel_name":"Other","video_title":"Clove Coffee Morning",
-                     "thumbnail_url_or_path":"https://i.ytimg.com/vi/x/hqdefault.jpg","views":"100"}]
+                     "thumbnail_url_or_path":"https://i.ytimg.com/vi/x/hqdefault.jpg","views":"5000","duration":"PT8M"}]
     provider=Provider()
     monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
         {**refs[0],"thumbnail_analysis_status":"analyzed","external_thumbnail_ocr":{"text":"CLOVE COFFEE?"}}
@@ -87,8 +87,8 @@ def test_youtube_recurrent_observed_copy_is_not_positional_rewritten(monkeypatch
     class Provider:
         def search(self,query,limit=12):
             return [
-                {"video_id":"a","channel_name":"A","video_title":"Clove Coffee A","thumbnail_url_or_path":"https://i.ytimg.com/vi/a/hqdefault.jpg"},
-                {"video_id":"b","channel_name":"B","video_title":"Clove Coffee B","thumbnail_url_or_path":"https://i.ytimg.com/vi/b/hqdefault.jpg"},
+                {"video_id":"a","channel_name":"A","video_title":"Clove Coffee A","thumbnail_url_or_path":"https://i.ytimg.com/vi/a/hqdefault.jpg","views":"5000","duration":"PT8M"},
+                {"video_id":"b","channel_name":"B","video_title":"Clove Coffee B","thumbnail_url_or_path":"https://i.ytimg.com/vi/b/hqdefault.jpg","views":"6000","duration":"PT9M"},
             ]
     monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
         {**refs[0],"thumbnail_analysis_status":"analyzed","external_thumbnail_visual_text":"CLOVE + COFFEE?"},
