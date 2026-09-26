@@ -38,6 +38,10 @@ def _reusable_layout(values: list[Any]) -> Any | None:
     return Counter(reusable).most_common(1)[0][0] if reusable else None
 
 
+def _normalized_association_layout(value: Any) -> Any | None:
+    return _reusable_layout([value])
+
+
 def _association_choice(rows: list[dict[str, Any]], feature: str) -> Any | None:
     """Prefer category evidence (caller order), then strongest supported association."""
     candidates = []
@@ -88,7 +92,7 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
     ]
     # Category lane is intentionally considered before channel-wide fallback.
     association_rows = category_associations or channel_associations
-    association_layout = _association_choice(association_rows, "composition_layout")
+    association_layout = _normalized_association_layout(_association_choice(association_rows, "composition_layout"))
     presenter_position = _association_choice(association_rows, "presenter_position")
     text_style = _association_choice(association_rows, "text_style")
     title_thumbnail_relationship = _association_choice(association_rows, "title_thumbnail_relationship")
