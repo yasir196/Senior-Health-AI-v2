@@ -238,3 +238,15 @@ def test_youtube_recurrent_structural_layout_resolves_layout(monkeypatch,tmp_pat
     assert state["composition"]["composition"]["layout"]=="text_left_subject_right"
     assert "layout" not in state["composition"]["human_review_required_for"]
     assert state["concept"]["evidence"]["youtube_fallback"]["structural_layout_found"]>=3
+
+
+def test_visible_subjects_are_deduped_and_topic_ranked():
+    from Thumbnail_Pipeline.runner.__main__ import _rank_visible_subjects
+    ranked=_rank_visible_subjects(
+        ["man pointing","man holding clove","hand holding a clove above a cup of coffee",
+         "man pointing","hand holding clove over coffee cup"],
+        "1 CLOVE in Your Coffee Every Morning (Here's What Happens)",
+    )
+    assert ranked.count("man pointing")==1
+    assert ranked[0] in {"hand holding a clove above a cup of coffee","hand holding clove over coffee cup"}
+    assert ranked.index("man pointing") > ranked.index("man holding clove")
