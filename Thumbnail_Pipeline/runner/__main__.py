@@ -171,12 +171,13 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
                                                      "supporting":layout_count,"share":round(layout_count/layout_total,4),
                                                      "counts":dict(layout_counts)}
         external_mechanism=discover_text_mechanisms(external_rows)
-        # External YouTube evidence is not a positional word-replacement template.
-        # First preserve genuinely recurrent observed copy when its words are supported by
-        # the immutable title. Only if none survives do we try the legacy transformation.
+        # External YouTube thumbnails are reference evidence, never positional
+        # word-replacement templates. Reuse only an exact recurrent observed overlay when
+        # every lexical word is already supported by the immutable current title.
+        # If that conservative lane has no candidate, leave external copy unused and let
+        # the title-grounded constraint fallback compose fresh copy below. This prevents
+        # Frankenstein overlays assembled from unrelated words across reference thumbnails.
         external_candidates=recurrent_observed_text_candidates(title,external_mechanism,with_audit=True)
-        if not external_candidates:
-            external_candidates=transformation_text_candidates(title,external_mechanism,with_audit=True)
         if not local_candidate_available and external_candidates:
             candidate_audit=external_candidates
             mechanism=external_mechanism
