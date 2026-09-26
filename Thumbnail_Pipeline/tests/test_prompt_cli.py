@@ -219,3 +219,22 @@ def test_literal_layout_from_packaging_association_is_not_reused():
     }
     out=build_concept_direction(ctx)
     assert out["concept"]["composition_layout"] is None
+
+
+def test_youtube_recurrent_structural_layout_resolves_layout(monkeypatch,tmp_path):
+    import Thumbnail_Pipeline.runner.__main__ as runner
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"Clove Coffee Morning"}),encoding="utf-8")
+    class Provider:
+        def search(self,query,limit=12):
+            return [{"video_id":str(i),"channel_name":"A","video_title":"Clove Coffee",
+                     "thumbnail_url_or_path":f"https://i.ytimg.com/vi/{i}/hqdefault.jpg",
+                     "views":"5000","duration":"PT8M"} for i in range(4)]
+    monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
+        {**r,"thumbnail_analysis_status":"analyzed","external_thumbnail_visual_text":"CLOVE COFFEE",
+         "external_thumbnail_text_placement":"left","external_thumbnail_structural_layout":"text_left_subject_right"} for r in refs
+    ])
+    state=runner.build_project_prompt_state(p,youtube_provider=Provider())
+    assert state["composition"]["composition"]["layout"]=="text_left_subject_right"
+    assert "layout" not in state["composition"]["human_review_required_for"]
+    assert state["concept"]["evidence"]["youtube_fallback"]["structural_layout_found"]>=3
