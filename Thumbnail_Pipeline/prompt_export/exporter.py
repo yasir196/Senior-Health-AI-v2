@@ -19,6 +19,10 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
     ]
     if contract.get("thumbnail_text"):
         lines.append(f"THUMBNAIL TEXT (exact): {contract['thumbnail_text']}")
+    subjects=[str(x).strip() for x in (contract.get("visual_subject_examples") or []) if str(x).strip()]
+    if subjects:
+        lines.append("CURRENT-TOPIC VISUAL EVIDENCE: " + " | ".join(subjects[:5]))
+        lines.append("VISUAL SUBJECT DIRECTION: Use only a subject visibly supported by the current-topic YouTube evidence above; do not copy unrelated historical cluster objects.")
     lines += [
         "Follow the reviewed composition exactly.",
         "Do not add extra text, claims, badges, labels, people, or visual elements not specified by the reviewed contract.",

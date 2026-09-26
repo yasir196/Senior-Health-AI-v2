@@ -24,7 +24,7 @@ class V2YouTubeReferenceProvider:
         ids=[x for x in ids if x]
         stats={}
         if ids:
-            vq=urllib.parse.urlencode({"part":"snippet,statistics","id":",".join(ids),"maxResults":50})
+            vq=urllib.parse.urlencode({"part":"snippet,statistics,contentDetails","id":",".join(ids),"maxResults":50})
             vd=self._get(f"https://www.googleapis.com/youtube/v3/videos?{vq}",self._token)
             stats={str(x.get("id") or ""):x for x in vd.get("items") or []}
         out=[]
@@ -33,7 +33,7 @@ class V2YouTubeReferenceProvider:
             sn=detail.get("snippet") or item.get("snippet") or {}; th=sn.get("thumbnails") or {}
             best=th.get("maxres") or th.get("standard") or th.get("high") or th.get("medium") or th.get("default") or {}
             st=detail.get("statistics") or {}
-            out.append({"video_id":vid,"channel_name":sn.get("channelTitle"),"video_title":sn.get("title"),"thumbnail_url_or_path":best.get("url"),"views":st.get("viewCount"),"published_at":sn.get("publishedAt"),"outlier_evidence":None})
+            out.append({"video_id":vid,"channel_name":sn.get("channelTitle"),"video_title":sn.get("title"),"thumbnail_url_or_path":best.get("url"),"views":st.get("viewCount"),"published_at":sn.get("publishedAt"),"duration":(detail.get("contentDetails") or {}).get("duration"),"outlier_evidence":None})
         return out
 
 
