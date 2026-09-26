@@ -47,11 +47,16 @@ def _rank_visible_subjects(subjects: list[str], title: str) -> list[str]:
     """Deduplicate visible subjects and rank topic-specific descriptions first."""
     import re
     title_tokens={x for x in re.findall(r"[a-z0-9]+",title.lower()) if len(x)>2}
+    # Channel presentation contract: external references may visibly contain clinicians,
+    # but those styling cues must never become final visual-subject suggestions.
+    blocked_presenter_cues=("doctor","clinician","physician","stethoscope","white coat","scrubs","surgical scrubs")
     seen=set(); ranked=[]
     for i,raw in enumerate(subjects):
         value=" ".join(str(raw or "").split()).strip()
         key=value.casefold()
         if not value or key in seen: continue
+        if any(cue in key for cue in blocked_presenter_cues):
+            continue
         seen.add(key)
         tokens=set(re.findall(r"[a-z0-9]+",key))
         overlap=len(tokens & title_tokens)
@@ -189,7 +194,14 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     elif not candidate_audit:
         youtube_fallback={"status":"unavailable","reason":"youtube_provider_not_configured"}
     if not candidate_audit:
-        candidate_audit=constraint_text_candidates(title,mechanism,with_audit=True)
+        # External reference copy may be unusable even when its mechanism was observed.
+        # Compose the fallback from the current immutable title using the best available
+        # structural profile. If the local cluster has no ready profile, the external
+        # mechanism may supply structure only; its literal words are never copied here.
+        fallback_mechanism=mechanism
+        if fallback_mechanism.get("status")!="ready" and youtube_provider is not None:
+            fallback_mechanism=external_mechanism
+        candidate_audit=constraint_text_candidates(title,fallback_mechanism,with_audit=True)
     fresh_text_candidates=[x["text"] for x in candidate_audit]
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
     context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id") or "unclustered",
