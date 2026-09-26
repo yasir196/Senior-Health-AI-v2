@@ -131,3 +131,17 @@ def test_text_placement_stays_unresolved_without_explicit_layout_evidence(tmp_pa
     spec=state["composition"]
     assert spec["composition"]["text_placement"] is None
     assert spec["provenance"]["text_placement_derived_from_layout"] is False
+
+
+def test_recurrent_observed_copy_rejects_dangling_symbol_but_keeps_internal_plus():
+    from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms,recurrent_observed_text_candidates
+    rows=[
+        {"performance":{"title":"1 Clove in Your Coffee Every Morning"},"ocr":{"text":"CLOVE + COFFEE?"}},
+        {"performance":{"title":"Clove Coffee Every Morning"},"ocr":{"text":"CLOVE + COFFEE?"}},
+        {"performance":{"title":"1 Clove in Your Coffee Every Morning"},"ocr":{"text":"1 CLOVE IN YOUR COFFEE\nEVERY MORNING\n+"}},
+        {"performance":{"title":"1 Clove in Your Coffee Every Morning"},"ocr":{"text":"1 CLOVE IN YOUR COFFEE\nEVERY MORNING\n+"}},
+    ]
+    mechanism=discover_text_mechanisms(rows)
+    candidates=recurrent_observed_text_candidates("1 CLOVE in Your Coffee Every Morning",mechanism)
+    assert "CLOVE + COFFEE?" in candidates
+    assert all(not x.rstrip().endswith("+") for x in candidates)
