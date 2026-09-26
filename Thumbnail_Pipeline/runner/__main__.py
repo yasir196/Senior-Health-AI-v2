@@ -69,6 +69,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     external_text_placement_evidence=None
     external_structural_layout=None
     external_structural_layout_evidence=None
+    external_visible_subjects=[]
     youtube_fallback={"status":"not_needed","reason":"recurrent_local_text_mechanism_available"}
     # YouTube visual composition evidence is independent from the text-copy fallback.
     # When a provider is configured, analyze same-topic references even if local text
@@ -89,6 +90,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             "visual_text_found":0,
             "text_placement_found":0,
             "structural_layout_found":0,
+            "visible_subject_found":0,
         }
         for ref in youtube_examples:
             status=ref.get("thumbnail_analysis_status")
@@ -111,6 +113,10 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
                 diagnostics["text_placement_found"]+=1
             if ref.get("external_thumbnail_structural_layout") in ("text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject"):
                 diagnostics["structural_layout_found"]+=1
+            visible_subject=str(ref.get("external_thumbnail_visible_subject") or "").strip()
+            if visible_subject:
+                diagnostics["visible_subject_found"]+=1
+                external_visible_subjects.append(visible_subject)
             effective_text=str(text or visual_text or "").strip()
             if ref.get("video_title") and effective_text:
                 external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":effective_text}})
@@ -186,6 +192,9 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         composition["human_review_required_for"]=[x for x in composition["human_review_required_for"] if x!="text_placement"]
     if fresh_text_candidates:
         composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
+    if external_visible_subjects:
+        composition["composition"]["visual_subject_examples"]=external_visible_subjects[:5]
+        composition["provenance"]["visual_subject_examples_source"]="youtube_visible_pixels"
     return {"project":project.name,"immutable_title":title,"concept":concept,"composition":composition,
             "discovered_cluster":assignment,"cluster_count":len(discovered.get("clusters") or [])}
 
@@ -236,7 +245,11 @@ def main() -> int:
             "instruction":"Resolve only fields not supported by DB evidence. No image generation, upload, or V2 write was performed.",
         },indent=2,ensure_ascii=False))
         return 2
-    result=export_final_thumbnail_prompt(spec,gate,selected_text=args.thumbnail_text)
+    selected_text=args.thumbnail_text
+    if selected_text is None:
+        candidates=(spec.get("composition") or {}).get("thumbnail_text_candidates") or []
+        selected_text=candidates[0] if candidates else None
+    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text)
     print("FINAL THUMBNAIL PROMPT")
     print("======================")
     print(result["final_prompt"])
