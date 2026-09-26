@@ -72,7 +72,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     # evidence with same-topic YouTube references before falling back to title-only copy.
     if not candidate_audit and youtube_provider is not None:
         refs=collect_references(provider=youtube_provider,topic=title,category="",limit_per_query=12)
-        youtube_examples=analyze_youtube_reference_thumbnails(refs,text_analyzer=youtube_text_analyzer)
+        youtube_examples=analyze_youtube_reference_thumbnails(refs,project=project.name,text_analyzer=youtube_text_analyzer)
         external_rows=[]
         diagnostics={
             "reference_count":len(youtube_examples),
