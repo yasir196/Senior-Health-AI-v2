@@ -90,7 +90,7 @@ def collect_references(*,provider:YouTubeReferenceProvider,topic:str,category:st
     # Preserve the historical topic→category discovery contract. Only when no
     # category lane is requested and the strict exact-topic pass underfills do we
     # spend extra searches on title-derived variants.
-    if not category.strip() and len(out) < min(limit_per_query,3):
+    # Expansion is useful only when the exact pass found multiple corroborating refs\n    # but still underfilled the recurrence floor. A lone hit remains a single-query\n    # fallback case and preserves the established discovery contract.\n    if not category.strip() and 1 < len(out) < min(limit_per_query,3):
         for query in _derived_topic_queries(topic):
             for item in provider.search(query,limit=min(50,max(limit_per_query,limit_per_query*4))):
                 vid=str(item.get("video_id") or "")
