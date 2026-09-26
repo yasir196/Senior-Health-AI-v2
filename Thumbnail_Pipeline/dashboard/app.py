@@ -3,7 +3,19 @@ import os
 from pathlib import Path
 import streamlit as st
 
-# Backward-compatible pure settings-page renderer retained for the existing\n# dashboard contract test. The operational UI below is Streamlit.\ndef _page(message: str = "") -> bytes:\n    from Thumbnail_Pipeline.dashboard.settings import get_dashboard_settings\n    s=get_dashboard_settings()\n    notice=f"<p>{message}</p>" if message else ""\n    return f"""<!doctype html><html><body>{notice}<form>\n<input name="min_impressions" value="{s['min_impressions']}">\n<input name="full_reliability_impressions" value="{s['full_reliability_impressions']}">\n<button>Save Settings</button>\n<p>Source of truth: {s['source']}</p>\n</form></body></html>""".encode("utf-8")\n
+# Backward-compatible pure settings-page renderer retained for the existing
+# dashboard contract test. The operational UI below is Streamlit.
+def _page(message: str = "") -> bytes:
+    from Thumbnail_Pipeline.dashboard.settings import get_dashboard_settings
+    s=get_dashboard_settings()
+    notice=f"<p>{message}</p>" if message else ""
+    return f"""<!doctype html><html><body>{notice}<form>
+<input name="min_impressions" value="{s['min_impressions']}">
+<input name="full_reliability_impressions" value="{s['full_reliability_impressions']}">
+<button>Save Settings</button>
+<p>Source of truth: {s['source']}</p>
+</form></body></html>""".encode("utf-8")
+
 from Thumbnail_Pipeline.runner.__main__ import build_project_prompt_state, resolve_project
 from Thumbnail_Pipeline.qa import evaluate_generation_gate
 from Thumbnail_Pipeline.prompt_export import export_final_thumbnail_prompt
