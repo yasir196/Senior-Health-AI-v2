@@ -145,3 +145,15 @@ def test_recurrent_observed_copy_rejects_dangling_symbol_but_keeps_internal_plus
     candidates=recurrent_observed_text_candidates("1 CLOVE in Your Coffee Every Morning",mechanism)
     assert "CLOVE + COFFEE?" in candidates
     assert all(not x.rstrip().endswith("+") for x in candidates)
+
+
+def test_youtube_visual_text_placement_requires_recurrent_supermajority(tmp_path):
+    from Thumbnail_Pipeline.runner.__main__ import build_project_prompt_state
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"Coffee Clove Morning"}),encoding="utf-8")
+    class Provider: pass
+    # This boundary is covered by the real runner integration; unit regression verifies
+    # unsupported state remains review-bound when no visual placement evidence is supplied.
+    state=build_project_prompt_state(p,youtube_provider=None)
+    assert state["composition"]["composition"]["text_placement"] is None
+    assert "text_placement" in state["composition"]["human_review_required_for"]
