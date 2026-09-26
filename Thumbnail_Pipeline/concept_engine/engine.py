@@ -98,7 +98,11 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
         "evidence_status": "winner_supported" if winners else ("association_supported" if supported else "no_winner_evidence"),
         "concept": {
             "category": requested_category,
-            "composition_layout": _mode(layouts) or association_layout,
+            # Historical winner layouts can contain topic-specific literal objects
+            # (for example banana/anatomy). They are evidence about old thumbnails, not a
+            # reusable composition contract for a new title. Only normalized association
+            # values may seed layout here; otherwise leave layout unresolved.
+            "composition_layout": association_layout,
             "thumbnail_text_examples": [t for t in winner_texts if t][:5],
             "title_text_relationship": [pair_features(title, t) for t in winner_texts if t][:5],
             "presenter_position": presenter_position,
