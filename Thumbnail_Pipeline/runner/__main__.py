@@ -67,6 +67,8 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     youtube_examples=[]
     external_text_placement=None
     external_text_placement_evidence=None
+    external_structural_layout=None
+    external_structural_layout_evidence=None
     youtube_fallback={"status":"not_needed","reason":"recurrent_local_text_mechanism_available"}
     # YouTube visual composition evidence is independent from the text-copy fallback.
     # When a provider is configured, analyze same-topic references even if local text
@@ -86,6 +88,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             "ocr_text_found":0,
             "visual_text_found":0,
             "text_placement_found":0,
+            "structural_layout_found":0,
         }
         for ref in youtube_examples:
             status=ref.get("thumbnail_analysis_status")
@@ -106,6 +109,8 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
                 diagnostics["visual_text_found"]+=1
             if ref.get("external_thumbnail_text_placement") in ("left","center","right"):
                 diagnostics["text_placement_found"]+=1
+            if ref.get("external_thumbnail_structural_layout") in ("text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject"):
+                diagnostics["structural_layout_found"]+=1
             effective_text=str(text or visual_text or "").strip()
             if ref.get("video_title") and effective_text:
                 external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":effective_text}})
@@ -122,6 +127,18 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
                 external_text_placement_evidence={"source":"youtube_visual_recurrence","observations":total,
                                                   "supporting":count,"share":round(count/total,4),
                                                   "counts":dict(placement_counts)}
+        layouts=[str(r.get("external_thumbnail_structural_layout")) for r in youtube_examples
+                 if r.get("external_thumbnail_structural_layout") in ("text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject")]
+        if layouts:
+            from collections import Counter
+            layout_counts=Counter(layouts)
+            top_layout,layout_count=layout_counts.most_common(1)[0]
+            layout_total=len(layouts)
+            if layout_count >= 3 and (layout_count/layout_total) >= 0.60:
+                external_structural_layout=top_layout
+                external_structural_layout_evidence={"source":"youtube_visual_recurrence","observations":layout_total,
+                                                     "supporting":layout_count,"share":round(layout_count/layout_total,4),
+                                                     "counts":dict(layout_counts)}
         external_mechanism=discover_text_mechanisms(external_rows)
         # External YouTube evidence is not a positional word-replacement template.
         # First preserve genuinely recurrent observed copy when its words are supported by
@@ -153,6 +170,13 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     concept["evidence"]["thumbnail_text_candidate_ranking"]=candidate_audit
     concept["evidence"]["youtube_fallback"]=youtube_fallback
     composition=build_composition_spec(concept)
+    # YouTube visual structural layout is secondary evidence and resolves only on
+    # recurrent/supermajority support. It never overrides DB-derived layout.
+    if composition["composition"].get("layout") is None and external_structural_layout:
+        composition["composition"]["layout"]=external_structural_layout
+        composition["provenance"]["layout_derived_from_youtube_visual_recurrence"]=True
+        composition["provenance"]["youtube_structural_layout_evidence"]=external_structural_layout_evidence
+        composition["human_review_required_for"]=[x for x in composition["human_review_required_for"] if x!="layout"]
     # YouTube visual placement is secondary evidence and can resolve placement only when
     # recurrent/supermajority support exists. It never overrides DB-derived placement.
     if composition["composition"].get("text_placement") is None and external_text_placement:
