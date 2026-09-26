@@ -112,3 +112,22 @@ def test_concept_category_is_dynamic_cluster_not_legacy_taxonomy(tmp_path):
     state=build_project_prompt_state(p)
     assert state["concept"]["concept"]["category"]=="unclustered"
     assert "hero_category_associations" not in state["concept"]["evidence"]
+
+
+def test_safe_zone_is_render_contract_not_evidence_guess(tmp_path):
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"LOCKED"}),encoding="utf-8")
+    state=build_project_prompt_state(p)
+    spec=state["composition"]
+    assert spec["composition"]["safe_zone"]=="bottom-right timestamp-safe area clear"
+    assert spec["provenance"]["safe_zone_source"]=="render_contract"
+    assert "safe_zone" not in spec["human_review_required_for"]
+    assert "text_placement" in spec["human_review_required_for"]
+
+def test_text_placement_stays_unresolved_without_explicit_layout_evidence(tmp_path):
+    p=tmp_path/"Projects"/"coffee"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"LOCKED"}),encoding="utf-8")
+    state=build_project_prompt_state(p)
+    spec=state["composition"]
+    assert spec["composition"]["text_placement"] is None
+    assert spec["provenance"]["text_placement_derived_from_layout"] is False
