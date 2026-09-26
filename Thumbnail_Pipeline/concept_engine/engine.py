@@ -29,6 +29,15 @@ def _mode(values: list[Any]) -> Any | None:
     return Counter(clean).most_common(1)[0][0] if clean else None
 
 
+def _reusable_layout(values: list[Any]) -> Any | None:
+    """Reuse only normalized structural layout tokens, never free-form object scenes."""
+    allowed={"text_left_subject_right","subject_left_text_right","text_right_subject_left",
+             "text_top_subject_bottom","subject_top_text_bottom","centered_subject"}
+    clean=[str(v).strip().lower() for v in values if v not in (None,"",[],{})]
+    reusable=[v for v in clean if v in allowed]
+    return Counter(reusable).most_common(1)[0][0] if reusable else None
+
+
 def _association_choice(rows: list[dict[str, Any]], feature: str) -> Any | None:
     """Prefer category evidence (caller order), then strongest supported association."""
     candidates = []
@@ -102,7 +111,7 @@ def build_concept_direction(context: dict[str, Any]) -> dict[str, Any]:
             # (for example banana/anatomy). They are evidence about old thumbnails, not a
             # reusable composition contract for a new title. Only normalized association
             # values may seed layout here; otherwise leave layout unresolved.
-            "composition_layout": association_layout,
+            "composition_layout": _reusable_layout(layouts) or association_layout,
             "thumbnail_text_examples": [t for t in winner_texts if t][:5],
             "title_text_relationship": [pair_features(title, t) for t in winner_texts if t][:5],
             "presenter_position": presenter_position,
