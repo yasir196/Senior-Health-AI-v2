@@ -288,9 +288,12 @@ def test_resolved_text_placement_conditions_layout_consensus_without_lowering_th
         def search(self,query,limit=12):
             return [{"video_id":str(i),"channel_name":"A","video_title":"Leg Routine",
                      "thumbnail_url_or_path":f"https://i.ytimg.com/vi/{i}/hqdefault.jpg",
-                     "views":"5000","duration":"PT8M"} for i in range(10)]
-    layouts=["text_left_subject_right"]*6+["subject_top_text_bottom"]*2+["text_top_subject_bottom"]+["centered_subject"]
-    placements=["left"]*6+["center"]*3+["right"]
+                     "views":"5000","duration":"PT8M"} for i in range(12)]
+    # Mirror the real smoke shape: 10 placement observations (6 left) and 11 layout
+    # observations (6 text-left), with no internally contradictory thumbnail pair.
+    layouts=["text_left_subject_right"]*6+["subject_left_text_right"]+
+            ["subject_top_text_bottom"]*2+["text_top_subject_bottom"]+["centered_subject"]+ [None]
+    placements=["left"]*6+["right"]+["center"]*3+[None,None]
     monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
         {**r,"thumbnail_analysis_status":"analyzed","external_thumbnail_visual_text":"LEG CRAMPS",
          "external_thumbnail_text_placement":placements[i],
