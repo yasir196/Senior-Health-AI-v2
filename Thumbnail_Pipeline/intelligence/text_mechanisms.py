@@ -354,8 +354,6 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
         # If a distinctive subject anchor was inferred from the current title, generic
         # promise/trailing copy cannot displace the subject-bearing context. The anchor
         # itself is learned from corpus distinctiveness; no topic vocabulary is seeded.
-        if subject_token and subject_contexts and subject_token not in _tokens(text):
-            continue
         rendered=text.upper()
         if question_rate>=0.5: rendered=rendered.rstrip("?!")+"?"
         audit={"valid":True,"source":"constraint_fallback","uses_current_title_words_only":True,
@@ -363,4 +361,14 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
         item={"text":rendered,"score":1.0 if len(_tokens(rendered))==target else 0.5,"audit":audit}
         if rendered not in [x["text"] for x in out]: out.append(item)
         if len(out)>=limit: break
+    # Rank subject-bearing copy first without deleting explicit promise alternatives.
+    # The subject is inferred from corpus distinctiveness; no topic vocabulary is seeded.
+    if subject_token and subject_contexts:
+        explicit_promise=str(roles.get("promise") or "").strip().lower()
+        def _fallback_rank(item):
+            raw=str(item.get("text") or "").rstrip("?!").lower()
+            has_subject=subject_token in _tokens(str(item.get("text") or ""))
+            is_explicit_promise=bool(explicit_promise) and raw==explicit_promise
+            return (2 if has_subject else (1 if is_explicit_promise else 0), float(item.get("score") or 0))
+        out.sort(key=_fallback_rank,reverse=True)
     return out if with_audit else [x["text"] for x in out]
