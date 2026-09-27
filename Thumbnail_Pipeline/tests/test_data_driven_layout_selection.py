@@ -79,3 +79,44 @@ def test_winner_query_uses_latest_rows_without_summing_snapshots():
     ]
     winners = adapter.qualifying_thumbnail_layout_winners()
     assert [x["title"] for x in winners] == ["A"]
+
+
+def test_same_coarse_family_does_not_validate_when_primary_visual_is_on_opposite_side():
+    winners = [
+        _winner("winner one", "Large text on the left, peanut butter jar on the right, spoonful highlighted in the upper-right, top red banner"),
+    ]
+    youtube = [{
+        "video_id": "YJqtmwzsQYE",
+        "external_thumbnail_structural_layout": "text_left_subject_right",
+        "external_thumbnail_structural_signature": {
+            "text_zone": "lower-left",
+            "primary_visual_zone": "center-left",
+            "presenter_zone": "center-right",
+            "secondary_visual_zone": "upper-left",
+        },
+        "views": 76334,
+    }]
+    selected = _select_data_driven_layout(winners, youtube)
+    assert selected["source"] == "youtube_highest_view_fallback"
+    assert selected["youtube_match_video_id"] == "YJqtmwzsQYE"
+
+
+def test_same_coarse_family_validates_when_detailed_visual_geometry_matches():
+    winners = [
+        _winner("winner one", "Large text on the left, peanut butter jar on the right, spoonful highlighted in the upper-right, top red banner"),
+    ]
+    youtube = [{
+        "video_id": "matching",
+        "external_thumbnail_structural_layout": "text_left_subject_right",
+        "external_thumbnail_structural_signature": {
+            "text_zone": "center-left",
+            "primary_visual_zone": "lower-right",
+            "presenter_zone": "none",
+            "secondary_visual_zone": "upper-right",
+        },
+        "views": 50000,
+    }]
+    selected = _select_data_driven_layout(winners, youtube)
+    assert selected["source"] == "db_winner_validated_on_youtube"
+    assert selected["youtube_match_video_id"] == "matching"
+    assert selected["structural_signature"]["primary_visual_zone"] == "center-right"
