@@ -26,11 +26,11 @@ def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:
             "input":[{
                 "role":"user",
                 "content":[
-                    {"type":"input_text","text":"Inspect ONLY this YouTube thumbnail. Transcribe the visibly printed thumbnail text, preserving words, punctuation, and line breaks. Also classify where the main text block is visibly placed: left, center, right, or unknown. Classify the coarse structural layout ONLY when visibly clear, using exactly one of: text_left_subject_right, subject_left_text_right, text_top_subject_bottom, subject_top_text_bottom, centered_subject, unknown. Also describe the main visibly depicted subject in a short literal noun phrase (for example, coffee cup with cloves); use empty string if no clear subject. This subject must come only from visible pixels, never from the video title/topic. This layout describes regions only; never put object names into the layout field. Do not infer any field from the video title or topic. If text is unreadable return empty text; if placement/layout is ambiguous return unknown. Return JSON only."},
+                    {"type":"input_text","text":"Inspect ONLY this YouTube thumbnail. Transcribe the visibly printed thumbnail text, preserving words, punctuation, and line breaks. Also classify where the main text block is visibly placed: left, center, right, or unknown. Classify the coarse structural layout ONLY when visibly clear, using exactly one of: text_left_subject_right, subject_left_text_right, text_top_subject_bottom, subject_top_text_bottom, centered_subject, unknown. Also describe the main visibly depicted subject in a short literal noun phrase (for example, coffee cup with cloves); use empty string if no clear subject. Additionally return a structural_signature using only visible geometry: text_zone, primary_visual_zone, presenter_zone, and secondary_visual_zone. Each zone must be one of upper-left, upper-center, upper-right, center-left, center, center-right, lower-left, lower-center, lower-right, none, unknown. primary_visual_zone is the dominant non-text topic visual; presenter_zone is a clearly visible human presenter/face when present; secondary_visual_zone is a distinct secondary non-text visual when present. Do not infer roles from the title/topic. This subject must come only from visible pixels, never from the video title/topic. This layout describes regions only; never put object names into the layout field. Do not infer any field from the video title or topic. If text is unreadable return empty text; if placement/layout is ambiguous return unknown. Return JSON only."},
                     {"type":"input_image","image_url":data_url},
                 ],
             }],
-            "text":{"format":{"type":"json_schema","name":"thumbnail_visual_text","strict":True,"schema":{"type":"object","properties":{"text":{"type":"string"},"text_placement":{"type":"string","enum":["left","center","right","unknown"]},"structural_layout":{"type":"string","enum":["text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject","unknown"]},"visible_subject":{"type":"string"}},"required":["text","text_placement","structural_layout","visible_subject"],"additionalProperties":False}}},
+            "text":{"format":{"type":"json_schema","name":"thumbnail_visual_text","strict":True,"schema":{"type":"object","properties":{"text":{"type":"string"},"text_placement":{"type":"string","enum":["left","center","right","unknown"]},"structural_layout":{"type":"string","enum":["text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject","unknown"]},"visible_subject":{"type":"string"},"structural_signature":{"type":"object","properties":{"text_zone":{"type":"string","enum":["upper-left","upper-center","upper-right","center-left","center","center-right","lower-left","lower-center","lower-right","none","unknown"]},"primary_visual_zone":{"type":"string","enum":["upper-left","upper-center","upper-right","center-left","center","center-right","lower-left","lower-center","lower-right","none","unknown"]},"presenter_zone":{"type":"string","enum":["upper-left","upper-center","upper-right","center-left","center","center-right","lower-left","lower-center","lower-right","none","unknown"]},"secondary_visual_zone":{"type":"string","enum":["upper-left","upper-center","upper-right","center-left","center","center-right","lower-left","lower-center","lower-right","none","unknown"]}},"required":["text_zone","primary_visual_zone","presenter_zone","secondary_visual_zone"],"additionalProperties":False}}},"required":["text","text_placement","structural_layout","visible_subject","structural_signature"],"additionalProperties":False}}},
         }
         req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
         with urllib.request.urlopen(req,timeout=timeout) as response:
@@ -49,7 +49,10 @@ def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:
         layout=str(parsed.get("structural_layout") or "unknown").lower()
         allowed_layouts={"text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject"}
         if layout not in allowed_layouts: layout="unknown"
-        return {"text":str(parsed.get("text") or "").strip(),"text_placement":placement,"structural_layout":layout,"visible_subject":str(parsed.get("visible_subject") or "").strip(),"source":"openai_vision","model":model}
+        zone_values={"upper-left","upper-center","upper-right","center-left","center","center-right","lower-left","lower-center","lower-right","none","unknown"}
+        signature=parsed.get("structural_signature") if isinstance(parsed.get("structural_signature"),dict) else {}
+        signature={k:(str(signature.get(k) or "unknown").lower() if str(signature.get(k) or "unknown").lower() in zone_values else "unknown") for k in ("text_zone","primary_visual_zone","presenter_zone","secondary_visual_zone")}
+        return {"text":str(parsed.get("text") or "").strip(),"text_placement":placement,"structural_layout":layout,"visible_subject":str(parsed.get("visible_subject") or "").strip(),"structural_signature":signature,"source":"openai_vision","model":model}
     return analyze
 
 def clear_youtube_reference_thumbnails(project:str)->dict[str,Any]:
@@ -94,6 +97,7 @@ def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,project:str,ti
         visual_text_placement=None
         visual_structural_layout=None
         visual_subject=None
+        visual_structural_signature=None
         if text_analyzer is not None and (not isinstance(ocr,dict) or not str(ocr.get("text") or "").strip()):
             candidate=text_analyzer(target,reference)
             if isinstance(candidate,dict):
@@ -103,11 +107,13 @@ def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,project:str,ti
                 layout=str(candidate.get("structural_layout") or "").strip().lower()
                 visual_structural_layout=layout if layout in {"text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject"} else None
                 visual_subject=str(candidate.get("visible_subject") or "").strip() or None
+                signature=candidate.get("structural_signature")
+                visual_structural_signature=signature if isinstance(signature,dict) else None
             elif candidate is not None:
                 visual_text=str(candidate).strip() or None
     except Exception as exc:
         return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"failed","thumbnail_analysis_reason":str(exc)}
-    return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"analyzed","external_thumbnail_features":features,"external_thumbnail_ocr":ocr,"external_thumbnail_visual_text":visual_text,"external_thumbnail_text_placement":visual_text_placement,"external_thumbnail_structural_layout":visual_structural_layout,"external_thumbnail_visible_subject":visual_subject}
+    return {**reference,"local_thumbnail_path":str(target),"thumbnail_analysis_status":"analyzed","external_thumbnail_features":features,"external_thumbnail_ocr":ocr,"external_thumbnail_visual_text":visual_text,"external_thumbnail_text_placement":visual_text_placement,"external_thumbnail_structural_layout":visual_structural_layout,"external_thumbnail_visible_subject":visual_subject,"external_thumbnail_structural_signature":visual_structural_signature}
 
 def analyze_youtube_reference_thumbnails(references:list[dict[str,Any]],*,project:str,text_analyzer=None)->list[dict[str,Any]]:
     out=[]
