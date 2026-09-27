@@ -202,7 +202,11 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         if fallback_mechanism.get("status")!="ready" and youtube_provider is not None:
             fallback_mechanism=external_mechanism
         candidate_audit=constraint_text_candidates(title,fallback_mechanism,with_audit=True)
-    # Final cross-lane guard: reject mechanically clipped prefixes regardless of which\n    # evidence lane produced them. This uses only immutable-title structure; no topic\n    # vocabulary or project-specific phrase is hardcoded.\n    candidate_audit=filter_incomplete_title_prefix_candidates(title,candidate_audit)\n    fresh_text_candidates=[x["text"] for x in candidate_audit]
+    # Final cross-lane guard: reject mechanically clipped prefixes regardless of which
+    # evidence lane produced them. This uses only immutable-title structure; no topic
+    # vocabulary or project-specific phrase is hardcoded.
+    candidate_audit=filter_incomplete_title_prefix_candidates(title,candidate_audit)
+    fresh_text_candidates=[x["text"] for x in candidate_audit]
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
     context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id") or "unclustered",
              "winner_prior":{"winner_examples":winner_rows},"youtube_examples":youtube_examples,"packaging_associations":associations}
