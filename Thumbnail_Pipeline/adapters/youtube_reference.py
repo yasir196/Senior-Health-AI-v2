@@ -89,11 +89,11 @@ def collect_references(*,provider:YouTubeReferenceProvider,topic:str,category:st
                 "outlier_status":"supported" if item.get("outlier_evidence") else "not_claimed",
             })
             if len(out) >= limit_per_query: break
-    # If the exact title search produced exactly two corroborating same-topic hits,
+    # If exact-title discovery is sparse, expand from immutable-title concepts only.
     # expand discovery from adjacent immutable-title concepts. This preserves the
-    # established single-hit contract while giving the 3-reference recurrence gate
+    # This gives the recurrence gate more evidence without seeded topic vocabulary.
     # a chance to resolve. Every expanded result still passes _same_topic_title.
-    if not category.strip() and len(out)==2:
+    if not category.strip() and 0 < len(out) < 3:
         for query in _expansion_queries(topic):
             for item in provider.search(query,limit=min(50,max(limit_per_query,limit_per_query*4))):
                 vid=str(item.get("video_id") or "")
