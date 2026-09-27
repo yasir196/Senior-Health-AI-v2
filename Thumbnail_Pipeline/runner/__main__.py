@@ -107,19 +107,20 @@ def _layout_family(value: Any) -> str | None:
     s=" ".join(str(value or "").lower().replace("_"," ").split())
     if not s:
         return None
-    if "text left subject right" in s or ("text" in s and "left" in s and any(x in s for x in ("presenter on the right","jar on the right","spoon are on the right","subject right"))):
-        return "text_left_subject_right"
-    if "subject left text right" in s or ("presenter" in s and "left" in s and "text" in s and "right" in s):
-        return "subject_left_text_right"
+    # Vertical geometry must be recognized before generic left/right words; DB prose
+    # can mention "presenter left" while the actual dominant structure is text-above/visual-below.
     if "text top subject bottom" in s:
         return "text_top_subject_bottom"
     if "subject top text bottom" in s:
         return "subject_top_text_bottom"
-    if "centered subject" in s:
-        return "centered_subject"
-    # DB analyses often describe upper-center text plus lower visual content in prose.
     if "text" in s and ("upper center" in s or "upper-center" in s) and any(x in s for x in ("lower center","lower-center","lower right","lower-right")):
         return "text_top_subject_bottom"
+    if "text left subject right" in s or ("text" in s and "left" in s and any(x in s for x in ("presenter on the right","jar on the right","spoon are on the right","subject right"))):
+        return "text_left_subject_right"
+    if "subject left text right" in s or ("presenter" in s and "left" in s and "text" in s and "right" in s):
+        return "subject_left_text_right"
+    if "centered subject" in s:
+        return "centered_subject"
     return None
 
 def _layout_positions(value: Any, family: str | None = None) -> tuple[str | None, str | None]:
