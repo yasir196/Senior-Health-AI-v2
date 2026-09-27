@@ -13,7 +13,7 @@ from Thumbnail_Pipeline.adapters.v2_analytics_db import V2AnalyticsReadOnlyAdapt
 from Thumbnail_Pipeline.intelligence.title_clusters import discover_title_clusters, assign_title_cluster
 from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
 from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
-from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates, recurrent_observed_text_candidates
+from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates, recurrent_observed_text_candidates, filter_incomplete_title_prefix_candidates
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
 from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only
@@ -202,7 +202,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         if fallback_mechanism.get("status")!="ready" and youtube_provider is not None:
             fallback_mechanism=external_mechanism
         candidate_audit=constraint_text_candidates(title,fallback_mechanism,with_audit=True)
-    fresh_text_candidates=[x["text"] for x in candidate_audit]
+    # Final cross-lane guard: reject mechanically clipped prefixes regardless of which\n    # evidence lane produced them. This uses only immutable-title structure; no topic\n    # vocabulary or project-specific phrase is hardcoded.\n    candidate_audit=filter_incomplete_title_prefix_candidates(title,candidate_audit)\n    fresh_text_candidates=[x["text"] for x in candidate_audit]
     # V2 hero categories are retained only as raw evidence metadata; they do not define the new cluster taxonomy.
     context={"immutable_title":title,"requested_category":(assignment or {}).get("cluster_id") or "unclustered",
              "winner_prior":{"winner_examples":winner_rows},"youtube_examples":youtube_examples,"packaging_associations":associations}
