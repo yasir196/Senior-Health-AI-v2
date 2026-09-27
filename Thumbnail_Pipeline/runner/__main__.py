@@ -73,6 +73,35 @@ def _rank_visible_subjects(subjects: list[str], title: str) -> list[str]:
     ranked.sort(reverse=True)
     return [x[-1] for x in ranked]
 
+def _coherent_youtube_composition_votes(rows: list[dict[str, Any]]) -> tuple[list[str], list[str], int]:
+    """Use only internally consistent visual composition classifications.
+
+    A structural layout already implies the text side. If the same thumbnail's
+    text-placement label contradicts that layout, treat that observation as noisy
+    rather than allowing it to dilute both recurrence votes.
+    """
+    implied={
+        "text_left_subject_right":"left",
+        "subject_left_text_right":"right",
+        "text_top_subject_bottom":"center",
+        "subject_top_text_bottom":"center",
+        "centered_subject":"center",
+    }
+    placements=[]; layouts=[]; conflicts=0
+    for row in rows:
+        placement=row.get("external_thumbnail_text_placement")
+        layout=row.get("external_thumbnail_structural_layout")
+        placement=placement if placement in ("left","center","right") else None
+        layout=layout if layout in implied else None
+        if placement and layout and placement != implied[layout]:
+            conflicts+=1
+            continue
+        if placement:
+            placements.append(str(placement))
+        if layout:
+            layouts.append(str(layout))
+    return placements,layouts,conflicts
+
 def build_project_prompt_state(project: Path, analytics_db: Path | None = None, cluster_db: Path | None = None, youtube_provider=None, youtube_text_analyzer=None) -> dict[str, Any]:
     meta=_read_project_json(project); title=_title(meta)
     adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
@@ -150,26 +179,28 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             effective_text=str(text or visual_text or "").strip()
             if ref.get("video_title") and effective_text:
                 external_rows.append({"performance":{"title":ref["video_title"]},"ocr":{"text":effective_text}})
-        placements=[str(r.get("external_thumbnail_text_placement")) for r in youtube_examples
-                    if r.get("external_thumbnail_text_placement") in ("left","center","right")]
+        placements,layouts,composition_conflicts=_coherent_youtube_composition_votes(youtube_examples)
+        diagnostics["composition_conflicts_rejected"]=composition_conflicts
         if placements:
             from collections import Counter
             placement_counts=Counter(placements)
             top,count=placement_counts.most_common(1)[0]
             total=len(placements)
             # Resolve only on a recurrent supermajority; otherwise human review remains.
+            diagnostics["text_placement_counts"]=dict(placement_counts)
+            diagnostics["text_placement_consensus_share"]=round(count/total,4)
             if count >= 3 and (count/total) >= 0.60:
                 external_text_placement=top
                 external_text_placement_evidence={"source":"youtube_visual_recurrence","observations":total,
                                                   "supporting":count,"share":round(count/total,4),
                                                   "counts":dict(placement_counts)}
-        layouts=[str(r.get("external_thumbnail_structural_layout")) for r in youtube_examples
-                 if r.get("external_thumbnail_structural_layout") in ("text_left_subject_right","subject_left_text_right","text_top_subject_bottom","subject_top_text_bottom","centered_subject")]
         if layouts:
             from collections import Counter
             layout_counts=Counter(layouts)
             top_layout,layout_count=layout_counts.most_common(1)[0]
             layout_total=len(layouts)
+            diagnostics["structural_layout_counts"]=dict(layout_counts)
+            diagnostics["structural_layout_consensus_share"]=round(layout_count/layout_total,4)
             if layout_count >= 3 and (layout_count/layout_total) >= 0.60:
                 external_structural_layout=top_layout
                 external_structural_layout_evidence={"source":"youtube_visual_recurrence","observations":layout_total,
