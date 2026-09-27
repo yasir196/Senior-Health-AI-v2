@@ -221,7 +221,17 @@ def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
     # none exists, keep the original earliest-novel-token behavior.
     paren_index=(title or "").find("(")
     main_boundary=[x for x in boundary if paren_index < 0 or matches[x[0]].start() < paren_index]
-    subject=(main_boundary[-1] if main_boundary else tied[0])
+    # A parenthesis opener after a token marks the start of a promise/addendum, not a
+    # subject boundary. Question/exclamation/colon/semicolon boundaries within the main
+    # title clause are eligible; otherwise preserve the original earliest novelty tie.
+    semantic_boundary=[]
+    for x in main_boundary:
+        end=matches[x[0]].end()
+        next_start=matches[x[0]+1].start() if x[0]+1 < len(matches) else len(title or "")
+        sep=(title or "")[end:next_start]
+        if any(ch in sep for ch in "?!:;"):
+            semantic_boundary.append(x)
+    subject=(semantic_boundary[-1] if semantic_boundary else tied[0])
     si=subject[0]
     contexts=[]
     # Subject context is cumulative: for each direction retain only the most complete
