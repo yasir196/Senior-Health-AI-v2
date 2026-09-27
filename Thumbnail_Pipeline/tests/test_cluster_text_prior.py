@@ -124,3 +124,28 @@ def test_role_complete_context_keeps_explicit_promise_candidate():
     m=discover_text_mechanisms(winners)
     out=constraint_text_candidates("1 CLOVE in Your Coffee Every Morning (Here's What Happens)",m)
     assert "HERE'S WHAT HAPPENS?" in out
+
+
+def test_final_prefix_guard_rejects_unfinished_title_prefix_without_topic_seed():
+    from Thumbnail_Pipeline.intelligence.text_mechanisms import filter_incomplete_title_prefix_candidates
+    title="Morning Pain Around Shoulder? Try These Gentle Moves"
+    items=[
+        {"text":"MORNING PAIN AROUND","score":1.0,"audit":{"valid":True}},
+        {"text":"GENTLE MOVES","score":0.5,"audit":{"valid":True}},
+    ]
+    out=filter_incomplete_title_prefix_candidates(title,items)
+    assert [x["text"] for x in out]==["GENTLE MOVES"]
+
+
+def test_final_prefix_guard_preserves_prefix_at_existing_clause_boundary():
+    from Thumbnail_Pipeline.intelligence.text_mechanisms import filter_incomplete_title_prefix_candidates
+    title="Morning Shoulder Pain? Try These Gentle Moves"
+    items=[{"text":"MORNING SHOULDER PAIN","score":1.0,"audit":{"valid":True}}]
+    assert filter_incomplete_title_prefix_candidates(title,items)==items
+
+
+def test_final_prefix_guard_preserves_nonprefix_candidate():
+    from Thumbnail_Pipeline.intelligence.text_mechanisms import filter_incomplete_title_prefix_candidates
+    title="1 Clove in Your Coffee Every Morning"
+    items=[{"text":"CLOVE IN YOUR COFFEE","score":1.0,"audit":{"valid":True}}]
+    assert filter_incomplete_title_prefix_candidates(title,items)==items
