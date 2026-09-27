@@ -1,5 +1,5 @@
 from __future__ import annotations
-import base64, hashlib, json, shutil, urllib.request, urllib.parse
+import base64, hashlib, json, urllib.request, urllib.parse
 from pathlib import Path
 from typing import Any
 from Thumbnail_Pipeline.io_policy import safe_output
