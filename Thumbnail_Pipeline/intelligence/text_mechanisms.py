@@ -198,7 +198,19 @@ def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
     if not lexical:
         return {"subject":None,"context":[],"promise":None}
     freq=_observed_title_token_frequency(mechanism)
-    subject=min(lexical,key=lambda x:(freq.get(x[2],0),x[0]))
+    min_freq=min(freq.get(x[2],0) for x in lexical)
+    tied=[x for x in lexical if freq.get(x[2],0)==min_freq]
+    # When novelty ties, prefer a token immediately before an immutable-title clause
+    # boundary. This uses title punctuation/structure only, not seeded topic vocabulary,
+    # and avoids selecting an earlier modifier from the same phrase.
+    boundary=[]
+    for x in tied:
+        tail=" ".join(words[x[0]:])
+        m=re.match(re.escape(x[1])+r"([^A-Za-z0-9\']+)",tail,re.I)
+        sep=m.group(1) if m else ""
+        if any(ch in sep for ch in "?!,:;()"):
+            boundary.append(x)
+    subject=(boundary[-1] if boundary else tied[0])
     si=subject[0]
     contexts=[]
     # Subject context is cumulative: for each direction retain only the most complete
