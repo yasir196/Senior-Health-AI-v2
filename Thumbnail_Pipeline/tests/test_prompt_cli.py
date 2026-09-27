@@ -286,7 +286,7 @@ def test_resolved_text_placement_conditions_layout_consensus_without_lowering_th
     (p/"project.json").write_text(json.dumps({"title":"Waking Up with Leg Cramps? Try These 3 Bedtime Routines After 60"}),encoding="utf-8")
     class Provider:
         def search(self,query,limit=12):
-            return [{"video_id":str(i),"channel_name":"A","video_title":"Leg Routine",
+            return [{"video_id":str(i),"channel_name":"A","video_title":"Leg Cramps Bedtime Routine",
                      "thumbnail_url_or_path":f"https://i.ytimg.com/vi/{i}/hqdefault.jpg",
                      "views":"5000","duration":"PT8M"} for i in range(12)]
     # Mirror the real smoke shape: 10 placement observations (6 left) and 11 layout
