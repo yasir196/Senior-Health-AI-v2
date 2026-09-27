@@ -17,6 +17,7 @@ from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechan
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
 from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer, clear_youtube_reference_thumbnails
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only, discover_v2_youtube_oauth_files_read_only
+from Thumbnail_Pipeline.adapters.winner_metadata import build_fresh_winner_metadata, openai_winner_metadata_analyzer
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -404,6 +405,7 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     concept["evidence"]["cluster_prior_status"]={k:v for k,v in prior.items() if k!="winner_rows"}
     concept["evidence"]["thumbnail_text_candidate_ranking"]=candidate_audit
     concept["evidence"]["youtube_fallback"]=youtube_fallback
+    concept["evidence"]["youtube_reference_rows"]=youtube_examples
     composition=build_composition_spec(concept)
     layout_winners=adapter.qualifying_thumbnail_layout_winners() if adapter else []
     selected_layout=_select_data_driven_layout(layout_winners,youtube_examples)
@@ -530,11 +532,13 @@ def main() -> int:
         candidates=(spec.get("composition") or {}).get("thumbnail_text_candidates") or []
         selected_text=candidates[0] if candidates else None
     result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text)
+    winner_metadata_analyzer=openai_winner_metadata_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
+    winner_metadata=build_fresh_winner_metadata(project=state["project"],selected_layout=state.get("selected_layout") or {},youtube_rows=((state["concept"].get("evidence") or {}).get("youtube_reference_rows") or []),metadata_analyzer=winner_metadata_analyzer)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
     prompt_path=prompt_output_dir/"final_thumbnail_prompt.txt"
     selected_source=state.get("selected_layout") or {}
-    source_lines=["DB WINNER SOURCE","================"]
+    source_lines=["WINNER SOURCE","============="]
     if selected_source.get("winner_title"):
         source_lines += [f"Winner Title: {selected_source.get('winner_title')}",f"CTR: {float(selected_source.get('winner_ctr') or 0):.4f}%",f"Impressions: {int(selected_source.get('winner_impressions') or 0):,}"]
         if selected_source.get("winner_video_id"): source_lines.append(f"Winner Video ID: {selected_source.get('winner_video_id')}")
@@ -544,11 +548,18 @@ def main() -> int:
         source_lines.append("Winner Structural Signature: "+json.dumps(selected_source.get("structural_signature") or {},ensure_ascii=False))
     else:
         source_lines.append("No DB winner selected; layout used YouTube fallback evidence.")
+    if winner_metadata.get("thumbnail_path"): source_lines.append(f"Fresh Winner Thumbnail: {winner_metadata.get('thumbnail_path')}")
+    if winner_metadata.get("metadata_path"): source_lines.append(f"Fresh Winner Metadata JSON: {winner_metadata.get('metadata_path')}")
     source_lines += ["","FINAL THUMBNAIL PROMPT","======================"]
     prompt_path.write_text("\n".join(source_lines)+"\n"+result["final_prompt"]+"\n",encoding="utf-8")
     print("FINAL THUMBNAIL PROMPT")
     print("======================")
     print(result["final_prompt"])
+    print("\nWINNER METADATA")
+    print("===============")
+    print(f"Status: {winner_metadata.get('status')}")
+    if winner_metadata.get("thumbnail_path"): print(f"Fresh thumbnail: {winner_metadata.get('thumbnail_path')}")
+    if winner_metadata.get("metadata_path"): print(f"Fresh metadata JSON: {winner_metadata.get('metadata_path')}")
     print(f"\nPrompt saved: {prompt_path}")
     return 0
 
