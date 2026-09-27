@@ -201,11 +201,36 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             layout_total=len(layouts)
             diagnostics["structural_layout_counts"]=dict(layout_counts)
             diagnostics["structural_layout_consensus_share"]=round(layout_count/layout_total,4)
+            layout_vote_source="youtube_visual_recurrence"
+            # When text placement has independently reached the same recurrence threshold,
+            # use it as a cross-field consistency constraint for structural-layout votes.
+            # This does not lower the threshold or seed a preferred layout: it only removes
+            # layouts whose own geometry contradicts the already-resolved placement.
+            if external_text_placement:
+                implied={
+                    "text_left_subject_right":"left",
+                    "subject_left_text_right":"right",
+                    "text_top_subject_bottom":"center",
+                    "subject_top_text_bottom":"center",
+                    "centered_subject":"center",
+                }
+                compatible=[x for x in layouts if implied.get(x)==external_text_placement]
+                if compatible:
+                    compatible_counts=Counter(compatible)
+                    compatible_top,compatible_count=compatible_counts.most_common(1)[0]
+                    compatible_total=len(compatible)
+                    diagnostics["placement_compatible_layout_counts"]=dict(compatible_counts)
+                    diagnostics["placement_compatible_layout_consensus_share"]=round(compatible_count/compatible_total,4)
+                    if compatible_count >= 3 and (compatible_count/compatible_total) >= 0.60:
+                        top_layout,layout_count,layout_total=compatible_top,compatible_count,compatible_total
+                        layout_counts=compatible_counts
+                        layout_vote_source="youtube_visual_recurrence_conditioned_on_resolved_text_placement"
             if layout_count >= 3 and (layout_count/layout_total) >= 0.60:
                 external_structural_layout=top_layout
-                external_structural_layout_evidence={"source":"youtube_visual_recurrence","observations":layout_total,
+                external_structural_layout_evidence={"source":layout_vote_source,"observations":layout_total,
                                                      "supporting":layout_count,"share":round(layout_count/layout_total,4),
-                                                     "counts":dict(layout_counts)}
+                                                     "counts":dict(layout_counts),
+                                                     "resolved_text_placement":external_text_placement if layout_vote_source.endswith("resolved_text_placement") else None}
         external_mechanism=discover_text_mechanisms(external_rows)
         # External YouTube thumbnails are reference evidence, never positional
         # word-replacement templates. Reuse only an exact recurrent observed overlay when
