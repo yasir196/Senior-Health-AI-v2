@@ -201,7 +201,9 @@ def test_youtube_composition_analysis_runs_even_with_local_text_candidates(monke
     ])
     state=runner.build_project_prompt_state(p,youtube_provider=provider)
     assert provider.calls==1
-    assert state["composition"]["composition"]["text_placement"]=="left"
+    # Placement-only recurrence no longer resolves composition. Layout requires a DB
+    # winner match or a concrete structural layout from the highest-view YouTube result.
+    assert state["composition"]["composition"]["text_placement"] is None
     assert state["concept"]["evidence"]["youtube_fallback"]["status"]=="analyzed_for_composition"
 
 
@@ -280,7 +282,7 @@ def test_youtube_composition_consensus_rejects_self_conflicting_votes():
     assert layouts==["text_left_subject_right","text_left_subject_right","text_left_subject_right"]
 
 
-def test_resolved_text_placement_conditions_layout_consensus_without_lowering_threshold(monkeypatch,tmp_path):
+def test_youtube_layout_fallback_uses_highest_view_reference_without_consensus(monkeypatch,tmp_path):
     import Thumbnail_Pipeline.runner.__main__ as runner
     p=tmp_path/"Projects"/"legs"; p.mkdir(parents=True)
     (p/"project.json").write_text(json.dumps({"title":"Waking Up with Leg Cramps? Try These 3 Bedtime Routines After 60"}),encoding="utf-8")
@@ -307,6 +309,6 @@ def test_resolved_text_placement_conditions_layout_consensus_without_lowering_th
     spec=state["composition"]
     assert spec["composition"]["text_placement"]=="left"
     assert spec["composition"]["layout"]=="text_left_subject_right"
-    evidence=spec["provenance"]["youtube_structural_layout_evidence"]
-    assert evidence["source"]=="youtube_visual_recurrence_conditioned_on_resolved_text_placement"
-    assert evidence["share"]>=0.60
+    evidence=spec["provenance"]["layout_selection_evidence"]
+    assert evidence["source"]=="youtube_highest_view_fallback"
+    assert evidence["youtube_match_video_id"]=="0"
