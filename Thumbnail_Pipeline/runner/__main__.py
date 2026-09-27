@@ -411,6 +411,8 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         composition["human_review_required_for"]=[
             x for x in composition.get("human_review_required_for",[]) if x not in resolved
         ]
+        signature=selected_layout.get("structural_signature") or {}
+        composition["composition"]["structural_signature"]={k:v for k,v in signature.items() if v}
         composition["provenance"]["layout_selection"]="data_driven_db_winner_then_youtube"
         composition["provenance"]["layout_selection_evidence"]=selected_layout
         composition["provenance"]["qualifying_db_winner_count"]=len(layout_winners)
