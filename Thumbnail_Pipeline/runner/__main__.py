@@ -533,7 +533,19 @@ def main() -> int:
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
     prompt_path=prompt_output_dir/"final_thumbnail_prompt.txt"
-    prompt_path.write_text(result["final_prompt"]+"\n",encoding="utf-8")
+    selected_source=state.get("selected_layout") or {}
+    source_lines=["DB WINNER SOURCE","================"]
+    if selected_source.get("winner_title"):
+        source_lines += [f"Winner Title: {selected_source.get('winner_title')}",f"CTR: {float(selected_source.get('winner_ctr') or 0):.4f}%",f"Impressions: {int(selected_source.get('winner_impressions') or 0):,}"]
+        if selected_source.get("winner_video_id"): source_lines.append(f"Winner Video ID: {selected_source.get('winner_video_id')}")
+        if selected_source.get("winner_video_url"): source_lines.append(f"Winner Video URL: {selected_source.get('winner_video_url')}")
+        source_lines.append(f"Winner Visual Strategy: {selected_source.get('winner_visual_strategy') or 'unknown'}")
+        source_lines.append(f"Winner Layout: {selected_source.get('historical_layout_evidence') or selected_source.get('layout')}")
+        source_lines.append("Winner Structural Signature: "+json.dumps(selected_source.get("structural_signature") or {},ensure_ascii=False))
+    else:
+        source_lines.append("No DB winner selected; layout used YouTube fallback evidence.")
+    source_lines += ["","FINAL THUMBNAIL PROMPT","======================"]
+    prompt_path.write_text("\n".join(source_lines)+"\n"+result["final_prompt"]+"\n",encoding="utf-8")
     print("FINAL THUMBNAIL PROMPT")
     print("======================")
     print(result["final_prompt"])
