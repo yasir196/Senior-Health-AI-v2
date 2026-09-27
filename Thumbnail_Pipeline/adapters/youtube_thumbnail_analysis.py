@@ -98,7 +98,9 @@ def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,project:str,ti
         visual_structural_layout=None
         visual_subject=None
         visual_structural_signature=None
-        if text_analyzer is not None and (not isinstance(ocr,dict) or not str(ocr.get("text") or "").strip()):
+        # Vision supplies composition geometry even when local OCR already found text.
+        # OCR remains the preferred copy source; geometry must not disappear merely because OCR succeeded.
+        if text_analyzer is not None:
             candidate=text_analyzer(target,reference)
             if isinstance(candidate,dict):
                 visual_text=str(candidate.get("text") or "").strip() or None
