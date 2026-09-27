@@ -49,7 +49,7 @@ def _rank_visible_subjects(subjects: list[str], title: str) -> list[str]:
     title_tokens={x for x in re.findall(r"[a-z0-9]+",title.lower()) if len(x)>2}
     # Channel presentation contract: external references may visibly contain clinicians,
     # but those styling cues must never become final visual-subject suggestions.
-    blocked_presenter_cues=("doctor","clinician","physician","stethoscope","white coat","scrubs","surgical scrubs")
+    blocked_presenter_cues=("doctor","clinician","physician","stethoscope","white coat","lab coat","scrubs","surgical scrubs")
     seen=set(); ranked=[]
     for i,raw in enumerate(subjects):
         value=" ".join(str(raw or "").split()).strip()
