@@ -32,6 +32,7 @@ def build_generation_handoff(
             "thumbnail_text": selected_text,
             "visual_subject_examples": composition.get("visual_subject_examples") or [],
             "structural_signature": composition.get("structural_signature") or {},
+            "visual_strategy": composition.get("visual_strategy"),
         },
         "provenance": composition_spec.get("provenance") or {},
         "gate": {
