@@ -216,7 +216,12 @@ def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
         sep=(title or "")[end:next_start]
         if any(ch in sep for ch in "?!,:;()"):
             boundary.append(x)
-    subject=(boundary[-1] if boundary else tied[0])
+    # Parenthetical promise boundaries describe the promise, not the primary subject.
+    # Prefer a boundary from the main title clause (before the first parenthesis). If
+    # none exists, keep the original earliest-novel-token behavior.
+    paren_index=(title or "").find("(")
+    main_boundary=[x for x in boundary if paren_index < 0 or matches[x[0]].start() < paren_index]
+    subject=(main_boundary[-1] if main_boundary else tied[0])
     si=subject[0]
     contexts=[]
     # Subject context is cumulative: for each direction retain only the most complete
