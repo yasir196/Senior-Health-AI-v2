@@ -31,6 +31,7 @@ def build_generation_handoff(
             "safe_zone": composition.get("safe_zone"),
             "thumbnail_text": selected_text,
             "visual_subject_examples": composition.get("visual_subject_examples") or [],
+            "structural_signature": composition.get("structural_signature") or {},
         },
         "provenance": composition_spec.get("provenance") or {},
         "gate": {
