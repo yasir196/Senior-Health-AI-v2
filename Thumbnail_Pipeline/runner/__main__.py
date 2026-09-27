@@ -514,9 +514,14 @@ def main() -> int:
         candidates=(spec.get("composition") or {}).get("thumbnail_text_candidates") or []
         selected_text=candidates[0] if candidates else None
     result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text)
+    prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
+    prompt_output_dir.mkdir(parents=True,exist_ok=True)
+    prompt_path=prompt_output_dir/"final_thumbnail_prompt.txt"
+    prompt_path.write_text(result["final_prompt"]+"\n",encoding="utf-8")
     print("FINAL THUMBNAIL PROMPT")
     print("======================")
     print(result["final_prompt"])
+    print(f"\nPrompt saved: {prompt_path}")
     return 0
 
 if __name__=="__main__":
