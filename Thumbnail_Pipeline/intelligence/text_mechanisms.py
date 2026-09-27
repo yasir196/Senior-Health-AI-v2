@@ -346,8 +346,15 @@ def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, 
         candidates.append(str(roles["subject"]))
     question_rate=float(profile.get("question_form_rate") or 0)
     out=[]
+    subject_token=str(roles.get("subject") or "").lower().strip()
+    subject_contexts=[str(x.get("text") or "") for x in role_contexts]
     for text in candidates:
         if not _complete_title_span(text):
+            continue
+        # If a distinctive subject anchor was inferred from the current title, generic
+        # promise/trailing copy cannot displace the subject-bearing context. The anchor
+        # itself is learned from corpus distinctiveness; no topic vocabulary is seeded.
+        if subject_token and subject_contexts and subject_token not in _tokens(text):
             continue
         rendered=text.upper()
         if question_rate>=0.5: rendered=rendered.rstrip("?!")+"?"
