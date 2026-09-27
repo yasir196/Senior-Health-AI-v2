@@ -285,6 +285,33 @@ def _span_respects_title_boundary(text:str,title:str)->bool:
             return any(ch in sep for ch in "?!,:;()")
     return False
 
+def filter_incomplete_title_prefix_candidates(title:str, candidates:list[dict[str,Any]])->list[dict[str,Any]]:
+    """Reject candidates that are only an unfinished prefix of the immutable title.
+
+    This is topic-agnostic: no health terms, hook words, or project-specific phrases are
+    seeded. A prefix may end only at the end of the title or at punctuation that already
+    exists in the immutable title. Non-prefix candidates are left untouched for their
+    lane-specific validation.
+    """
+    title_words=re.findall(r"[A-Za-z0-9']+",title or "")
+    low=[w.lower() for w in title_words]
+    out=[]
+    for item in candidates or []:
+        text=str((item or {}).get("text") or "").strip()
+        words=re.findall(r"[A-Za-z0-9']+",text)
+        slow=[w.lower() for w in words]
+        if slow and len(slow)<len(low) and low[:len(slow)]==slow:
+            # Preserve a prefix only when the immutable title itself marks a clause
+            # boundary immediately after it. Otherwise it is a mechanically clipped
+            # beginning such as the first N words of a longer phrase.
+            end_word=title_words[len(slow)-1]
+            m=re.search(re.escape(end_word)+r"([^A-Za-z0-9']+)",title,re.I)
+            sep=m.group(1) if m else ""
+            if not any(ch in sep for ch in "?!,:;()"):
+                continue
+        out.append(item)
+    return out
+
 def constraint_text_candidates(title:str, mechanism:dict[str,Any], limit:int=5, with_audit:bool=False):
     """Fallback composer: learn structural constraints, then use only current-title words.
 
