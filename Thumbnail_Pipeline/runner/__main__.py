@@ -240,6 +240,10 @@ def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list
                     "text_placement":text_pos,"subject_placement":subject_pos,
                     "winner_title":winner.get("title"),"winner_ctr":winner.get("ctr"),
                     "winner_impressions":winner.get("impressions"),
+                    "winner_video_id":winner.get("youtube_video_id"),
+                    "winner_video_url":f"https://www.youtube.com/watch?v={winner.get('youtube_video_id')}" if winner.get("youtube_video_id") else None,
+                    "winner_presenter_present":winner.get("presenter_present"),
+                    "winner_visual_strategy":"presenter_led" if bool(winner.get("presenter_present")) else "object_led",
                     "structural_signature":db_signature,
                     "youtube_match_structural_signature":matches[0][2].get("external_thumbnail_structural_signature"),
                     "youtube_match_video_id":matches[0][2].get("video_id"),
@@ -261,7 +265,11 @@ def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list
                     "historical_layout_evidence":raw,
                     "text_placement":text_pos,"subject_placement":subject_pos,
                     "winner_title":winner.get("title"),"winner_ctr":winner.get("ctr"),
-                    "winner_impressions":winner.get("impressions")}
+                    "winner_impressions":winner.get("impressions"),
+                    "winner_video_id":winner.get("youtube_video_id"),
+                    "winner_video_url":f"https://www.youtube.com/watch?v={winner.get('youtube_video_id')}" if winner.get("youtube_video_id") else None,
+                    "winner_presenter_present":winner.get("presenter_present"),
+                    "winner_visual_strategy":"presenter_led" if bool(winner.get("presenter_present")) else "object_led"}
     return None
 
 def build_project_prompt_state(project: Path, analytics_db: Path | None = None, cluster_db: Path | None = None, youtube_provider=None, youtube_text_analyzer=None) -> dict[str, Any]:
@@ -420,6 +428,14 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
     if external_visible_subjects:
         ranked_visible_subjects=_rank_visible_subjects(external_visible_subjects,title)
+        if selected_layout and selected_layout.get("winner_visual_strategy")=="object_led":
+            human_terms=("man ","woman ","person ","presenter","portrait","face","finger")
+            object_examples=[x for x in ranked_visible_subjects if not any(term in x.casefold() for term in human_terms)]
+            if object_examples:
+                ranked_visible_subjects=object_examples
+            composition["composition"]["visual_strategy"]="object_led_no_presenter"
+        elif selected_layout and selected_layout.get("winner_visual_strategy")=="presenter_led":
+            composition["composition"]["visual_strategy"]="presenter_led"
         composition["composition"]["visual_subject_examples"]=ranked_visible_subjects[:5]
         composition["provenance"]["visual_subject_examples_source"]="youtube_visible_pixels"
     winner_report=[
