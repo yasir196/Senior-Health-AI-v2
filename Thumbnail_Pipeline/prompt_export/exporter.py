@@ -24,6 +24,10 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
         value=signature.get(key)
         if value and value not in ("none","unknown"):
             lines.append(f"{label}: {value}")
+    if contract.get("visual_strategy")=="object_led_no_presenter":
+        lines.append("VISUAL STRATEGY: Object-led composition matching the DB winner. Do not use a presenter, portrait, or human face as the primary visual.")
+    elif contract.get("visual_strategy")=="presenter_led":
+        lines.append("VISUAL STRATEGY: Presenter-led composition matching the DB winner.")
     if contract.get("thumbnail_text"):
         lines.append(f"THUMBNAIL TEXT (exact): {contract['thumbnail_text']}")
     subjects=[str(x).strip() for x in (contract.get("visual_subject_examples") or []) if str(x).strip()]
