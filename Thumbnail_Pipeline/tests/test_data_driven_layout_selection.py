@@ -34,6 +34,9 @@ def test_db_winner_order_is_used_before_youtube_fallback():
     assert selected["source"] == "db_winner_validated_on_youtube"
     assert selected["winner_title"] == "winner one"
     assert selected["youtube_match_video_id"] == "yt-first"
+    assert selected["layout"] == "text_left_subject_right"
+    assert "peanut butter" not in selected["layout"].lower()
+    assert "peanut butter" in selected["historical_layout_evidence"].lower()
 
 
 def test_next_db_winner_is_tried_when_first_layout_is_absent():
