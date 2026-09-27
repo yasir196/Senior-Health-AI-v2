@@ -169,3 +169,21 @@ def test_subject_context_trims_orphan_leading_connectors_without_topic_seed():
     assert out
     assert out[0]=="LEG CRAMPS?"
     assert "UP WITH LEG CRAMPS" not in out
+
+
+def test_final_guard_rejects_dangling_auxiliary_fragment_without_topic_seed():
+    from Thumbnail_Pipeline.intelligence.text_mechanisms import filter_incomplete_title_prefix_candidates
+    title="Over 60? Why Your Magnesium Isn't Working (3 Nighttime Mistakes)"
+    items=[
+        {"text":"WHY YOUR MAGNESIUM ISN'T","score":1.0,"audit":{"valid":True}},
+        {"text":"3 NIGHTTIME MISTAKES","score":0.8,"audit":{"valid":True}},
+    ]
+    out=filter_incomplete_title_prefix_candidates(title,items)
+    assert [x["text"] for x in out]==["3 NIGHTTIME MISTAKES"]
+
+
+def test_final_guard_preserves_complete_fragment_containing_contraction():
+    from Thumbnail_Pipeline.intelligence.text_mechanisms import filter_incomplete_title_prefix_candidates
+    title="Why Your Routine Isn't Working"
+    items=[{"text":"ROUTINE ISN'T WORKING","score":1.0,"audit":{"valid":True}}]
+    assert filter_incomplete_title_prefix_candidates(title,items)==items
