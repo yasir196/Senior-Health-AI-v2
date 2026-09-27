@@ -149,3 +149,13 @@ def test_final_prefix_guard_preserves_nonprefix_candidate():
     title="1 Clove in Your Coffee Every Morning"
     items=[{"text":"CLOVE IN YOUR COFFEE","score":1.0,"audit":{"valid":True}}]
     assert filter_incomplete_title_prefix_candidates(title,items)==items
+
+
+def test_constraint_fallback_keeps_inferred_subject_over_generic_trailing_copy():
+    winners=[r("Morning Wrist Stiffness","WRIST STIFFNESS?",5),r("Evening Ankle Swelling","ANKLE SWELLING?",6)]
+    m=discover_text_mechanisms(winners)
+    title="Waking Up with Calf Spasms? Try These 3 Bedtime Routines After 60"
+    out=constraint_text_candidates(title,m)
+    assert out
+    assert all("SPASMS" in x for x in out)
+    assert "ROUTINES AFTER 60" not in out
