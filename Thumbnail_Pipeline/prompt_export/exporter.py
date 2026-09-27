@@ -17,6 +17,12 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
         f"TEXT PLACEMENT: {contract['text_placement']}",
         f"SAFE ZONE: {contract['safe_zone']}",
     ]
+    signature=contract.get("structural_signature") or {}
+    zone_labels=(("text_zone","TEXT ZONE"),("primary_visual_zone","PRIMARY VISUAL ZONE"),("presenter_zone","PRESENTER ZONE"),("secondary_visual_zone","SECONDARY VISUAL ZONE"))
+    for key,label in zone_labels:
+        value=signature.get(key)
+        if value and value not in ("none","unknown"):
+            lines.append(f"{label}: {value}")
     if contract.get("thumbnail_text"):
         lines.append(f"THUMBNAIL TEXT (exact): {contract['thumbnail_text']}")
     subjects=[str(x).strip() for x in (contract.get("visual_subject_examples") or []) if str(x).strip()]
