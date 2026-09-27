@@ -145,6 +145,69 @@ def _layout_positions(value: Any, family: str | None = None) -> tuple[str | None
         subject="right"
     return text,subject
 
+def _zone_from_phrase(text: str, role: str) -> str | None:
+    """Extract a generic visual zone from historical free-text layout evidence."""
+    import re
+    s=" ".join(str(text or "").lower().replace("_"," ").replace("-"," ").split())
+    if not s:
+        return None
+    role_patterns={
+        "text": r"(?:text|copy|headline)",
+        "presenter": r"(?:presenter|host|man|woman|person|face)",
+        "primary": r"(?:jar|cup|coffee|feet|foot|spoon|object|product|setup|visual|subject)",
+        "secondary": r"(?:secondary|detail|badge|accent|spoon|arrow)",
+    }
+    role_re=role_patterns[role]
+    zones=[
+        ("upper-left",r"(?:upper|top) left"),("upper-center",r"(?:upper|top) center"),
+        ("upper-right",r"(?:upper|top) right"),("lower-left",r"(?:lower|bottom) left"),
+        ("lower-center",r"(?:lower|bottom) center"),("lower-right",r"(?:lower|bottom) right"),
+        ("center-left",r"(?:center left|left center)"),("center-right",r"(?:center right|right center)"),
+        ("center",r"center"),("left",r"left"),("right",r"right"),
+    ]
+    clauses=[x.strip() for x in re.split(r"[,;]",s) if x.strip()]
+    for clause in clauses:
+        if not re.search(role_re,clause):
+            continue
+        for zone,pat in zones:
+            if re.search(pat,clause):
+                if zone=="left": return "center-left"
+                if zone=="right": return "center-right"
+                return zone
+    return None
+
+def _db_structural_signature(raw: Any) -> dict[str, str | None]:
+    s=str(raw or "")
+    return {
+        "text_zone":_zone_from_phrase(s,"text"),
+        "primary_visual_zone":_zone_from_phrase(s,"primary"),
+        "presenter_zone":_zone_from_phrase(s,"presenter"),
+        "secondary_visual_zone":_zone_from_phrase(s,"secondary"),
+    }
+
+def _zone_side(zone: Any) -> str | None:
+    z=str(zone or "").lower()
+    if z in {"none","unknown",""}: return None
+    if "left" in z: return "left"
+    if "right" in z: return "right"
+    if "center" in z: return "center"
+    return None
+
+def _signatures_compatible(db_sig: dict[str, Any], yt_sig: Any) -> bool:
+    """Require compatible visual roles when detailed YouTube geometry is available."""
+    if not isinstance(yt_sig,dict):
+        return True
+    compared=0
+    for key in ("text_zone","primary_visual_zone","presenter_zone"):
+        expected=db_sig.get(key)
+        observed=yt_sig.get(key)
+        if not expected or str(observed or "").lower() in {"","unknown","none"}:
+            continue
+        compared+=1
+        if _zone_side(expected) != _zone_side(observed):
+            return False
+    return compared>0
+
 def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     """Try fresh DB winners in evidence order, then fall back to highest-view YouTube layout."""
     yt_valid=[]
@@ -167,7 +230,8 @@ def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list
         if not family or family in seen_families:
             continue
         seen_families.add(family)
-        matches=[x for x in yt_valid if x[1]==family]
+        db_signature=_db_structural_signature(raw)
+        matches=[x for x in yt_valid if x[1]==family and _signatures_compatible(db_signature,x[2].get("external_thumbnail_structural_signature"))]
         if matches:
             matches.sort(key=lambda x:x[0],reverse=True)
             text_pos,subject_pos=_layout_positions(raw,family)
@@ -176,6 +240,8 @@ def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list
                     "text_placement":text_pos,"subject_placement":subject_pos,
                     "winner_title":winner.get("title"),"winner_ctr":winner.get("ctr"),
                     "winner_impressions":winner.get("impressions"),
+                    "structural_signature":db_signature,
+                    "youtube_match_structural_signature":matches[0][2].get("external_thumbnail_structural_signature"),
                     "youtube_match_video_id":matches[0][2].get("video_id"),
                     "youtube_match_views":matches[0][0]}
     if yt_valid:
