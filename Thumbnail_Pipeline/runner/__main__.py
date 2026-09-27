@@ -102,6 +102,99 @@ def _coherent_youtube_composition_votes(rows: list[dict[str, Any]]) -> tuple[lis
             layouts.append(str(layout))
     return placements,layouts,conflicts
 
+def _layout_family(value: Any) -> str | None:
+    """Normalize DB free-text layouts and YouTube structural labels to comparable families."""
+    s=" ".join(str(value or "").lower().replace("_"," ").split())
+    if not s:
+        return None
+    if "text left subject right" in s or ("text" in s and "left" in s and any(x in s for x in ("presenter on the right","jar on the right","spoon are on the right","subject right"))):
+        return "text_left_subject_right"
+    if "subject left text right" in s or ("presenter" in s and "left" in s and "text" in s and "right" in s):
+        return "subject_left_text_right"
+    if "text top subject bottom" in s:
+        return "text_top_subject_bottom"
+    if "subject top text bottom" in s:
+        return "subject_top_text_bottom"
+    if "centered subject" in s:
+        return "centered_subject"
+    # DB analyses often describe upper-center text plus lower visual content in prose.
+    if "text" in s and ("upper center" in s or "upper-center" in s) and any(x in s for x in ("lower center","lower-center","lower right","lower-right")):
+        return "text_top_subject_bottom"
+    return None
+
+def _layout_positions(value: Any, family: str | None = None) -> tuple[str | None, str | None]:
+    """Infer prompt placement fields from the selected evidence-backed layout."""
+    s=" ".join(str(value or "").lower().replace("_"," ").split())
+    fam=family or _layout_family(value)
+    text=None; subject=None
+    if fam=="text_left_subject_right":
+        text,subject="left","right"
+    elif fam=="subject_left_text_right":
+        text,subject="right","left"
+    elif fam=="text_top_subject_bottom":
+        text,subject="center","bottom"
+    elif fam=="subject_top_text_bottom":
+        text,subject="center","top"
+    elif fam=="centered_subject":
+        text,subject="center","center"
+    # Preserve more specific presenter evidence when the DB description supplies it.
+    if "presenter on the left" in s or "presenter left" in s:
+        subject="left"
+    elif "presenter on the right" in s or "presenter right" in s:
+        subject="right"
+    return text,subject
+
+def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Try fresh DB winners in evidence order, then fall back to highest-view YouTube layout."""
+    yt_valid=[]
+    for row in youtube_rows:
+        layout=row.get("external_thumbnail_structural_layout")
+        family=_layout_family(layout)
+        if not family:
+            continue
+        try:
+            views=int(row.get("views") or 0)
+        except (TypeError,ValueError):
+            views=0
+        yt_valid.append((views,family,row))
+    # DB winner layouts are tried in adapter evidence order. Equivalent normalized
+    # families are checked once so repeated winning thumbnails do not duplicate work.
+    seen_families=set()
+    for winner in winners:
+        raw=winner.get("composition_layout")
+        family=_layout_family(raw)
+        if not family or family in seen_families:
+            continue
+        seen_families.add(family)
+        matches=[x for x in yt_valid if x[1]==family]
+        if matches:
+            matches.sort(key=lambda x:x[0],reverse=True)
+            text_pos,subject_pos=_layout_positions(raw,family)
+            return {"source":"db_winner_validated_on_youtube","layout":raw,"family":family,
+                    "text_placement":text_pos,"subject_placement":subject_pos,
+                    "winner_title":winner.get("title"),"winner_ctr":winner.get("ctr"),
+                    "winner_impressions":winner.get("impressions"),
+                    "youtube_match_video_id":matches[0][2].get("video_id"),
+                    "youtube_match_views":matches[0][0]}
+    if yt_valid:
+        yt_valid.sort(key=lambda x:x[0],reverse=True)
+        views,family,row=yt_valid[0]
+        text_pos,subject_pos=_layout_positions(row.get("external_thumbnail_structural_layout"),family)
+        return {"source":"youtube_highest_view_fallback","layout":row.get("external_thumbnail_structural_layout"),
+                "family":family,"text_placement":text_pos,"subject_placement":subject_pos,
+                "youtube_match_video_id":row.get("video_id"),"youtube_match_views":views}
+    # Offline/no-analyzable-YouTube fallback: retain the strongest fresh DB winner rather
+    # than inventing a layout or invoking a consensus rule.
+    for winner in winners:
+        raw=winner.get("composition_layout"); family=_layout_family(raw)
+        if family:
+            text_pos,subject_pos=_layout_positions(raw,family)
+            return {"source":"db_winner_youtube_unavailable","layout":raw,"family":family,
+                    "text_placement":text_pos,"subject_placement":subject_pos,
+                    "winner_title":winner.get("title"),"winner_ctr":winner.get("ctr"),
+                    "winner_impressions":winner.get("impressions")}
+    return None
+
 def build_project_prompt_state(project: Path, analytics_db: Path | None = None, cluster_db: Path | None = None, youtube_provider=None, youtube_text_analyzer=None) -> dict[str, Any]:
     meta=_read_project_json(project); title=_title(meta)
     adapter=V2AnalyticsReadOnlyAdapter(analytics_db) if analytics_db else None
@@ -183,54 +276,13 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         diagnostics["composition_conflicts_rejected"]=composition_conflicts
         if placements:
             from collections import Counter
-            placement_counts=Counter(placements)
-            top,count=placement_counts.most_common(1)[0]
-            total=len(placements)
-            # Resolve only on a recurrent supermajority; otherwise human review remains.
-            diagnostics["text_placement_counts"]=dict(placement_counts)
-            diagnostics["text_placement_consensus_share"]=round(count/total,4)
-            if count >= 3 and (count/total) >= 0.60:
-                external_text_placement=top
-                external_text_placement_evidence={"source":"youtube_visual_recurrence","observations":total,
-                                                  "supporting":count,"share":round(count/total,4),
-                                                  "counts":dict(placement_counts)}
+            diagnostics["text_placement_counts"]=dict(Counter(placements))
         if layouts:
             from collections import Counter
-            layout_counts=Counter(layouts)
-            top_layout,layout_count=layout_counts.most_common(1)[0]
-            layout_total=len(layouts)
-            diagnostics["structural_layout_counts"]=dict(layout_counts)
-            diagnostics["structural_layout_consensus_share"]=round(layout_count/layout_total,4)
-            layout_vote_source="youtube_visual_recurrence"
-            # When text placement has independently reached the same recurrence threshold,
-            # use it as a cross-field consistency constraint for structural-layout votes.
-            # This does not lower the threshold or seed a preferred layout: it only removes
-            # layouts whose own geometry contradicts the already-resolved placement.
-            if external_text_placement:
-                implied={
-                    "text_left_subject_right":"left",
-                    "subject_left_text_right":"right",
-                    "text_top_subject_bottom":"center",
-                    "subject_top_text_bottom":"center",
-                    "centered_subject":"center",
-                }
-                compatible=[x for x in layouts if implied.get(x)==external_text_placement]
-                if compatible:
-                    compatible_counts=Counter(compatible)
-                    compatible_top,compatible_count=compatible_counts.most_common(1)[0]
-                    compatible_total=len(compatible)
-                    diagnostics["placement_compatible_layout_counts"]=dict(compatible_counts)
-                    diagnostics["placement_compatible_layout_consensus_share"]=round(compatible_count/compatible_total,4)
-                    if compatible_count >= 3 and (compatible_count/compatible_total) >= 0.60:
-                        top_layout,layout_count,layout_total=compatible_top,compatible_count,compatible_total
-                        layout_counts=compatible_counts
-                        layout_vote_source="youtube_visual_recurrence_conditioned_on_resolved_text_placement"
-            if layout_count >= 3 and (layout_count/layout_total) >= 0.60:
-                external_structural_layout=top_layout
-                external_structural_layout_evidence={"source":layout_vote_source,"observations":layout_total,
-                                                     "supporting":layout_count,"share":round(layout_count/layout_total,4),
-                                                     "counts":dict(layout_counts),
-                                                     "resolved_text_placement":external_text_placement if layout_vote_source.endswith("resolved_text_placement") else None}
+            diagnostics["structural_layout_counts"]=dict(Counter(layouts))
+        # Layout selection no longer uses recurrence/supermajority thresholds here.
+        # Fresh DB winners are validated in evidence order after composition is built;
+        # if none match, the highest-view analyzable YouTube reference supplies layout.
         external_mechanism=discover_text_mechanisms(external_rows)
         # External YouTube thumbnails are reference evidence, never positional
         # word-replacement templates. Reuse only an exact recurrent observed overlay when
@@ -274,20 +326,23 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     concept["evidence"]["thumbnail_text_candidate_ranking"]=candidate_audit
     concept["evidence"]["youtube_fallback"]=youtube_fallback
     composition=build_composition_spec(concept)
-    # YouTube visual structural layout is secondary evidence and resolves only on
-    # recurrent/supermajority support. It never overrides DB-derived layout.
-    if composition["composition"].get("layout") is None and external_structural_layout:
-        composition["composition"]["layout"]=external_structural_layout
-        composition["provenance"]["layout_derived_from_youtube_visual_recurrence"]=True
-        composition["provenance"]["youtube_structural_layout_evidence"]=external_structural_layout_evidence
-        composition["human_review_required_for"]=[x for x in composition["human_review_required_for"] if x!="layout"]
-    # YouTube visual placement is secondary evidence and can resolve placement only when
-    # recurrent/supermajority support exists. It never overrides DB-derived placement.
-    if composition["composition"].get("text_placement") is None and external_text_placement:
-        composition["composition"]["text_placement"]=external_text_placement
-        composition["provenance"]["text_placement_derived_from_youtube_visual_recurrence"]=True
-        composition["provenance"]["youtube_text_placement_evidence"]=external_text_placement_evidence
-        composition["human_review_required_for"]=[x for x in composition["human_review_required_for"] if x!="text_placement"]
+    layout_winners=adapter.qualifying_thumbnail_layout_winners() if adapter else []
+    selected_layout=_select_data_driven_layout(layout_winners,youtube_examples)
+    if selected_layout:
+        composition["composition"]["layout"]=selected_layout["layout"]
+        if selected_layout.get("text_placement"):
+            composition["composition"]["text_placement"]=selected_layout["text_placement"]
+        if selected_layout.get("subject_placement"):
+            composition["composition"]["subject_placement"]=selected_layout["subject_placement"]
+        resolved={"layout"}
+        if selected_layout.get("text_placement"): resolved.add("text_placement")
+        if selected_layout.get("subject_placement"): resolved.add("subject_placement")
+        composition["human_review_required_for"]=[
+            x for x in composition.get("human_review_required_for",[]) if x not in resolved
+        ]
+        composition["provenance"]["layout_selection"]="data_driven_db_winner_then_youtube"
+        composition["provenance"]["layout_selection_evidence"]=selected_layout
+        composition["provenance"]["qualifying_db_winner_count"]=len(layout_winners)
     if fresh_text_candidates:
         composition["composition"]["thumbnail_text_candidates"]=fresh_text_candidates
     if external_visible_subjects:
