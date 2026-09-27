@@ -57,6 +57,31 @@ class V2AnalyticsReadOnlyAdapter:
         with self._connect() as con:
             return [dict(r) for r in con.execute(sql).fetchall()]
 
+    def qualifying_thumbnail_layout_winners(self, *, min_ctr: float = 6.0, min_impressions: int = 5000) -> list[dict[str, Any]]:
+        """Return fresh channel-wide thumbnail layout winners from latest reliable evidence.
+
+        One latest evidence row per video is considered, so cumulative CTR snapshots are
+        never summed or double-counted. Winner eligibility is data-driven: CTR and
+        impressions must clear the supplied floors, and the thumbnail/version attribution
+        must be observed rather than historically uncertain.
+        """
+        rows = self.latest_thumbnail_evidence()
+        winners = [
+            r for r in rows
+            if float(r.get("ctr") or 0) >= float(min_ctr)
+            and float(r.get("impressions") or 0) >= float(min_impressions)
+            and r.get("attribution_status") == "post_snapshot_window_observed"
+            and str(r.get("composition_layout") or "").strip()
+        ]
+        winners.sort(
+            key=lambda r: (
+                -float(r.get("impressions") or 0),
+                -float(r.get("ctr") or 0),
+                str(r.get("analytics_id") or ""),
+            )
+        )
+        return winners
+
     def hero_category_support(self) -> list[dict[str, Any]]:
         """Return observed support for DB hero categories from latest thumbnail evidence."""
         sql = """
