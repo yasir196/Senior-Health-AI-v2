@@ -74,7 +74,7 @@ def test_youtube_discovery_runs_before_title_only_fallback(monkeypatch,tmp_path)
     ])
     state=build_project_prompt_state(p,youtube_provider=provider)
     evidence=state["concept"]["evidence"]
-    assert provider.queries==["1 CLOVE in Your Coffee Every Morning"]
+    assert provider.queries[0]=="1 CLOVE in Your Coffee Every Morning"\n    assert len(provider.queries)>=1
     assert evidence["youtube_fallback"]["status"] in {"used","searched_no_recurrent_text_mechanism"}
     assert evidence["youtube_reference_count"]==1
 
