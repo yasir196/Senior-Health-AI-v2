@@ -264,3 +264,17 @@ def test_visible_subjects_reject_mixed_unsupported_objects():
     assert "white coffee mug with clove and blood vessel" not in ranked
     assert "glass cup of coffee with hand holding a clove" in ranked
     assert "cup of coffee with clove" in ranked
+
+
+def test_youtube_composition_consensus_rejects_self_conflicting_votes():
+    from Thumbnail_Pipeline.runner.__main__ import _coherent_youtube_composition_votes
+    rows=[
+        {"external_thumbnail_text_placement":"left","external_thumbnail_structural_layout":"text_left_subject_right"},
+        {"external_thumbnail_text_placement":"right","external_thumbnail_structural_layout":"text_left_subject_right"},
+        {"external_thumbnail_text_placement":"left","external_thumbnail_structural_layout":"text_left_subject_right"},
+        {"external_thumbnail_text_placement":"left","external_thumbnail_structural_layout":"text_left_subject_right"},
+    ]
+    placements,layouts,conflicts=_coherent_youtube_composition_votes(rows)
+    assert conflicts==1
+    assert placements==["left","left","left"]
+    assert layouts==["text_left_subject_right","text_left_subject_right","text_left_subject_right"]
