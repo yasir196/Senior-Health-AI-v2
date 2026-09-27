@@ -291,13 +291,17 @@ def test_resolved_text_placement_conditions_layout_consensus_without_lowering_th
                      "views":"5000","duration":"PT8M"} for i in range(12)]
     # Mirror the real smoke shape: 10 placement observations (6 left) and 11 layout
     # observations (6 text-left), with no internally contradictory thumbnail pair.
-    layouts=(["text_left_subject_right"]*6+["subject_left_text_right"]+
-             ["subject_top_text_bottom"]*2+["text_top_subject_bottom"]+["centered_subject"]+[None])
-    placements=["left"]*6+["right"]+["center"]*3+[None,None]
+    composition_pairs=(
+        [("left","text_left_subject_right")]*6+
+        [("right","subject_left_text_right")]+
+        [("center","subject_top_text_bottom")]*2+
+        [("center","text_top_subject_bottom")]+
+        [(None,"centered_subject"),(None,None)]
+    )
     monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
         {**r,"thumbnail_analysis_status":"analyzed","external_thumbnail_visual_text":"LEG CRAMPS",
-         "external_thumbnail_text_placement":placements[i],
-         "external_thumbnail_structural_layout":layouts[i]} for i,r in enumerate(refs)
+         "external_thumbnail_text_placement":composition_pairs[i][0],
+         "external_thumbnail_structural_layout":composition_pairs[i][1]} for i,r in enumerate(refs)
     ])
     state=runner.build_project_prompt_state(p,youtube_provider=Provider())
     spec=state["composition"]
