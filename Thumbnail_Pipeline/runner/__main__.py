@@ -16,7 +16,7 @@ from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winne
 from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates, recurrent_observed_text_candidates, filter_incomplete_title_prefix_candidates
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
 from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer, clear_youtube_reference_thumbnails
-from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only
+from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only, discover_v2_youtube_oauth_files_read_only
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -171,7 +171,8 @@ def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list
         if matches:
             matches.sort(key=lambda x:x[0],reverse=True)
             text_pos,subject_pos=_layout_positions(raw,family)
-            return {"source":"db_winner_validated_on_youtube","layout":raw,"family":family,
+            return {"source":"db_winner_validated_on_youtube","layout":family,"family":family,
+                    "historical_layout_evidence":raw,
                     "text_placement":text_pos,"subject_placement":subject_pos,
                     "winner_title":winner.get("title"),"winner_ctr":winner.get("ctr"),
                     "winner_impressions":winner.get("impressions"),
@@ -190,7 +191,8 @@ def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list
         raw=winner.get("composition_layout"); family=_layout_family(raw)
         if family:
             text_pos,subject_pos=_layout_positions(raw,family)
-            return {"source":"db_winner_youtube_unavailable","layout":raw,"family":family,
+            return {"source":"db_winner_youtube_unavailable","layout":family,"family":family,
+                    "historical_layout_evidence":raw,
                     "text_placement":text_pos,"subject_placement":subject_pos,
                     "winner_title":winner.get("title"),"winner_ctr":winner.get("ctr"),
                     "winner_impressions":winner.get("impressions")}
@@ -380,8 +382,14 @@ def main() -> int:
     args=parser.parse_args()
     project=resolve_project(args.project,args.projects_root)
     youtube_provider=None
-    if args.youtube_client_json and args.youtube_token_json:
-        token=access_token_from_v2_files_read_only(Path(args.youtube_client_json),Path(args.youtube_token_json))
+    client_path=Path(args.youtube_client_json) if args.youtube_client_json else None
+    token_path=Path(args.youtube_token_json) if args.youtube_token_json else None
+    if not (client_path and token_path):
+        discovered_client,discovered_token=discover_v2_youtube_oauth_files_read_only(Path("."))
+        client_path=client_path or discovered_client
+        token_path=token_path or discovered_token
+    if client_path and token_path:
+        token=access_token_from_v2_files_read_only(client_path,token_path)
         youtube_provider=V2YouTubeReferenceProvider(token)
     youtube_text_analyzer=openai_thumbnail_text_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
     state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db),youtube_provider=youtube_provider,youtube_text_analyzer=youtube_text_analyzer)
