@@ -15,7 +15,7 @@ from Thumbnail_Pipeline.db.cluster_store import persist_title_clusters
 from Thumbnail_Pipeline.intelligence.cluster_prior import eligible_cluster_winners
 from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechanisms, transformation_text_candidates, constraint_text_candidates, recurrent_observed_text_candidates, filter_incomplete_title_prefix_candidates
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
-from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer
+from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer, clear_youtube_reference_thumbnails
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
@@ -230,10 +230,12 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
     # when the local lane has no reusable candidate.
     local_candidate_available=bool(candidate_audit)
     if youtube_provider is not None:
+        refresh=clear_youtube_reference_thumbnails(project.name)
         refs=collect_references(provider=youtube_provider,topic=title,category="",limit_per_query=12)
         youtube_examples=analyze_youtube_reference_thumbnails(refs,project=project.name,text_analyzer=youtube_text_analyzer)
         external_rows=[]
         diagnostics={
+            "fresh_thumbnail_refresh":refresh,
             "reference_count":len(youtube_examples),
             "thumbnail_analyzed":0,
             "thumbnail_failed":0,
@@ -350,7 +352,14 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
         ranked_visible_subjects=_rank_visible_subjects(external_visible_subjects,title)
         composition["composition"]["visual_subject_examples"]=ranked_visible_subjects[:5]
         composition["provenance"]["visual_subject_examples_source"]="youtube_visible_pixels"
+    winner_report=[
+        {"rank":i+1,"title":w.get("title"),"ctr":w.get("ctr"),"impressions":w.get("impressions"),
+         "layout":w.get("composition_layout"),"layout_family":_layout_family(w.get("composition_layout")),
+         "attribution_status":w.get("attribution_status")}
+        for i,w in enumerate(layout_winners)
+    ]
     return {"project":project.name,"immutable_title":title,"concept":concept,"composition":composition,
+            "db_layout_winners":winner_report,"selected_layout":selected_layout,
             "discovered_cluster":assignment,"cluster_count":len(discovered.get("clusters") or [])}
 
 def main() -> int:
@@ -377,6 +386,30 @@ def main() -> int:
     youtube_text_analyzer=openai_thumbnail_text_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
     state=build_project_prompt_state(project,Path(args.analytics_db),cluster_db=Path(args.cluster_db),youtube_provider=youtube_provider,youtube_text_analyzer=youtube_text_analyzer)
     spec=state["composition"]
+    print("DB LAYOUT WINNERS")
+    print("=================")
+    winners=state.get("db_layout_winners") or []
+    if not winners:
+        print("No qualifying DB winners (CTR >= 6%, impressions >= 5,000).")
+    else:
+        for row in winners:
+            print(f'#{row["rank"]} | {row["title"]}')
+            print(f'  CTR: {float(row["ctr"]):.4f}% | Impressions: {int(row["impressions"]):,} | Attribution: {row["attribution_status"]}')
+            print(f'  Layout family: {row["layout_family"] or "unclassified"}')
+            print(f'  Layout: {row["layout"]}')
+    print("\nLAYOUT SELECTION")
+    print("================")
+    selected=state.get("selected_layout")
+    if selected:
+        print(json.dumps(selected,indent=2,ensure_ascii=False))
+    else:
+        print("No data-backed layout could be selected.")
+    refresh=((state["concept"].get("evidence") or {}).get("youtube_fallback") or {}).get("fresh_thumbnail_refresh")
+    if refresh:
+        print("\nYOUTUBE THUMBNAIL REFRESH")
+        print("=========================")
+        print(f'Old cached thumbnails removed: {refresh.get("removed_thumbnail_files",0)}')
+        print(f'Fresh reference output: {refresh.get("output_dir")}')
     corrections={k:v for k,v in {
         "layout":args.layout,
         "subject_placement":args.subject_placement,
