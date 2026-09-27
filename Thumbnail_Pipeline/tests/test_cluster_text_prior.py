@@ -159,3 +159,13 @@ def test_constraint_fallback_keeps_inferred_subject_over_generic_trailing_copy()
     assert out
     assert "SPASMS" in out[0]
     assert out[0]!="ROUTINES AFTER 60"
+
+
+def test_subject_context_trims_orphan_leading_connectors_without_topic_seed():
+    winners=[r("Morning Wrist Stiffness","WRIST STIFFNESS?",5),r("Evening Ankle Swelling","ANKLE SWELLING?",6)]
+    m=discover_text_mechanisms(winners)
+    title="Waking Up with Leg Cramps? Try These 3 Bedtime Routines After 60"
+    out=constraint_text_candidates(title,m)
+    assert out
+    assert out[0]=="LEG CRAMPS?"
+    assert "UP WITH LEG CRAMPS" not in out
