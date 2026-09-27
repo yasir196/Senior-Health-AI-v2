@@ -204,10 +204,16 @@ def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
     # boundary. This uses title punctuation/structure only, not seeded topic vocabulary,
     # and avoids selecting an earlier modifier from the same phrase.
     boundary=[]
+    # Inspect punctuation in the original immutable title. The tokenized words list
+    # intentionally removes punctuation, so reconstructing from it cannot reveal a
+    # clause boundary.
+    matches=list(re.finditer(r"[A-Za-z0-9\']+",title or ""))
     for x in tied:
-        tail=" ".join(words[x[0]:])
-        m=re.match(re.escape(x[1])+r"([^A-Za-z0-9\']+)",tail,re.I)
-        sep=m.group(1) if m else ""
+        if x[0] >= len(matches):
+            continue
+        end=matches[x[0]].end()
+        next_start=matches[x[0]+1].start() if x[0]+1 < len(matches) else len(title or "")
+        sep=(title or "")[end:next_start]
         if any(ch in sep for ch in "?!,:;()"):
             boundary.append(x)
     subject=(boundary[-1] if boundary else tied[0])
