@@ -352,6 +352,18 @@ def filter_incomplete_title_prefix_candidates(title:str, candidates:list[dict[st
         text=str((item or {}).get("text") or "").strip()
         words=re.findall(r"[A-Za-z0-9']+",text)
         slow=[w.lower() for w in words]
+        # A title-grounded fragment can still be grammatically unfinished even when it
+        # is not a title prefix. Reject candidates ending on an auxiliary/modal or its
+        # contracted negation, which requires a following complement (e.g. "isn't"
+        # before "working"). This is syntax-only and contains no topic vocabulary.
+        dangling_endings={
+            "am","are","aren't","be","been","being","can","can't","cannot","could","couldn't",
+            "did","didn't","do","does","doesn't","don't","had","hadn't","has","hasn't","have","haven't",
+            "is","isn't","may","might","must","mustn't","shall","shan't","should","shouldn't",
+            "was","wasn't","were","weren't","will","won't","would","wouldn't",
+        }
+        if slow and slow[-1] in dangling_endings:
+            continue
         if slow and len(slow)<len(low) and low[:len(slow)]==slow:
             # Preserve a prefix only when the immutable title itself marks a clause
             # boundary immediately after it. Otherwise it is a mechanically clipped
