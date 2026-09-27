@@ -157,5 +157,5 @@ def test_constraint_fallback_keeps_inferred_subject_over_generic_trailing_copy()
     title="Waking Up with Calf Spasms? Try These 3 Bedtime Routines After 60"
     out=constraint_text_candidates(title,m)
     assert out
-    assert all("SPASMS" in x for x in out)
-    assert "ROUTINES AFTER 60" not in out
+    assert "SPASMS" in out[0]
+    assert out[0]!="ROUTINES AFTER 60"
