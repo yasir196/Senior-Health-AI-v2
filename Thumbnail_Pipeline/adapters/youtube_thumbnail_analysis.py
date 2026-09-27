@@ -1,5 +1,5 @@
 from __future__ import annotations
-import base64, hashlib, json, urllib.request, urllib.parse
+import base64, hashlib, json, shutil, urllib.request, urllib.parse
 from pathlib import Path
 from typing import Any
 from Thumbnail_Pipeline.io_policy import safe_output
@@ -51,6 +51,20 @@ def openai_thumbnail_text_analyzer(api_key:str,*,model:str="gpt-5-mini",timeout:
         if layout not in allowed_layouts: layout="unknown"
         return {"text":str(parsed.get("text") or "").strip(),"text_placement":placement,"structural_layout":layout,"visible_subject":str(parsed.get("visible_subject") or "").strip(),"source":"openai_vision","model":model}
     return analyze
+
+def clear_youtube_reference_thumbnails(project:str)->dict[str,Any]:
+    """Delete only this project's cached YouTube reference thumbnails before a fresh run."""
+    project_name=str(project or "").strip()
+    if not project_name or Path(project_name).name != project_name or project_name in {".",".."}:
+        raise ValueError("A safe direct project folder name is required for YouTube thumbnail output.")
+    target_dir=safe_output(Path(project_name))
+    removed=0
+    if target_dir.is_dir():
+        for path in target_dir.iterdir():
+            if path.is_file() and path.suffix.lower() in {".jpg",".jpeg",".png",".webp"}:
+                path.unlink()
+                removed+=1
+    return {"project":project_name,"removed_thumbnail_files":removed,"output_dir":str(target_dir)}
 
 def analyze_youtube_reference_thumbnail(reference:dict[str,Any],*,project:str,timeout:int=30,text_analyzer=None)->dict[str,Any]:
     """Download a public YouTube thumbnail into pipeline outputs and inspect it locally."""
