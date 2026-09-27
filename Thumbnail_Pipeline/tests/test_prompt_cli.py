@@ -278,3 +278,28 @@ def test_youtube_composition_consensus_rejects_self_conflicting_votes():
     assert conflicts==1
     assert placements==["left","left","left"]
     assert layouts==["text_left_subject_right","text_left_subject_right","text_left_subject_right"]
+
+
+def test_resolved_text_placement_conditions_layout_consensus_without_lowering_threshold(monkeypatch,tmp_path):
+    import Thumbnail_Pipeline.runner.__main__ as runner
+    p=tmp_path/"Projects"/"legs"; p.mkdir(parents=True)
+    (p/"project.json").write_text(json.dumps({"title":"Waking Up with Leg Cramps? Try These 3 Bedtime Routines After 60"}),encoding="utf-8")
+    class Provider:
+        def search(self,query,limit=12):
+            return [{"video_id":str(i),"channel_name":"A","video_title":"Leg Routine",
+                     "thumbnail_url_or_path":f"https://i.ytimg.com/vi/{i}/hqdefault.jpg",
+                     "views":"5000","duration":"PT8M"} for i in range(10)]
+    layouts=["text_left_subject_right"]*6+["subject_top_text_bottom"]*2+["text_top_subject_bottom"]+["centered_subject"]
+    placements=["left"]*6+["center"]*3+["right"]
+    monkeypatch.setattr(runner,"analyze_youtube_reference_thumbnails",lambda refs,**kwargs:[
+        {**r,"thumbnail_analysis_status":"analyzed","external_thumbnail_visual_text":"LEG CRAMPS",
+         "external_thumbnail_text_placement":placements[i],
+         "external_thumbnail_structural_layout":layouts[i]} for i,r in enumerate(refs)
+    ])
+    state=runner.build_project_prompt_state(p,youtube_provider=Provider())
+    spec=state["composition"]
+    assert spec["composition"]["text_placement"]=="left"
+    assert spec["composition"]["layout"]=="text_left_subject_right"
+    evidence=spec["provenance"]["youtube_structural_layout_evidence"]
+    assert evidence["source"]=="youtube_visual_recurrence_conditioned_on_resolved_text_placement"
+    assert evidence["share"]>=0.60
