@@ -16,6 +16,7 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
         f"SUBJECT PLACEMENT: {contract['subject_placement']}",
         f"TEXT PLACEMENT: {contract['text_placement']}",
         f"SAFE ZONE: {contract['safe_zone']}",
+        "FONT RULE: Use a bold block sans-serif font with perfectly upright, straight vertical letterforms and 0% slant. No italic, oblique, cursive, script, skewed, or slanted text.",
     ]
     signature=contract.get("structural_signature") or {}
     zone_labels=(("text_zone","TEXT ZONE"),("primary_visual_zone","PRIMARY VISUAL ZONE"),("presenter_zone","PRESENTER ZONE"),("secondary_visual_zone","SECONDARY VISUAL ZONE"))
