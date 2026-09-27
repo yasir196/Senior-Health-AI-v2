@@ -262,6 +262,25 @@ def _title_roles(title:str, mechanism:dict[str,Any])->dict[str,Any]:
         else:
             complete.sort(key=lambda x:(min(x["subject_offset"],x["word_count"]-1-x["subject_offset"]),x["start"]))
             contexts=complete[:1]
+            # A fixed-width subject window can begin mid-clause on connector words
+            # (for example, a particle/preposition left behind when the title clause is
+            # wider than the evidence-sized window). Trim only those leading connectors;
+            # never invent or substitute vocabulary, and keep the inferred subject.
+            leading_connectors={"a","an","and","at","for","from","in","into","of","on","or","the","to","up","with","your"}
+            cleaned=[]
+            for ctx in contexts:
+                ctx_words=str(ctx.get("text") or "").split()
+                while len(ctx_words)>1 and ctx_words[0].lower().strip("'") in leading_connectors:
+                    ctx_words.pop(0)
+                if ctx_words:
+                    item=dict(ctx)
+                    item["text"]=" ".join(ctx_words)
+                    item["word_count"]=len(ctx_words)
+                    item["start"]=si-(len(ctx_words)-1)
+                    item["end"]=si
+                    item["subject_offset"]=len(ctx_words)-1
+                    cleaned.append(item)
+            contexts=cleaned
     promise=None
     m=re.search(r"\(([^()]+)\)\s*$",title or "")
     if m:
