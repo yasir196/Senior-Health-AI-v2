@@ -166,10 +166,17 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         out["secondary_detail"]=f"Close-up detail of the '{subject}' ingredient label on that same bottle, positioned in the winner's secondary-detail zone. It must be a detail of the same primary object, not a separate object or scene."
         out["attention_target"]=f"Preserve the winner's yellow-circle and red-arrow attention pattern, retargeted only to the '{subject}' label/detail on the same bottle."
 
-    # Last claim guard after deterministic slot completion.
+    # Absolute final copy guard. Never emit blocked claims even if the model
+    # generated them after earlier slot logic. Use safe title-grounded fallbacks so
+    # winner-required text roles remain populated.
+    safe_fallbacks={
+        "top_banner": ("OVER 60? MAGNESIUM AT NIGHT" if subject=="MAGNESIUM" and "over" in title_tokens and "60" in title_tokens else ("MAGNESIUM AT NIGHT" if subject=="MAGNESIUM" else None)),
+        "boxed_keyword": subject,
+        "bottom_callout": "WHAT TO WATCH FOR",
+    }
     for key in ("top_banner","boxed_keyword","bottom_callout"):
         if unsafe_copy(out.get(key)):
-            out[key]=None
+            out[key]=safe_fallbacks.get(key)
     return out
 
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
