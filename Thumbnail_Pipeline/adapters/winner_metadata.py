@@ -138,7 +138,10 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
             if not ta or not tb:
                 return False
             # Normalize the common time-of-day equivalents used by this title.
-            nightish={"night","nighttime","bedtime"}
+            # Treat common bedtime wording as the same semantic timing idea.
+            # "before bed" tokenizes to "before"+"bed", so normalize both tokens
+            # alongside night/nighttime/bedtime to prevent repetitive support copy.
+            nightish={"night","nighttime","bedtime","bed","before"}
             if ta & nightish: ta=(ta-nightish)|{"night"}
             if tb & nightish: tb=(tb-nightish)|{"night"}
             overlap=len(ta & tb)/max(1,min(len(ta),len(tb)))
