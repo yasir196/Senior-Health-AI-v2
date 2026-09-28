@@ -92,6 +92,46 @@ def openai_winner_metadata_analyzer(api_key: str, *, model: str = "gpt-5-mini", 
 
 
 
+
+def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str, selected_text: str | None) -> dict[str, Any]:
+    """Deterministically remove unsupported claims and visual specifics from AI slot adaptation."""
+    import re
+    out=dict(adapted or {})
+    title=str(immutable_title or "")
+    title_l=title.casefold()
+    blocked_claims=("fix","cure","reverse","secret","eliminate","guaranteed","all you need")
+    for key in ("top_banner","boxed_keyword","bottom_callout"):
+        value=out.get(key)
+        if isinstance(value,str) and any(re.search(r"\\b"+re.escape(term)+r"\\b",value,flags=re.I) for term in blocked_claims):
+            out[key]=None
+    if selected_text:
+        out["primary_headline"]=str(selected_text).strip()
+
+    # These concrete product attributes are unsafe to infer from a generic nutrient/supplement title.
+    unsupported_patterns={
+        "dosage_form":r"\\b(capsules?|tablets?|pills?|softgels?|gummies?|powders?)\\b",
+        "product_color":r"\\b(amber|pale[- ]?blue|blue|white|red|green|yellow|orange|purple|pink)\\b(?=.{0,35}\\b(?:bottle|capsule|tablet|pill|softgel|gummy|powder|container)\\b)|\\b(?:bottle|capsule|tablet|pill|softgel|gummy|powder|container)\\b.{0,35}\\b(amber|pale[- ]?blue|blue|white|red|green|yellow|orange|purple|pink)\\b",
+        "imprint":r"\\b(?:imprint|imprinted|engraved|marking)\\b",
+        "dosage":r"\\b\\d+(?:\\.\\d+)?\\s*(?:mg|mcg|g|ml|iu)\\b",
+        "brand":r"\\b(?:brand(?:ed)?|logo)\\b",
+    }
+    def supported(term_pattern: str) -> bool:
+        return re.search(term_pattern,title_l,flags=re.I) is not None
+
+    visual_text=" ".join(str(out.get(k) or "") for k in ("primary_visual","secondary_detail","attention_target"))
+    violates=False
+    for name,pattern in unsupported_patterns.items():
+        if re.search(pattern,visual_text,flags=re.I) and not supported(pattern):
+            violates=True
+            break
+    if violates:
+        # Keep semantics grounded in the title while leaving physical form unspecified.
+        subject="magnesium" if re.search(r"\\bmagnesium\\b",title_l) else "the current-topic product or subject"
+        out["primary_visual"]=f"Close-up photographic representation of {subject} on the right, with its physical form, color, brand, dosage, label details, and packaging specifics left unspecified unless explicitly stated in the video title."
+        out["secondary_detail"]=f"One clearly visible close-up detail directly related to {subject}, without inventing dosage form, color, imprint, brand, dosage, or packaging specifics."
+        out["attention_target"]="Preserve the winner's circle/arrow attention pattern and point it to that current-topic secondary detail."
+    return out
+
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
     """Adapt winner composition slots to the current immutable title without mixing references."""
     key=str(api_key or "").strip()
@@ -142,9 +182,7 @@ For primary_visual and secondary_detail, describe concrete visible current-topic
         adapted=json.loads(output_text)
         if not isinstance(adapted,dict):
             raise ValueError("Current-topic adapter must return a JSON object.")
-        if selected_text and str(adapted.get("primary_headline") or "").strip()!=str(selected_text).strip():
-            adapted["primary_headline"]=str(selected_text).strip()
-        return adapted
+        return _sanitize_topic_adaptation(adapted,immutable_title=immutable_title,selected_text=selected_text)
     return adapt
 
 def build_fresh_winner_metadata(*, project: str, selected_layout: dict[str, Any], youtube_rows: list[dict[str, Any]], metadata_analyzer=None) -> dict[str, Any]:
