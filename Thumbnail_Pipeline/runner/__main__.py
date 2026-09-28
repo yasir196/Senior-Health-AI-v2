@@ -531,9 +531,10 @@ def main() -> int:
     if selected_text is None:
         candidates=(spec.get("composition") or {}).get("thumbnail_text_candidates") or []
         selected_text=candidates[0] if candidates else None
-    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text)
     winner_metadata_analyzer=openai_winner_metadata_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
     winner_metadata=build_fresh_winner_metadata(project=state["project"],selected_layout=state.get("selected_layout") or {},youtube_rows=((state["concept"].get("evidence") or {}).get("youtube_reference_rows") or []),metadata_analyzer=winner_metadata_analyzer)
+    fresh_metadata=winner_metadata.get("metadata") if winner_metadata.get("status")=="ready" else None
+    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
     prompt_path=prompt_output_dir/"final_thumbnail_prompt.txt"
