@@ -127,6 +127,35 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         if not str(out.get("bottom_callout") or "").strip():
             out["bottom_callout"]="WHAT TO WATCH FOR"
 
+        # Copy-slot QA: each support slot must add a distinct idea rather than
+        # restating another slot (for example "AT NIGHT" + "AT BEDTIME").
+        def copy_tokens(value: Any) -> set[str]:
+            stop={"a","an","the","your","you","for","to","of","in","on","at","after","over"}
+            return {t for t in re.findall(r"[a-z0-9]+",str(value or "").casefold()) if t not in stop}
+
+        def near_duplicate(a: Any, b: Any) -> bool:
+            ta,tb=copy_tokens(a),copy_tokens(b)
+            if not ta or not tb:
+                return False
+            # Normalize the common time-of-day equivalents used by this title.
+            nightish={"night","nighttime","bedtime"}
+            if ta & nightish: ta=(ta-nightish)|{"night"}
+            if tb & nightish: tb=(tb-nightish)|{"night"}
+            overlap=len(ta & tb)/max(1,min(len(ta),len(tb)))
+            return overlap>=0.75
+
+        banner=out.get("top_banner")
+        boxed=out.get("boxed_keyword")
+        bottom=out.get("bottom_callout")
+        # The boxed keyword intentionally repeats the topic subject; the bottom
+        # callout must not repeat banner/headline timing or merely echo the subject.
+        if (not str(bottom or "").strip()
+                or near_duplicate(bottom,banner)
+                or near_duplicate(bottom,headline)
+                or near_duplicate(bottom,boxed)
+                or len(copy_tokens(bottom))<2):
+            out["bottom_callout"]="WHAT TO WATCH FOR"
+
     # Nutrient/supplement subject with no explicit dosage form: force one deterministic
     # generic bottle contract. This prevents AI-created clocks, glasses, spoons, tablets,
     # capsules, powder, colors, bedside props, or other unsupported visual semantics.
