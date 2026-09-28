@@ -152,12 +152,14 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
                 break
 
     if violates:
-        # Keep semantics grounded in the title while deliberately leaving physical form unspecified.
+        # For a clearly named nutrient/supplement with no title-supported dosage form,
+        # use one generic unbranded bottle instead of inventing tablets/capsules/powder.
         topic_tokens=[t for t in title_tokens if len(t)>3 and t not in {"over","your","isn","working","nighttime","mistakes"}]
         subject="magnesium" if "magnesium" in title_tokens else (" ".join(topic_tokens[:2]) if topic_tokens else "the current-topic subject")
-        out["primary_visual"]=f"Close-up photographic representation of {subject} on the right. Keep physical form, packaging, color, brand, dosage, imprint, and label details unspecified unless explicitly stated in the immutable video title."
-        out["secondary_detail"]=f"One clearly visible close-up detail directly related to {subject}, without inventing a dosage form or packaging."
-        out["attention_target"]="Preserve the winner's circle/arrow attention pattern and point it to that current-topic secondary detail."
+        label=subject.upper()
+        out["primary_visual"]=f"Close-up of one generic unbranded supplement bottle on the right labeled only '{label}'. Do not show or imply capsules, tablets, pills, powder, gummies, softgels, dosage, brand, logo, color-specific product details, or other invented product specifics."
+        out["secondary_detail"]=f"Close-up detail of the '{label}' ingredient label on the same generic bottle; no separate dosage form, scoop, spoon, dropper, loose product, or additional packaging."
+        out["attention_target"]="Preserve the winner's circle/arrow attention pattern and point it to the ingredient label/detail on that same generic bottle."
     return out
 
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
