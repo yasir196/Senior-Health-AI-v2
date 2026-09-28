@@ -115,7 +115,25 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
 
     # Preserve winner text-role completeness. Fill missing/fragmentary support slots only
     # from immutable-title semantics; never from historical winner wording.
-    subject="MAGNESIUM" if "magnesium" in title_tokens else None
+    # Derive the current topic subject from the immutable title instead of
+    # hardcoding a nutrient name. Prefer known supplement/nutrient phrases, then
+    # fall back to the noun phrase immediately following WHY YOUR / YOUR.
+    known_subjects=(
+        "vitamin d3","vitamin d","vitamin b12","vitamin b6","vitamin c","vitamin e",
+        "magnesium","calcium","potassium","zinc","iron","creatine","collagen",
+        "omega 3","omega-3","fish oil","melatonin","protein",
+    )
+    subject=None
+    for candidate in known_subjects:
+        if re.search(r"\\b"+re.escape(candidate)+r"\\b",title_l,re.I):
+            subject=candidate.upper()
+            break
+    if subject is None:
+        m=re.search(r"\\b(?:why\\s+your|your)\\s+([a-z0-9][a-z0-9+&' -]{1,40}?)(?=\\s+(?:isn['’]?t|is|aren['’]?t|are|doesn['’]?t|does|won['’]?t|will|at|after|before|for|\\(|:|\\?|$))",title_l,re.I)
+        if m:
+            candidate=re.sub(r"\\s+"," ",m.group(1)).strip(" -")
+            if candidate and len(candidate.split())<=4:
+                subject=candidate.upper()
     if subject:
         banner=str(out.get("top_banner") or "").strip()
         # Reject obviously fragmentary banners such as "OVER 60? WHY YOUR MAGNESIUM".
@@ -173,7 +191,7 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     # generated them after earlier slot logic. Use safe title-grounded fallbacks so
     # winner-required text roles remain populated.
     safe_fallbacks={
-        "top_banner": ("OVER 60? MAGNESIUM AT NIGHT" if subject=="MAGNESIUM" and "over" in title_tokens and "60" in title_tokens else ("MAGNESIUM AT NIGHT" if subject=="MAGNESIUM" else None)),
+        "top_banner": ("OVER 60? MAGNESIUM AT NIGHT" if bool(subject) and "over" in title_tokens and "60" in title_tokens else ("MAGNESIUM AT NIGHT" if bool(subject) else None)),
         "boxed_keyword": subject,
         "bottom_callout": "WHAT TO WATCH FOR",
     }
