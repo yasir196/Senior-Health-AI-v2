@@ -129,7 +129,7 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
             subject=candidate.upper()
             break
     if subject is None:
-        m=re.search(r"\\b(?:why\\s+your|your)\\s+([a-z0-9][a-z0-9+&' -]{1,40}?)(?=\\s+(?:isn['’]?t|is|aren['’]?t|are|doesn['’]?t|does|won['’]?t|will|at|after|before|for|\\(|:|\\?|$))",title_l,re.I)
+        m=re.search(r"\b(?:why\s+your|your)\s+([a-z0-9][a-z0-9+&' -]{1,40}?)(?=\s+(?:isn['’]?t|is|aren['’]?t|are|doesn['’]?t|does|won['’]?t|will|at|after|before|for|\(|:|\?|$))",title_l,re.I)
         if m:
             candidate=re.sub(r"\\s+"," ",m.group(1)).strip(" -")
             if candidate and len(candidate.split())<=4:
