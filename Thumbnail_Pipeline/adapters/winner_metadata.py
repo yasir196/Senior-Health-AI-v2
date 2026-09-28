@@ -91,6 +91,61 @@ def openai_winner_metadata_analyzer(api_key: str, *, model: str = "gpt-5-mini", 
     return analyze
 
 
+
+def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
+    """Adapt winner composition slots to the current immutable title without mixing references."""
+    key=str(api_key or "").strip()
+    if not key:
+        raise ValueError("OpenAI API key is required for current-topic adaptation.")
+
+    def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None) -> dict[str, Any]:
+        instruction="""You are adapting a proven YouTube thumbnail composition to ONE current video topic.
+Use the supplied winner metadata ONLY for reusable visual structure, geometry, hierarchy, palette, typography roles, and attention-device roles.
+Use ONLY CURRENT_TITLE and SELECTED_THUMBNAIL_TEXT for current-topic semantics. Never carry historical winner topic words or objects into the adapted content.
+Do not use or combine subjects from other thumbnails.
+Return one coherent generation-ready slot contract. Do not hardcode a generic supplement visual unless it is actually justified by the current title. Keep copy short and mobile-readable. The selected thumbnail text is exact and immutable: preserve it verbatim as the primary headline rather than rewriting it. Other text slots may be concise current-topic context, but must not make stronger health claims than the title.
+If a winner slot has no useful current-topic equivalent, use null instead of inventing an unrelated element.
+For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The secondary detail must relate directly to the primary visual. Attention devices must target that secondary detail."""
+        schema={
+            "type":"object",
+            "properties":{
+                "top_banner":{"type":["string","null"]},
+                "primary_headline":{"type":"string"},
+                "boxed_keyword":{"type":["string","null"]},
+                "bottom_callout":{"type":["string","null"]},
+                "primary_visual":{"type":["string","null"]},
+                "secondary_detail":{"type":["string","null"]},
+                "attention_target":{"type":["string","null"]},
+                "adaptation_rationale":{"type":["string","null"]}
+            },
+            "required":["top_banner","primary_headline","boxed_keyword","bottom_callout","primary_visual","secondary_detail","attention_target","adaptation_rationale"],
+            "additionalProperties":False
+        }
+        prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)
+        payload={
+            "model":model,
+            "input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
+            "text":{"format":{"type":"json_schema","name":"current_topic_thumbnail_slots","strict":False,"schema":schema}}
+        }
+        req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
+        with urllib.request.urlopen(req,timeout=timeout) as response:
+            body=json.loads(response.read().decode("utf-8"))
+        output_text=str(body.get("output_text") or "").strip()
+        if not output_text:
+            for item in body.get("output") or []:
+                for part in item.get("content") or []:
+                    if part.get("type")=="output_text":
+                        output_text=str(part.get("text") or "").strip()
+                        if output_text: break
+                if output_text: break
+        adapted=json.loads(output_text)
+        if not isinstance(adapted,dict):
+            raise ValueError("Current-topic adapter must return a JSON object.")
+        if selected_text and str(adapted.get("primary_headline") or "").strip()!=str(selected_text).strip():
+            adapted["primary_headline"]=str(selected_text).strip()
+        return adapted
+    return adapt
+
 def build_fresh_winner_metadata(*, project: str, selected_layout: dict[str, Any], youtube_rows: list[dict[str, Any]], metadata_analyzer=None) -> dict[str, Any]:
     """Fresh-download exactly the selected winner thumbnail and save its fresh metadata JSON."""
     selected=selected_layout or {}
