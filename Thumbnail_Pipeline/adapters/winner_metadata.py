@@ -57,7 +57,7 @@ def openai_winner_metadata_analyzer(api_key: str, *, model: str = "gpt-5-mini", 
         payload={
             "model":model,
             "input":[{"role":"user","content":[{"type":"input_text","text":instruction},{"type":"input_image","image_url":data_url}]}],
-            "text":{"format":{"type":"json_schema","name":"winner_thumbnail_metadata","strict":True,"schema":metadata_schema}}
+            "text":{"format":{"type":"json_schema","name":"winner_thumbnail_metadata","strict":False,"schema":metadata_schema}}
         }
         req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
         with urllib.request.urlopen(req,timeout=timeout) as response:
