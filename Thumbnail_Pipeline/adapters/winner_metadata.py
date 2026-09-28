@@ -92,13 +92,21 @@ def build_fresh_winner_metadata(*, project: str, selected_layout: dict[str, Any]
     winner_dir=safe_output(Path(project)/"winner_thumbnail")
     json_dir=safe_output(Path(project)/"json")
     winner_dir.mkdir(parents=True,exist_ok=True); json_dir.mkdir(parents=True,exist_ok=True)
-    downloaded=analyze_youtube_reference_thumbnail(source,project=f"{project}/winner_thumbnail",text_analyzer=None)
+    # The shared downloader intentionally accepts only a direct project folder name.
+    # Download there first, then move the selected winner into its dedicated subfolder.
+    downloaded=analyze_youtube_reference_thumbnail(source,project=project,text_analyzer=None)
     local=downloaded.get("local_thumbnail_path")
     if not local:
         return {"status":"failed","reason":downloaded.get("thumbnail_analysis_reason") or "winner_thumbnail_download_failed","source":source}
+    downloaded_path=Path(local)
+    winner_path=winner_dir/f"{video_id}{downloaded_path.suffix or '.jpg'}"
+    if downloaded_path.resolve()!=winner_path.resolve():
+        winner_path.write_bytes(downloaded_path.read_bytes())
+        downloaded_path.unlink()
+    local=str(winner_path)
     if metadata_analyzer is None:
         return {"status":"downloaded_metadata_unavailable","source":source,"thumbnail_path":local}
-    metadata=metadata_analyzer(Path(local),source)
+    metadata=metadata_analyzer(winner_path,source)
     metadata_path=json_dir/"winner_metadata.json"
     metadata_path.write_text(json.dumps(metadata,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     return {"status":"ready","source":source,"thumbnail_path":local,"metadata_path":str(metadata_path),"metadata":metadata}
