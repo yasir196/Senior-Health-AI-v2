@@ -2,6 +2,33 @@ from __future__ import annotations
 from typing import Any
 from Thumbnail_Pipeline.generation import build_generation_handoff
 
+def _derived_reusable_roles(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Derive stable composition slots when vision omits nested reusable roles."""
+    text=metadata.get("text") or {}
+    zones=text.get("text_zones") or []
+    zone_ids={str(z.get("id") or "").strip():z for z in zones if isinstance(z,dict)}
+    primary=metadata.get("primary_visual") or {}
+    secondary=metadata.get("secondary_visual") or {}
+    attention=metadata.get("attention_devices") or {}
+    roles: dict[str, Any]={}
+    def add_text(role: str, zone_id: str, purpose: str) -> None:
+        z=zone_ids.get(zone_id)
+        if z:
+            roles[role]={"role":purpose,"geometry":z.get("bounds_normalized"),"formatting":z.get("font_style"),"color":z.get("color"),"background_color":z.get("background_color")}
+    add_text("top_banner_text","top_banner","Audience/context banner; substitute current-topic copy while preserving banner geometry/style")
+    headline=[z for z in zones if isinstance(z,dict) and str(z.get("id") or "").startswith("headline_line")]
+    if headline:
+        roles["headline_lines"]={"role":"Primary current-topic hook","line_count":len(headline),"geometry":[z.get("bounds_normalized") for z in headline],"formatting":[z.get("font_style") for z in headline],"colors":[z.get("color") for z in headline]}
+    add_text("boxed_keyword","boxed_keyword","Current-topic keyword/subject emphasis box")
+    add_text("bottom_line","bottom_line","Short current-topic context/callout")
+    if primary:
+        roles["primary_subject_image"]={"role":"Current-topic primary photographic/object subject","geometry":primary.get("bounds_normalized"),"treatment":primary.get("visual_treatment"),"human_present":primary.get("human_present")}
+    if secondary:
+        roles["secondary_detail"]={"role":"Current-topic secondary detail related to the primary subject","geometry":secondary.get("spoon_bounds_normalized") or secondary.get("bounds_normalized"),"highlight":secondary.get("highlight")}
+    if attention:
+        roles["attention_devices"]={"role":"Preserve winner attention-device types and relative placement; retarget them to the substituted current-topic detail","winner_devices":attention.get("present") or attention.get("devices_present")}
+    return roles
+
 def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[str, Any], *, selected_text: str | None = None, winner_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """Export the reviewed thumbnail prompt contract only; never render or publish."""
     handoff = build_generation_handoff(composition_spec, gate, selected_text=selected_text)
@@ -36,9 +63,16 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
         colors=metadata.get("color_system") or {}
         attention=metadata.get("attention_devices") or {}
         reusable=metadata.get("reusable_composition_contract") or {}
-        roles=reusable.get("roles_and_placeholders") or {}
-        swap_rules=reusable.get("swap_rules") or {}
-        topic_split=reusable.get("topic_specific_vs_reusable") or {}
+        roles=reusable.get("roles_and_placeholders") or _derived_reusable_roles(metadata)
+        swap_rules=reusable.get("swap_rules") or {
+            "text_substitution":"Replace historical winner words with current-video wording while preserving each slot's geometry, hierarchy, casing role, and styling.",
+            "image_substitution":"Replace historical winner objects with one coherent current-topic primary subject plus one related secondary detail; preserve winner placement and crop.",
+            "attention_substitution":"Preserve winner arrow/circle/highlight devices and point them only at the substituted current-topic secondary detail."
+        }
+        topic_split=reusable.get("topic_specific_vs_reusable") or {
+            "topic_specific":["all historical visible words","historical primary object/content","historical secondary detail/content"],
+            "reusable_structure":["banner/headline/keyword/callout roles","positions and approximate sizes","color-role system","typography hierarchy","primary/secondary visual relationship","arrow/circle/highlight pattern"]
+        }
         lines.append("WINNER METADATA CONTRACT: Use the fresh selected-winner pixel analysis below as the single source of truth for composition. Preserve reusable structure/style; replace topic-specific words and imagery for the current video.")
         if geometry:
             lines.append("WINNER LAYOUT GEOMETRY: "+str(geometry))
