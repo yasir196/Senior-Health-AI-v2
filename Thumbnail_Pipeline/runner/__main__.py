@@ -17,7 +17,7 @@ from Thumbnail_Pipeline.intelligence.text_mechanisms import discover_text_mechan
 from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
 from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer, clear_youtube_reference_thumbnails
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only, discover_v2_youtube_oauth_files_read_only
-from Thumbnail_Pipeline.adapters.winner_metadata import build_fresh_winner_metadata, openai_winner_metadata_analyzer
+from Thumbnail_Pipeline.adapters.winner_metadata import build_fresh_winner_metadata, openai_winner_metadata_analyzer, openai_current_topic_adapter
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -534,7 +534,11 @@ def main() -> int:
     winner_metadata_analyzer=openai_winner_metadata_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
     winner_metadata=build_fresh_winner_metadata(project=state["project"],selected_layout=state.get("selected_layout") or {},youtube_rows=((state["concept"].get("evidence") or {}).get("youtube_reference_rows") or []),metadata_analyzer=winner_metadata_analyzer)
     fresh_metadata=winner_metadata.get("metadata") if winner_metadata.get("status")=="ready" else None
-    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata)
+    topic_adaptation=None
+    if fresh_metadata and args.vision_api_key:
+        topic_adapter=openai_current_topic_adapter(args.vision_api_key,model=args.vision_model)
+        topic_adaptation=topic_adapter(metadata=fresh_metadata,immutable_title=state["immutable_title"],selected_text=selected_text)
+    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
     prompt_path=prompt_output_dir/"final_thumbnail_prompt.txt"
