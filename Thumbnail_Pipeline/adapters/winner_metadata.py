@@ -99,6 +99,7 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     out=dict(adapted or {})
     title=str(immutable_title or "")
     title_l=title.casefold()
+    title_tokens=set(re.findall(r"[a-z0-9]+",title_l))
     blocked_claims=("fix","cure","reverse","secret","eliminate","guaranteed","all you need")
     for key in ("top_banner","boxed_keyword","bottom_callout"):
         value=out.get(key)
@@ -107,28 +108,55 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     if selected_text:
         out["primary_headline"]=str(selected_text).strip()
 
-    # These concrete product attributes are unsafe to infer from a generic nutrient/supplement title.
-    unsupported_patterns={
-        "dosage_form":r"\\b(capsules?|tablets?|pills?|softgels?|gummies?|powders?)\\b",
-        "product_color":r"\\b(amber|pale[- ]?blue|blue|white|red|green|yellow|orange|purple|pink)\\b(?=.{0,35}\\b(?:bottle|capsule|tablet|pill|softgel|gummy|powder|container)\\b)|\\b(?:bottle|capsule|tablet|pill|softgel|gummy|powder|container)\\b.{0,35}\\b(amber|pale[- ]?blue|blue|white|red|green|yellow|orange|purple|pink)\\b",
-        "imprint":r"\\b(?:imprint|imprinted|engraved|marking)\\b",
-        "dosage":r"\\b\\d+(?:\\.\\d+)?\\s*(?:mg|mcg|g|ml|iu)\\b",
-        "brand":r"\\b(?:brand(?:ed)?|logo)\\b",
-    }
-    def supported(term_pattern: str) -> bool:
-        return re.search(term_pattern,title_l,flags=re.I) is not None
-
     visual_text=" ".join(str(out.get(k) or "") for k in ("primary_visual","secondary_detail","attention_target"))
+    visual_l=visual_text.casefold()
+
+    # Concrete dosage forms and packaging are allowed only when the immutable title
+    # explicitly names that form. A generic nutrient/supplement title is not enough.
+    gated_groups={
+        "dosage_form":{
+            "capsule":{"capsule","capsules"},
+            "tablet":{"tablet","tablets"},
+            "pill":{"pill","pills"},
+            "softgel":{"softgel","softgels"},
+            "gummy":{"gummy","gummies"},
+            "powder":{"powder","powders"},
+        },
+        "packaging":{
+            "bottle":{"bottle","bottles"},
+            "container":{"container","containers"},
+            "jar":{"jar","jars"},
+            "packet":{"packet","packets"},
+            "sachet":{"sachet","sachets"},
+        },
+    }
     violates=False
-    for name,pattern in unsupported_patterns.items():
-        if re.search(pattern,visual_text,flags=re.I) and not supported(pattern):
-            violates=True
+    for group in gated_groups.values():
+        for forms in group.values():
+            if any(re.search(r"\\b"+re.escape(form)+r"\\b",visual_l) for form in forms) and not (forms & title_tokens):
+                violates=True
+                break
+        if violates:
             break
+
+    # Never infer these product-specific attributes unless literally supported by title text.
+    if not violates:
+        always_gated={
+            "imprint":r"\\b(?:imprint|imprinted|engraved|marking)\\b",
+            "dosage":r"\\b\\d+(?:\\.\\d+)?\\s*(?:mg|mcg|g|ml|iu)\\b",
+            "brand":r"\\b(?:brand(?:ed)?|logo)\\b",
+        }
+        for pattern in always_gated.values():
+            if re.search(pattern,visual_l,flags=re.I) and not re.search(pattern,title_l,flags=re.I):
+                violates=True
+                break
+
     if violates:
-        # Keep semantics grounded in the title while leaving physical form unspecified.
-        subject="magnesium" if re.search(r"\\bmagnesium\\b",title_l) else "the current-topic product or subject"
-        out["primary_visual"]=f"Close-up photographic representation of {subject} on the right, with its physical form, color, brand, dosage, label details, and packaging specifics left unspecified unless explicitly stated in the video title."
-        out["secondary_detail"]=f"One clearly visible close-up detail directly related to {subject}, without inventing dosage form, color, imprint, brand, dosage, or packaging specifics."
+        # Keep semantics grounded in the title while deliberately leaving physical form unspecified.
+        topic_tokens=[t for t in title_tokens if len(t)>3 and t not in {"over","your","isn","working","nighttime","mistakes"}]
+        subject="magnesium" if "magnesium" in title_tokens else (" ".join(topic_tokens[:2]) if topic_tokens else "the current-topic subject")
+        out["primary_visual"]=f"Close-up photographic representation of {subject} on the right. Keep physical form, packaging, color, brand, dosage, imprint, and label details unspecified unless explicitly stated in the immutable video title."
+        out["secondary_detail"]=f"One clearly visible close-up detail directly related to {subject}, without inventing a dosage form or packaging."
         out["attention_target"]="Preserve the winner's circle/arrow attention pattern and point it to that current-topic secondary detail."
     return out
 
