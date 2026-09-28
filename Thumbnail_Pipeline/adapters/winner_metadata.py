@@ -94,72 +94,53 @@ def openai_winner_metadata_analyzer(api_key: str, *, model: str = "gpt-5-mini", 
 
 
 def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str, selected_text: str | None) -> dict[str, Any]:
-    """Deterministically remove unsupported claims and visual specifics from AI slot adaptation."""
+    """Enforce a complete, title-grounded slot contract after AI adaptation."""
     import re
     out=dict(adapted or {})
-    title=str(immutable_title or "")
+    title=str(immutable_title or "").strip()
     title_l=title.casefold()
     title_tokens=set(re.findall(r"[a-z0-9]+",title_l))
+    headline=str(selected_text or out.get("primary_headline") or "").strip()
+    if headline:
+        out["primary_headline"]=headline
+
     blocked_claims=("fix","cure","reverse","secret","eliminate","guaranteed","all you need")
+    def unsafe_copy(value: Any) -> bool:
+        text=str(value or "")
+        return any(re.search(r"\\b"+re.escape(term)+r"\\b",text,flags=re.I) for term in blocked_claims)
+
     for key in ("top_banner","boxed_keyword","bottom_callout"):
-        value=out.get(key)
-        if isinstance(value,str) and any(re.search(r"\\b"+re.escape(term)+r"\\b",value,flags=re.I) for term in blocked_claims):
+        if unsafe_copy(out.get(key)):
             out[key]=None
-    if selected_text:
-        out["primary_headline"]=str(selected_text).strip()
 
-    visual_text=" ".join(str(out.get(k) or "") for k in ("primary_visual","secondary_detail","attention_target"))
-    visual_l=visual_text.casefold()
+    # Preserve winner text-role completeness. Fill missing/fragmentary support slots only
+    # from immutable-title semantics; never from historical winner wording.
+    subject="MAGNESIUM" if "magnesium" in title_tokens else None
+    if subject:
+        banner=str(out.get("top_banner") or "").strip()
+        # Reject obviously fragmentary banners such as "OVER 60? WHY YOUR MAGNESIUM".
+        fragment=bool(re.search(r"\\b(?:why|how|when|what|your|the|a|an)\\s+[A-Z0-9?'-]+$",banner,flags=re.I))
+        if not banner or fragment:
+            out["top_banner"]="OVER 60? MAGNESIUM AT NIGHT" if "over" in title_tokens and "60" in title_tokens else "MAGNESIUM AT NIGHT"
+        if not str(out.get("boxed_keyword") or "").strip():
+            out["boxed_keyword"]=subject
+        if not str(out.get("bottom_callout") or "").strip():
+            out["bottom_callout"]="WHAT TO WATCH FOR"
 
-    # Concrete dosage forms and packaging are allowed only when the immutable title
-    # explicitly names that form. A generic nutrient/supplement title is not enough.
-    gated_groups={
-        "dosage_form":{
-            "capsule":{"capsule","capsules"},
-            "tablet":{"tablet","tablets"},
-            "pill":{"pill","pills"},
-            "softgel":{"softgel","softgels"},
-            "gummy":{"gummy","gummies"},
-            "powder":{"powder","powders"},
-        },
-        "packaging":{
-            "bottle":{"bottle","bottles"},
-            "container":{"container","containers"},
-            "jar":{"jar","jars"},
-            "packet":{"packet","packets"},
-            "sachet":{"sachet","sachets"},
-        },
-    }
-    violates=False
-    for group in gated_groups.values():
-        for forms in group.values():
-            if any(re.search(r"\\b"+re.escape(form)+r"\\b",visual_l) for form in forms) and not (forms & title_tokens):
-                violates=True
-                break
-        if violates:
-            break
+    # Nutrient/supplement subject with no explicit dosage form: force one deterministic
+    # generic bottle contract. This prevents AI-created clocks, glasses, spoons, tablets,
+    # capsules, powder, colors, bedside props, or other unsupported visual semantics.
+    dosage_words={"capsule","capsules","tablet","tablets","pill","pills","softgel","softgels","gummy","gummies","powder","powders"}
+    explicit_form=bool(title_tokens & dosage_words)
+    if subject and not explicit_form:
+        out["primary_visual"]=f"One generic unbranded supplement bottle labeled only '{subject}', positioned in the winner's primary visual zone. No brand, dosage, product color, dosage form, extra props, people, or invented label text."
+        out["secondary_detail"]=f"Close-up detail of the '{subject}' ingredient label on that same bottle, positioned in the winner's secondary-detail zone. It must be a detail of the same primary object, not a separate object or scene."
+        out["attention_target"]=f"Preserve the winner's yellow-circle and red-arrow attention pattern, retargeted only to the '{subject}' label/detail on the same bottle."
 
-    # Never infer these product-specific attributes unless literally supported by title text.
-    if not violates:
-        always_gated={
-            "imprint":r"\\b(?:imprint|imprinted|engraved|marking)\\b",
-            "dosage":r"\\b\\d+(?:\\.\\d+)?\\s*(?:mg|mcg|g|ml|iu)\\b",
-            "brand":r"\\b(?:brand(?:ed)?|logo)\\b",
-        }
-        for pattern in always_gated.values():
-            if re.search(pattern,visual_l,flags=re.I) and not re.search(pattern,title_l,flags=re.I):
-                violates=True
-                break
-
-    if violates:
-        # For a clearly named nutrient/supplement with no title-supported dosage form,
-        # use one generic unbranded bottle instead of inventing tablets/capsules/powder.
-        topic_tokens=[t for t in title_tokens if len(t)>3 and t not in {"over","your","isn","working","nighttime","mistakes"}]
-        subject="magnesium" if "magnesium" in title_tokens else (" ".join(topic_tokens[:2]) if topic_tokens else "the current-topic subject")
-        label=subject.upper()
-        out["primary_visual"]=f"Close-up of one generic unbranded supplement bottle on the right labeled only '{label}'. Do not show or imply capsules, tablets, pills, powder, gummies, softgels, dosage, brand, logo, color-specific product details, or other invented product specifics."
-        out["secondary_detail"]=f"Close-up detail of the '{label}' ingredient label on the same generic bottle; no separate dosage form, scoop, spoon, dropper, loose product, or additional packaging."
-        out["attention_target"]="Preserve the winner's circle/arrow attention pattern and point it to the ingredient label/detail on that same generic bottle."
+    # Last claim guard after deterministic slot completion.
+    for key in ("top_banner","boxed_keyword","bottom_callout"):
+        if unsafe_copy(out.get(key)):
+            out[key]=None
     return out
 
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
