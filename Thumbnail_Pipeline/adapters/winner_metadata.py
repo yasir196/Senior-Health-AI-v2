@@ -27,7 +27,38 @@ def openai_winner_metadata_analyzer(api_key: str, *, model: str = "gpt-5-mini", 
         raw=Path(path).read_bytes()
         data_url="data:image/jpeg;base64,"+base64.b64encode(raw).decode("ascii")
         instruction="""Inspect ONLY the supplied winning YouTube thumbnail pixels. Produce detailed reusable thumbnail metadata as JSON. Do not infer visual facts from the video title, CTR, topic, or other thumbnails. Describe what is visibly present, including exact visible text when readable, canvas/background, full composition, text/visual split, banners, text zones, primary/secondary visuals, presenter/human presence, arrows/circles/boxes/highlights, typography, colors, visual hierarchy, semantic hook structure supported by visible copy, approximate percentage geometry, density, thumbnail patterns, and a reusable_composition_contract. The reusable contract must preserve composition/style roles while clearly separating topic-specific objects/words from reusable structure. Never invent an element that is not visible. Use null/unknown when uncertain. Font slant must be based on pixels only. Return one JSON object only."""
-        payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":instruction},{"type":"input_image","image_url":data_url}]}]}
+        # Structured Outputs prevents long vision responses from producing malformed JSON.
+        # Keep the schema intentionally flexible inside each major section so fresh visual
+        # details are preserved rather than forcing a brittle fixed thumbnail template.
+        metadata_schema={
+            "type":"object",
+            "properties":{
+                "asset_type":{"type":["string","null"]},
+                "content_category":{"type":["string","null"]},
+                "topic":{"type":["string","null"]},
+                "visual_style":{"type":["string","null"]},
+                "canvas":{"type":"object","additionalProperties":True},
+                "composition":{"type":"object","additionalProperties":True},
+                "text":{"type":"object","additionalProperties":True},
+                "color_system":{"type":"object","additionalProperties":True},
+                "primary_visual":{"type":"object","additionalProperties":True},
+                "secondary_visual":{"type":"object","additionalProperties":True},
+                "attention_devices":{"type":"object","additionalProperties":True},
+                "visual_hierarchy":{"type":"object","additionalProperties":True},
+                "semantic_structure":{"type":"object","additionalProperties":True},
+                "layout_geometry":{"type":"object","additionalProperties":True},
+                "design_density":{"type":"object","additionalProperties":True},
+                "thumbnail_pattern":{"type":"object","additionalProperties":True},
+                "reusable_composition_contract":{"type":"object","additionalProperties":True}
+            },
+            "required":["asset_type","content_category","topic","visual_style","canvas","composition","text","color_system","primary_visual","secondary_visual","attention_devices","visual_hierarchy","semantic_structure","layout_geometry","design_density","thumbnail_pattern","reusable_composition_contract"],
+            "additionalProperties":False
+        }
+        payload={
+            "model":model,
+            "input":[{"role":"user","content":[{"type":"input_text","text":instruction},{"type":"input_image","image_url":data_url}]}],
+            "text":{"format":{"type":"json_schema","name":"winner_thumbnail_metadata","strict":True,"schema":metadata_schema}}
+        }
         req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
         with urllib.request.urlopen(req,timeout=timeout) as response:
             body=json.loads(response.read().decode("utf-8"))
