@@ -29,7 +29,7 @@ def _derived_reusable_roles(metadata: dict[str, Any]) -> dict[str, Any]:
         roles["attention_devices"]={"role":"Preserve winner attention-device types and relative placement; retarget them to the substituted current-topic detail","winner_devices":attention.get("present") or attention.get("devices_present")}
     return roles
 
-def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[str, Any], *, selected_text: str | None = None, winner_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[str, Any], *, selected_text: str | None = None, winner_metadata: dict[str, Any] | None = None, topic_adaptation: dict[str, Any] | None = None) -> dict[str, Any]:
     """Export the reviewed thumbnail prompt contract only; never render or publish."""
     handoff = build_generation_handoff(composition_spec, gate, selected_text=selected_text)
     contract = handoff["render_contract"]
@@ -86,7 +86,16 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
             lines.append("TOPIC SUBSTITUTION RULES: "+str(swap_rules))
         if topic_split:
             lines.append("TOPIC-SPECIFIC VS REUSABLE: "+str(topic_split))
-        lines.append("CURRENT-TOPIC ADAPTATION: Derive topic-specific subject/object wording only from the immutable current video title and selected thumbnail text. Do not import peanut butter or any other historical winner topic content. Do not combine people/objects from multiple YouTube reference thumbnails.")
+        adaptation=topic_adaptation if isinstance(topic_adaptation,dict) else {}
+        if adaptation:
+            lines.append("CURRENT-TOPIC SLOT CONTRACT (use these exact semantic assignments):")
+            for key,label in (("top_banner","TOP BANNER"),("primary_headline","PRIMARY HEADLINE"),("boxed_keyword","BOXED KEYWORD"),("bottom_callout","BOTTOM CALLOUT"),("primary_visual","PRIMARY VISUAL"),("secondary_detail","SECONDARY DETAIL"),("attention_target","ATTENTION TARGET")):
+                value=adaptation.get(key)
+                if value not in (None,""):
+                    lines.append(f"{label}: {value}")
+            lines.append("SLOT RULE: Preserve the winner metadata geometry/style for each corresponding slot. Historical winner words/objects are reference semantics only and must not appear unless independently required by the current title.")
+        else:
+            lines.append("CURRENT-TOPIC ADAPTATION: Derive topic-specific subject/object wording only from the immutable current video title and selected thumbnail text. Do not import historical winner topic content. Do not combine people/objects from multiple YouTube reference thumbnails.")
     else:
         subjects=[str(x).strip() for x in (contract.get("visual_subject_examples") or []) if str(x).strip()]
         if subjects:
