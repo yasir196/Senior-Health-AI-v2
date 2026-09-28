@@ -105,7 +105,8 @@ Use ONLY CURRENT_TITLE and SELECTED_THUMBNAIL_TEXT for current-topic semantics. 
 Do not use or combine subjects from other thumbnails.
 Return one coherent generation-ready slot contract. Do not hardcode a generic supplement visual unless it is actually justified by the current title. Keep copy short and mobile-readable. The selected thumbnail text is exact and immutable: preserve it verbatim as the primary headline rather than rewriting it. Other text slots may be concise current-topic context, but must not make stronger health claims than the title.
 If a winner slot has no useful current-topic equivalent, use null instead of inventing an unrelated element.
-For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The secondary detail must relate directly to the primary visual. Attention devices must target that secondary detail."""
+For a full-width top banner, preserve the winner's approximate text density and visual occupancy, not its historical wording. Avoid a sparse 1-2 word banner when the winner banner visibly carries a longer phrase; prefer a concise 4-6 word current-topic/audience phrase when supported by the current title. Do not duplicate the primary headline verbatim in the banner.
+For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The secondary detail must relate directly to the primary visual. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, or other specifics unless CURRENT_TITLE explicitly supports them. Attention devices must target that secondary detail."""
         schema={
             "type":"object",
             "properties":{
