@@ -547,6 +547,47 @@ Return slot-specific findings. Do not repair or rewrite the contract."""
         raise ValueError("Final thumbnail semantic gate must return a JSON object.")
     return result
 
+def _validate_thumbnail_utility(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_support: dict[str, Any], winner_metadata: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
+    """Coverage/utility gate: require useful script-supported use of high-value winner roles."""
+    import urllib.request
+    instruction="""Evaluate a script-grounded GENERATED THUMBNAIL CONTRACT for information coverage and use of the proven WINNER_METADATA architecture.
+This is NOT a safety gate. SCRIPT_SUPPORT_JSON already defines what is allowed. Judge whether the contract uses distinct, high-value supported concepts efficiently while preserving the winner's useful composition roles.
+Rules:
+- Winner slots are capacity, not a quota. Never demand filler, duplicate copy, or invented imagery.
+- However, when WINNER_METADATA contains a meaningful secondary-detail/attention role AND SCRIPT_SUPPORT_JSON contains a distinct, concrete, honest visual concept that can occupy that role, do not allow secondary_detail/attention_target to be null without a specific reason.
+- Banner, headline, boxed keyword, and callout should carry different marginal information. Penalize repetition and weak generic copy.
+- Prefer the strongest intersection of immutable-title tension and script support; do not drift to a secondary angle merely because it is technically supported.
+- Primary and secondary visuals should communicate different supported tokens. Attention devices must point to a unique informative referent.
+- Do not invent or strengthen claims in order to improve utility.
+PASS only when the contract is both economical and makes good use of available script-supported information and the reusable winner architecture.
+Return actionable findings only; do not rewrite the contract."""
+    schema={"type":"object","properties":{
+        "verdict":{"type":"string","enum":["PASS","FAIL"]},
+        "findings":{"type":"array","items":{"type":"object","properties":{
+            "area":{"type":"string"},"reason":{"type":"string"}
+        },"required":["area","reason"],"additionalProperties":False}},
+        "reason":{"type":"string"}},
+        "required":["verdict","findings","reason"],"additionalProperties":False}
+    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support,ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(winner_metadata,ensure_ascii=False)+"\nGENERATED_THUMBNAIL_CONTRACT:\n"+json.dumps(adaptation,ensure_ascii=False)
+    payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
+             "text":{"format":{"type":"json_schema","name":"thumbnail_coverage_utility_gate","strict":False,"schema":schema}}}
+    req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
+    with urllib.request.urlopen(req,timeout=120) as response:
+        body=json.loads(response.read().decode("utf-8"))
+    output_text=str(body.get("output_text") or "").strip()
+    if not output_text:
+        for item in body.get("output") or []:
+            for part in item.get("content") or []:
+                if part.get("type")=="output_text":
+                    output_text=str(part.get("text") or "").strip()
+                    if output_text: break
+            if output_text: break
+    result=json.loads(output_text)
+    if not isinstance(result,dict):
+        raise ValueError("Thumbnail coverage/utility gate must return a JSON object.")
+    return result
+
 def main() -> int:
     parser=argparse.ArgumentParser(description="Thumbnail Pipeline prompt-only project CLI")
     parser.add_argument("--project",required=True,help="Exact folder name under Projects/")
@@ -675,6 +716,16 @@ def main() -> int:
             print("\nFINAL THUMBNAIL SEMANTIC GATE: FAIL")
             print("The generated slot contract was not exported because it strengthens, reinterprets, or adds semantics beyond the script-support contract.")
             return 4
+
+        utility_gate=_validate_thumbnail_utility(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],selected_text=selected_text,script_support=script_support,winner_metadata=fresh_metadata,adaptation=topic_adaptation)
+        (support_dir/"coverage_utility_gate.json").write_text(json.dumps(utility_gate,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+        print("\nTHUMBNAIL COVERAGE / UTILITY GATE")
+        print("=================================")
+        print(json.dumps(utility_gate,indent=2,ensure_ascii=False))
+        if utility_gate.get("verdict")!="PASS":
+            print("\nTHUMBNAIL COVERAGE / UTILITY GATE: FAIL")
+            print("The generated slot contract was not exported because it underuses available script-supported information, duplicates semantic jobs, or drops a useful winner role without justification.")
+            return 5
     result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
