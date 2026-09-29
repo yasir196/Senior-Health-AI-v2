@@ -105,7 +105,7 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         out["primary_headline"]=headline
 
     blocked_claims=("fix","cure","reverse","secret","eliminate","guaranteed","all you need")
-    generic_cta_phrases=("read this","watch this","see this","click here","learn more")
+    generic_cta_phrases=("read this","watch this","see this","click here","learn more","what to watch for")
     def unsafe_copy(value: Any) -> bool:
         text=str(value or "")
         return any(re.search(r"\\b"+re.escape(term)+r"\\b",text,flags=re.I) for term in blocked_claims)
@@ -114,9 +114,13 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         if unsafe_copy(out.get(key)):
             out[key]=None
 
-    banner_text=str(out.get("top_banner") or "")
-    if any(phrase in banner_text.casefold() for phrase in generic_cta_phrases):
-        out["top_banner"]=None
+    def generic_filler(value: Any) -> bool:
+        text=str(value or "").casefold().strip()
+        return any(phrase in text for phrase in generic_cta_phrases)
+
+    for key in ("top_banner","bottom_callout"):
+        if generic_filler(out.get(key)):
+            out[key]=None
 
     # Preserve winner text-role completeness. Fill missing/fragmentary support slots only
     # from immutable-title semantics; never from historical winner wording.
@@ -143,12 +147,11 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         banner=str(out.get("top_banner") or "").strip()
         # Reject obviously fragmentary banners such as "OVER 60? WHY YOUR MAGNESIUM".
         fragment=bool(re.search(r"\\b(?:why|how|when|what|your|the|a|an)\\s+[A-Z0-9?'-]+$",banner,flags=re.I))
-        if not banner or fragment:
-            out["top_banner"]="OVER 60?" if "over" in title_tokens and "60" in title_tokens else subject
+        if fragment:
+            out["top_banner"]=None
         if not str(out.get("boxed_keyword") or "").strip():
             out["boxed_keyword"]=subject
-        if not str(out.get("bottom_callout") or "").strip():
-            out["bottom_callout"]="WHAT TO WATCH FOR"
+        # Support slots are optional: never manufacture filler merely to occupy winner geometry.
 
         # Copy-slot QA: each support slot must add a distinct idea rather than
         # restating another slot (for example "AT NIGHT" + "AT BEDTIME").
@@ -164,7 +167,7 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
             # Treat common bedtime wording as the same semantic timing idea.
             # "before bed" tokenizes to "before"+"bed", so normalize both tokens
             # alongside night/nighttime/bedtime to prevent repetitive support copy.
-            nightish={"night","nighttime","bedtime","bed","before"}
+            nightish={"night","nighttime","bedtime","bed","before","sleep","sleeping","asleep","overnight"}
             if ta & nightish: ta=(ta-nightish)|{"night"}
             if tb & nightish: tb=(tb-nightish)|{"night"}
             overlap=len(ta & tb)/max(1,min(len(ta),len(tb)))
@@ -175,12 +178,22 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         bottom=out.get("bottom_callout")
         # The boxed keyword intentionally repeats the topic subject; the bottom
         # callout must not repeat banner/headline timing or merely echo the subject.
-        if (not str(bottom or "").strip()
-                or near_duplicate(bottom,banner)
-                or near_duplicate(bottom,headline)
-                or near_duplicate(bottom,boxed)
-                or len(copy_tokens(bottom))<2):
-            out["bottom_callout"]="WHAT TO WATCH FOR"
+        if (str(bottom or "").strip()
+                and (near_duplicate(bottom,banner)
+                     or near_duplicate(bottom,headline)
+                     or near_duplicate(bottom,boxed)
+                     or len(copy_tokens(bottom))<2)):
+            out["bottom_callout"]=None
+
+        # The banner must add a distinct title-grounded idea; audience-only restatements
+        # are not useful when the immutable title already supplies that audience.
+        banner=out.get("top_banner")
+        if str(banner or "").strip():
+            audience_only=bool(re.fullmatch(r"(?:for\s+(?:those\s+)?|if\s+you(?:'re|\s+are)\s+|after\s+)?(?:age\s+)?(?:over\s+)?60\+?\??",str(banner).strip(),re.I))
+            if audience_only and "60" in title_tokens:
+                out["top_banner"]=None
+            elif near_duplicate(banner,headline):
+                out["top_banner"]=None
 
     # Nutrient/supplement subject with no explicit dosage form: force one deterministic
     # generic bottle contract. This prevents AI-created clocks, glasses, spoons, tablets,
@@ -196,16 +209,16 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     # generated them after earlier slot logic. Use safe title-grounded fallbacks so
     # winner-required text roles remain populated.
     safe_fallbacks={
-        "top_banner": ("OVER 60?" if "over" in title_tokens and "60" in title_tokens else subject),
+        "top_banner": None,
         "boxed_keyword": subject,
-        "bottom_callout": "WHAT TO WATCH FOR",
+        "bottom_callout": None,
     }
     for key in ("top_banner","boxed_keyword","bottom_callout"):
         if unsafe_copy(out.get(key)):
             out[key]=safe_fallbacks.get(key)
-    final_banner=str(out.get("top_banner") or "")
-    if any(phrase in final_banner.casefold() for phrase in generic_cta_phrases):
-        out["top_banner"]=safe_fallbacks.get("top_banner")
+    for key in ("top_banner","bottom_callout"):
+        if generic_filler(out.get(key)):
+            out[key]=None
     return out
 
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
@@ -220,8 +233,12 @@ Use the supplied winner metadata ONLY for reusable visual structure, geometry, h
 Use ONLY CURRENT_TITLE and SELECTED_THUMBNAIL_TEXT for current-topic semantics. Never carry historical winner topic words or objects into the adapted content.
 Do not use or combine subjects from other thumbnails.
 Return one coherent generation-ready slot contract. Do not hardcode a generic supplement visual unless it is actually justified by the current title. Keep copy short and mobile-readable. The selected thumbnail text is exact and immutable: preserve it verbatim as the primary headline rather than rewriting it. Other text slots may be concise current-topic context, but must not make stronger health claims than the title.
-If a winner slot has no useful current-topic equivalent, use null instead of inventing an unrelated element.
-For a full-width top banner, preserve the winner's approximate text density and visual occupancy, not its historical wording. Avoid a sparse 1-2 word banner when the winner banner visibly carries a longer phrase; prefer a concise 4-6 word current-topic/audience phrase when supported by the current title. Do not duplicate the primary headline verbatim in the banner.
+Before filling text slots, extract CURRENT_TITLE semantics into distinct ideas such as audience, subject, tension/problem, timing/number hook, and any explicitly stated consequence. Assign each emitted slot a distinct communicative job. Do not fill a slot merely because the historical winner had text there.
+Treat winner metadata as geometry/style, not as a mandate to preserve the historical semantic purpose of a slot. The top banner and bottom callout are optional. Emit null when they would only repeat the title, repeat another thumbnail slot, use a generic CTA/filler phrase, or add an unsupported idea.
+Do not use generic filler such as READ THIS, WATCH THIS, SEE THIS, LEARN MORE, or WHAT TO WATCH FOR.
+Do not paraphrase an audience marker already explicit in CURRENT_TITLE merely to occupy the banner (for example FOR THOSE OVER 60 when the title already says Over 60).
+The banner, when used, should carry a distinct title-grounded tension/context idea. The bottom callout, when used, should add another distinct title-grounded dimension. Never invent numbered-item facts (for example #2 IS COMMON) or stronger outcomes not stated in CURRENT_TITLE.
+Preserve the winner's geometry, hierarchy, and styling for whichever slots are actually useful; optional null text slots may remain empty rather than being filled with weak copy.
 For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The secondary detail must relate directly to the primary visual. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, or other specifics unless CURRENT_TITLE explicitly supports them. Attention devices must target that secondary detail."""
         schema={
             "type":"object",
