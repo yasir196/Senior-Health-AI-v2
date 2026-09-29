@@ -237,7 +237,7 @@ def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", tim
     if not key:
         raise ValueError("OpenAI API key is required for current-topic adaptation.")
 
-    def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None, script_support: dict[str, Any] | None = None) -> dict[str, Any]:
+    def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None, script_support: dict[str, Any] | None = None, revision_feedback: dict[str, Any] | None = None, prior_contract: dict[str, Any] | None = None) -> dict[str, Any]:
         instruction="""You are adapting a proven YouTube thumbnail composition to ONE current video topic.
 FIRST build a joint semantic coverage plan before writing any slots. Extract atomic CURRENT_TITLE tokens: subject, audience, number/payload, tension/problem, timing/context, and differentiator when explicitly present. Treat the historical winner's text positions as a CAPACITY CEILING, never a quota.
 Evaluate the ENTIRE text+visual contract together, not each slot independently. Each semantic token should have one best carrier (headline, banner, box, callout, primary visual, secondary visual). Repeating a token is allowed only when it adds clear marginal information; otherwise use null. Account for the always-visible YouTube title and for information already obvious in the image.
@@ -252,7 +252,8 @@ Do not use generic filler such as READ THIS, WATCH THIS, SEE THIS, LEARN MORE, o
 Do not paraphrase an audience marker already explicit in CURRENT_TITLE merely to occupy the banner (for example FOR THOSE OVER 60 when the title already says Over 60).
 The banner, when used, should carry a distinct title-grounded tension/context idea. The bottom callout, when used, should add another distinct title-grounded dimension. Never invent numbered-item facts (for example #2 IS COMMON) or stronger outcomes not stated in CURRENT_TITLE.
 Preserve the winner's geometry, hierarchy, and styling for whichever slots are actually useful; optional null text slots may remain empty rather than being filled with weak copy.
-For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The primary visual should carry the strongest concrete title-grounded token. A secondary detail is OPTIONAL and must express a DIFFERENT title-grounded semantic token than the primary visual; a zoom or repeated label that merely restates the primary subject is not useful. If no distinct honest secondary visual exists without invention, return null for secondary_detail and attention_target. Attention devices are permitted only when they point to a unique informative secondary referent. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, medical effects, or unrelated props unless CURRENT_TITLE explicitly supports them."""
+For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The primary visual should carry the strongest concrete title-grounded token. A secondary detail is OPTIONAL and must express a DIFFERENT title-grounded semantic token than the primary visual; a zoom or repeated label that merely restates the primary subject is not useful. If no distinct honest secondary visual exists without invention, return null for secondary_detail and attention_target. Attention devices are permitted only when they point to a unique informative secondary referent. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, medical effects, or unrelated props unless CURRENT_TITLE explicitly supports them.
+When REVISION_FEEDBACK_JSON is non-empty, this is a repair pass. Fix every actionable finding while preserving already-valid slots where possible. Do not weaken script grounding, rewrite the immutable headline, or invent content merely to satisfy a finding. PRIOR_CONTRACT_JSON is the failed contract to repair, not a new reference source."""
         schema={
             "type":"object",
             "properties":{
@@ -268,7 +269,7 @@ For primary_visual and secondary_detail, describe concrete visible current-topic
             "required":["top_banner","primary_headline","boxed_keyword","bottom_callout","primary_visual","secondary_detail","attention_target","adaptation_rationale"],
             "additionalProperties":False
         }
-        prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support or {},ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)
+        prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support or {},ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)+"\nPRIOR_CONTRACT_JSON:\n"+json.dumps(prior_contract or {},ensure_ascii=False)+"\nREVISION_FEEDBACK_JSON:\n"+json.dumps(revision_feedback or {},ensure_ascii=False)
         payload={
             "model":model,
             "input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
