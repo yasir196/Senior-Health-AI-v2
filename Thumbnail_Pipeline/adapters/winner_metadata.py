@@ -288,7 +288,10 @@ For primary_visual and secondary_detail, describe concrete visible current-topic
         adapted=json.loads(output_text)
         if not isinstance(adapted,dict):
             raise ValueError("Current-topic adapter must return a JSON object.")
-        return _sanitize_topic_adaptation(adapted,immutable_title=immutable_title,selected_text=selected_text)
+        sanitized=_sanitize_topic_adaptation(adapted,immutable_title=immutable_title,selected_text=selected_text)
+        # adaptation_rationale is internal diagnostic output, never part of the generation contract.
+        sanitized.pop("adaptation_rationale",None)
+        return sanitized
     return adapt
 
 def build_fresh_winner_metadata(*, project: str, selected_layout: dict[str, Any], youtube_rows: list[dict[str, Any]], metadata_analyzer=None) -> dict[str, Any]:
