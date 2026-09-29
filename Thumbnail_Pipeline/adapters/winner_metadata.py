@@ -195,15 +195,25 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
             elif near_duplicate(banner,headline):
                 out["top_banner"]=None
 
-    # Nutrient/supplement subject with no explicit dosage form: force one deterministic
-    # generic bottle contract. This prevents AI-created clocks, glasses, spoons, tablets,
-    # capsules, powder, colors, bedside props, or other unsupported visual semantics.
+    # Nutrient/supplement subject with no explicit dosage form: keep the primary
+    # visual grounded, but do not manufacture a duplicate label zoom merely to fill
+    # the winner's secondary slot. Secondary/attention slots are capacity, not quota.
     dosage_words={"capsule","capsules","tablet","tablets","pill","pills","softgel","softgels","gummy","gummies","powder","powders"}
     explicit_form=bool(title_tokens & dosage_words)
     if subject and not explicit_form:
         out["primary_visual"]=f"One generic unbranded supplement bottle labeled only '{subject}', positioned in the winner's primary visual zone. No brand, dosage, product color, dosage form, extra props, people, or invented label text."
-        out["secondary_detail"]=f"Close-up detail of the '{subject}' ingredient label on that same bottle, positioned in the winner's secondary-detail zone. It must be a detail of the same primary object, not a separate object or scene."
-        out["attention_target"]=f"Preserve the winner's yellow-circle and red-arrow attention pattern, retargeted only to the '{subject}' label/detail on the same bottle."
+        secondary=str(out.get("secondary_detail") or "").casefold()
+        attention=str(out.get("attention_target") or "").casefold()
+        subject_l=subject.casefold()
+        duplicate_label_detail=(
+            subject_l in secondary
+            and any(term in secondary for term in ("label","same bottle","close-up","close up","zoom"))
+        )
+        if duplicate_label_detail:
+            out["secondary_detail"]=None
+            out["attention_target"]=None
+        elif not str(out.get("secondary_detail") or "").strip():
+            out["attention_target"]=None
 
     # Absolute final copy guard. Never emit blocked claims even if the model
     # generated them after earlier slot logic. Use safe title-grounded fallbacks so
@@ -229,6 +239,9 @@ def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", tim
 
     def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None) -> dict[str, Any]:
         instruction="""You are adapting a proven YouTube thumbnail composition to ONE current video topic.
+FIRST build a joint semantic coverage plan before writing any slots. Extract atomic CURRENT_TITLE tokens: subject, audience, number/payload, tension/problem, timing/context, and differentiator when explicitly present. Treat the historical winner's text positions as a CAPACITY CEILING, never a quota.
+Evaluate the ENTIRE text+visual contract together, not each slot independently. Each semantic token should have one best carrier (headline, banner, box, callout, primary visual, secondary visual). Repeating a token is allowed only when it adds clear marginal information; otherwise use null. Account for the always-visible YouTube title and for information already obvious in the image.
+Use this internal coverage scoreboard for every candidate: token -> best carrier -> emphasis level -> already covered by title? -> already covered by image? -> redundancy flags -> claim-safe? -> final assignment. Do not output the scoreboard; use it to choose the coherent final contract.
 Use the supplied winner metadata ONLY for reusable visual structure, geometry, hierarchy, palette, typography roles, and attention-device roles.
 Use ONLY CURRENT_TITLE and SELECTED_THUMBNAIL_TEXT for current-topic semantics. Never carry historical winner topic words or objects into the adapted content.
 Do not use or combine subjects from other thumbnails.
@@ -239,7 +252,7 @@ Do not use generic filler such as READ THIS, WATCH THIS, SEE THIS, LEARN MORE, o
 Do not paraphrase an audience marker already explicit in CURRENT_TITLE merely to occupy the banner (for example FOR THOSE OVER 60 when the title already says Over 60).
 The banner, when used, should carry a distinct title-grounded tension/context idea. The bottom callout, when used, should add another distinct title-grounded dimension. Never invent numbered-item facts (for example #2 IS COMMON) or stronger outcomes not stated in CURRENT_TITLE.
 Preserve the winner's geometry, hierarchy, and styling for whichever slots are actually useful; optional null text slots may remain empty rather than being filled with weak copy.
-For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The secondary detail must relate directly to the primary visual. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, or other specifics unless CURRENT_TITLE explicitly supports them. Attention devices must target that secondary detail."""
+For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The primary visual should carry the strongest concrete title-grounded token. A secondary detail is OPTIONAL and must express a DIFFERENT title-grounded semantic token than the primary visual; a zoom or repeated label that merely restates the primary subject is not useful. If no distinct honest secondary visual exists without invention, return null for secondary_detail and attention_target. Attention devices are permitted only when they point to a unique informative secondary referent. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, medical effects, or unrelated props unless CURRENT_TITLE explicitly supports them."""
         schema={
             "type":"object",
             "properties":{
