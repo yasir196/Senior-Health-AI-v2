@@ -222,18 +222,22 @@ def _select_data_driven_layout(winners: list[dict[str, Any]], youtube_rows: list
         except (TypeError,ValueError):
             views=0
         yt_valid.append((views,family,row))
-    # DB winner layouts are tried in adapter evidence order. Equivalent normalized
-    # families are checked once so repeated winning thumbnails do not duplicate work.
-    seen_families=set()
+    # Try every DB winner independently in evidence order. A coarse layout family is
+    # only the current-topic validation requirement; detailed geometry is a preference,
+    # not a veto, because the DB winner itself is the reusable composition authority.
     for winner in winners:
         raw=winner.get("composition_layout")
         family=_layout_family(raw)
-        if not family or family in seen_families:
+        if not family:
             continue
-        seen_families.add(family)
         db_signature=_db_structural_signature(raw)
-        matches=[x for x in yt_valid if x[1]==family and _signatures_compatible(db_signature,x[2].get("external_thumbnail_structural_signature"))]
-        if matches:
+        family_matches=[x for x in yt_valid if x[1]==family]
+        if family_matches:
+            compatible=[
+                x for x in family_matches
+                if _signatures_compatible(db_signature,x[2].get("external_thumbnail_structural_signature"))
+            ]
+            matches=compatible or family_matches
             matches.sort(key=lambda x:x[0],reverse=True)
             text_pos,subject_pos=_layout_positions(raw,family)
             return {"source":"db_winner_validated_on_youtube","layout":family,"family":family,
