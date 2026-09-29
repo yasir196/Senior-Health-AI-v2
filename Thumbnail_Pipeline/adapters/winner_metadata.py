@@ -237,13 +237,13 @@ def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", tim
     if not key:
         raise ValueError("OpenAI API key is required for current-topic adaptation.")
 
-    def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None) -> dict[str, Any]:
+    def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None, script_support: dict[str, Any] | None = None) -> dict[str, Any]:
         instruction="""You are adapting a proven YouTube thumbnail composition to ONE current video topic.
 FIRST build a joint semantic coverage plan before writing any slots. Extract atomic CURRENT_TITLE tokens: subject, audience, number/payload, tension/problem, timing/context, and differentiator when explicitly present. Treat the historical winner's text positions as a CAPACITY CEILING, never a quota.
 Evaluate the ENTIRE text+visual contract together, not each slot independently. Each semantic token should have one best carrier (headline, banner, box, callout, primary visual, secondary visual). Repeating a token is allowed only when it adds clear marginal information; otherwise use null. Account for the always-visible YouTube title and for information already obvious in the image.
 Use this internal coverage scoreboard for every candidate: token -> best carrier -> emphasis level -> already covered by title? -> already covered by image? -> redundancy flags -> claim-safe? -> final assignment. Do not output the scoreboard; use it to choose the coherent final contract.
 Use the supplied winner metadata ONLY for reusable visual structure, geometry, hierarchy, palette, typography roles, and attention-device roles.
-Use ONLY CURRENT_TITLE and SELECTED_THUMBNAIL_TEXT for current-topic semantics. Never carry historical winner topic words or objects into the adapted content.
+Use CURRENT_TITLE and SELECTED_THUMBNAIL_TEXT only within the limits of SCRIPT_SUPPORT_JSON. The final script is the semantic ceiling: every emitted text idea, primary visual, secondary visual, and attention target must be supported by SCRIPT_SUPPORT_JSON. If a title idea is not script-supported, do not use it in an optional slot or visual. Never carry historical winner topic words or objects into the adapted content.
 Do not use or combine subjects from other thumbnails.
 Return one coherent generation-ready slot contract. Do not hardcode a generic supplement visual unless it is actually justified by the current title. Keep copy short and mobile-readable. The selected thumbnail text is exact and immutable: preserve it verbatim as the primary headline rather than rewriting it. Other text slots may be concise current-topic context, but must not make stronger health claims than the title.
 Before filling text slots, extract CURRENT_TITLE semantics into distinct ideas such as audience, subject, tension/problem, timing/number hook, and any explicitly stated consequence. Assign each emitted slot a distinct communicative job. Do not fill a slot merely because the historical winner had text there.
@@ -268,7 +268,7 @@ For primary_visual and secondary_detail, describe concrete visible current-topic
             "required":["top_banner","primary_headline","boxed_keyword","bottom_callout","primary_visual","secondary_detail","attention_target","adaptation_rationale"],
             "additionalProperties":False
         }
-        prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)
+        prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support or {},ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)
         payload={
             "model":model,
             "input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
