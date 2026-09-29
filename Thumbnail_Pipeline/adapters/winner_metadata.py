@@ -323,7 +323,7 @@ When REVISION_FEEDBACK_JSON is non-empty, this is a repair pass. Fix every actio
             has_human=any(token in primary for token in ("presenter","person","man","woman","older adult","senior"))
             if not has_human:
                 original_primary=sanitized.get("primary_visual")
-                sanitized["primary_visual"]="Neutral older-adult health educator/presenter in the winner-defined presenter zone, preserving the winner's photographic human anchor and directing visual attention toward the current-topic target without implying a medical outcome."
+                sanitized["primary_visual"]="Neutral presenter in the winner-defined presenter zone, preserving the winner's photographic human anchor and directing visual attention toward the current-topic target without implying a medical outcome."
                 if original_primary and not sanitized.get("secondary_detail"):
                     sanitized["secondary_detail"]=original_primary
                 if original_primary and not sanitized.get("attention_target"):
