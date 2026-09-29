@@ -105,6 +105,7 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         out["primary_headline"]=headline
 
     blocked_claims=("fix","cure","reverse","secret","eliminate","guaranteed","all you need")
+    generic_cta_phrases=("read this","watch this","see this","click here","learn more")
     def unsafe_copy(value: Any) -> bool:
         text=str(value or "")
         return any(re.search(r"\\b"+re.escape(term)+r"\\b",text,flags=re.I) for term in blocked_claims)
@@ -112,6 +113,10 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     for key in ("top_banner","boxed_keyword","bottom_callout"):
         if unsafe_copy(out.get(key)):
             out[key]=None
+
+    banner_text=str(out.get("top_banner") or "")
+    if any(phrase in banner_text.casefold() for phrase in generic_cta_phrases):
+        out["top_banner"]=None
 
     # Preserve winner text-role completeness. Fill missing/fragmentary support slots only
     # from immutable-title semantics; never from historical winner wording.
@@ -139,7 +144,7 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
         # Reject obviously fragmentary banners such as "OVER 60? WHY YOUR MAGNESIUM".
         fragment=bool(re.search(r"\\b(?:why|how|when|what|your|the|a|an)\\s+[A-Z0-9?'-]+$",banner,flags=re.I))
         if not banner or fragment:
-            out["top_banner"]="OVER 60? MAGNESIUM AT NIGHT" if "over" in title_tokens and "60" in title_tokens else "MAGNESIUM AT NIGHT"
+            out["top_banner"]="OVER 60?" if "over" in title_tokens and "60" in title_tokens else subject
         if not str(out.get("boxed_keyword") or "").strip():
             out["boxed_keyword"]=subject
         if not str(out.get("bottom_callout") or "").strip():
@@ -191,13 +196,16 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     # generated them after earlier slot logic. Use safe title-grounded fallbacks so
     # winner-required text roles remain populated.
     safe_fallbacks={
-        "top_banner": ("OVER 60? MAGNESIUM AT NIGHT" if bool(subject) and "over" in title_tokens and "60" in title_tokens else ("MAGNESIUM AT NIGHT" if bool(subject) else None)),
+        "top_banner": ("OVER 60?" if "over" in title_tokens and "60" in title_tokens else subject),
         "boxed_keyword": subject,
         "bottom_callout": "WHAT TO WATCH FOR",
     }
     for key in ("top_banner","boxed_keyword","bottom_callout"):
         if unsafe_copy(out.get(key)):
             out[key]=safe_fallbacks.get(key)
+    final_banner=str(out.get("top_banner") or "")
+    if any(phrase in final_banner.casefold() for phrase in generic_cta_phrases):
+        out["top_banner"]=safe_fallbacks.get("top_banner")
     return out
 
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
