@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import base64
 import json
+import socket
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -59,9 +62,25 @@ def openai_winner_metadata_analyzer(api_key: str, *, model: str = "gpt-5-mini", 
             "input":[{"role":"user","content":[{"type":"input_text","text":instruction},{"type":"input_image","image_url":data_url}]}],
             "text":{"format":{"type":"json_schema","name":"winner_thumbnail_metadata","strict":False,"schema":metadata_schema}}
         }
-        req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
-        with urllib.request.urlopen(req,timeout=timeout) as response:
-            body=json.loads(response.read().decode("utf-8"))
+        request_data=json.dumps(payload).encode("utf-8")
+        request_headers={"Authorization":f"Bearer {key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"}
+        body=None
+        last_error=None
+        # Vision metadata can occasionally exceed the normal response read timeout.
+        # Retry transient network/read failures only; never reuse stale metadata.
+        for attempt in range(1,4):
+            req=urllib.request.Request("https://api.openai.com/v1/responses",data=request_data,headers=request_headers,method="POST")
+            try:
+                with urllib.request.urlopen(req,timeout=max(timeout,180)) as response:
+                    body=json.loads(response.read().decode("utf-8"))
+                break
+            except (TimeoutError,socket.timeout,ConnectionError,urllib.error.URLError) as exc:
+                last_error=exc
+                if attempt>=3:
+                    raise RuntimeError(f"Fresh winner metadata analysis failed after {attempt} attempts: {exc}") from exc
+                time.sleep(attempt*2)
+        if body is None:
+            raise RuntimeError(f"Fresh winner metadata analysis failed: {last_error}")
         output_text=str(body.get("output_text") or "").strip()
         if not output_text:
             for item in body.get("output") or []:
