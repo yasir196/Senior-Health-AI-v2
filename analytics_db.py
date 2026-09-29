@@ -3879,7 +3879,7 @@ def join_thumbnail_ctr_evidence(db_path: Path, analytics_id: str) -> dict[str, A
         # Prefer a clean FUTURE evidence window: only complete daily Reach rows strictly
         # after the thumbnail snapshot calendar date. Same-day data is excluded because
         # it can contain impressions from before the snapshot was archived.
-        snapshot_date = str(snap['downloaded_at'] or '')[:10]
+        snapshot_date = str(snap['downloaded_at'] or '')[:10].replace("-", "")
         post_reach = con.execute(
             """SELECT SUM(COALESCE(impressions,0)) impressions,
                       CASE WHEN SUM(COALESCE(impressions,0)) > 0
