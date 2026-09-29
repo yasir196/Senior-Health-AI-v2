@@ -511,6 +511,42 @@ Verdict PASS only when the selected thumbnail headline/promise is materially sup
         raise ValueError("Script support audit must return a JSON object.")
     return result
 
+def _validate_thumbnail_contract(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_support: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
+    """Final semantic gate: generated thumbnail contract may not reinterpret script support."""
+    import urllib.request
+    instruction="""Validate a GENERATED THUMBNAIL CONTRACT against SCRIPT_SUPPORT_JSON.
+SCRIPT_SUPPORT_JSON is the semantic ceiling. Judge the complete contract, including banner, headline, box, callout, primary visual, secondary visual, and attention target.
+PASS only when every non-style semantic claim and visual implication is directly supported without strengthening, causal reinterpretation, category substitution, or invented specificity.
+Examples of failure patterns: turning 'reasons a supplement may seem not to work' into 'the supplement fails at night'; calling medicines or other products 'supplemental sources' when the support contract does not say that; inventing exact times, dosage forms, symptoms, outcomes, mechanisms, or product relationships.
+The immutable selected headline must still be supported, but do not fail merely because optional slots are absent.
+Return slot-specific findings. Do not repair or rewrite the contract."""
+    schema={"type":"object","properties":{
+        "verdict":{"type":"string","enum":["PASS","FAIL"]},
+        "unsupported_slots":{"type":"array","items":{"type":"object","properties":{
+            "slot":{"type":"string"},"value":{"type":["string","null"]},"reason":{"type":"string"}
+        },"required":["slot","value","reason"],"additionalProperties":False}},
+        "reason":{"type":"string"}},
+        "required":["verdict","unsupported_slots","reason"],"additionalProperties":False}
+    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support,ensure_ascii=False)+"\nGENERATED_THUMBNAIL_CONTRACT:\n"+json.dumps(adaptation,ensure_ascii=False)
+    payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
+             "text":{"format":{"type":"json_schema","name":"thumbnail_final_semantic_gate","strict":False,"schema":schema}}}
+    req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
+    with urllib.request.urlopen(req,timeout=120) as response:
+        body=json.loads(response.read().decode("utf-8"))
+    output_text=str(body.get("output_text") or "").strip()
+    if not output_text:
+        for item in body.get("output") or []:
+            for part in item.get("content") or []:
+                if part.get("type")=="output_text":
+                    output_text=str(part.get("text") or "").strip()
+                    if output_text: break
+            if output_text: break
+    result=json.loads(output_text)
+    if not isinstance(result,dict):
+        raise ValueError("Final thumbnail semantic gate must return a JSON object.")
+    return result
+
 def main() -> int:
     parser=argparse.ArgumentParser(description="Thumbnail Pipeline prompt-only project CLI")
     parser.add_argument("--project",required=True,help="Exact folder name under Projects/")
@@ -625,9 +661,20 @@ def main() -> int:
         return 3
 
     topic_adaptation=None
+    final_semantic_gate=None
     if fresh_metadata and args.vision_api_key:
         topic_adapter=openai_current_topic_adapter(args.vision_api_key,model=args.vision_model)
         topic_adaptation=topic_adapter(metadata=fresh_metadata,immutable_title=state["immutable_title"],selected_text=selected_text,script_support=script_support)
+        final_semantic_gate=_validate_thumbnail_contract(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],selected_text=selected_text,script_support=script_support,adaptation=topic_adaptation)
+        support_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])/"json"
+        (support_dir/"final_semantic_gate.json").write_text(json.dumps(final_semantic_gate,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+        print("\nFINAL THUMBNAIL SEMANTIC GATE")
+        print("=============================")
+        print(json.dumps(final_semantic_gate,indent=2,ensure_ascii=False))
+        if final_semantic_gate.get("verdict")!="PASS":
+            print("\nFINAL THUMBNAIL SEMANTIC GATE: FAIL")
+            print("The generated slot contract was not exported because it strengthens, reinterprets, or adds semantics beyond the script-support contract.")
+            return 4
     result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
