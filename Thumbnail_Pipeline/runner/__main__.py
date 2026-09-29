@@ -515,7 +515,7 @@ Verdict PASS only when the selected thumbnail headline/promise is materially sup
         raise ValueError("Script support audit must return a JSON object.")
     return result
 
-def _validate_thumbnail_contract(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_support: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
+def _validate_thumbnail_contract(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_support: dict[str, Any], winner_metadata: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
     """Final semantic gate: generated thumbnail contract may not reinterpret script support."""
     import urllib.request
     instruction="""Validate a GENERATED THUMBNAIL CONTRACT against SCRIPT_SUPPORT_JSON.
@@ -524,6 +524,7 @@ PASS only when every non-style semantic claim and visual implication is directly
 Examples of failure patterns: turning 'reasons a supplement may seem not to work' into 'the supplement fails at night'; calling medicines or other products 'supplemental sources' when the support contract does not say that; inventing exact times, dosage forms, symptoms, outcomes, mechanisms, or product relationships.
 The immutable selected headline must still be supported, but do not fail merely because optional slots are absent.
 IMMUTABLE_TITLE is read-only context and is NOT a generated thumbnail-contract slot. Never return immutable_title in unsupported_slots and never fail this gate solely because wording in IMMUTABLE_TITLE is absent from SCRIPT_SUPPORT_JSON. Validate only the generated contract fields listed above; the selected thumbnail headline is the only immutable generated copy audited here.
+WINNER_METADATA_JSON is the authority for reusable composition/style/role semantics. A neutral presenter/person anchor, its winner-defined zone, neutral gaze/pointing/attention gesture, and non-semantic arrows/rings used only as attention devices do NOT require independent support from SCRIPT_SUPPORT_JSON when those roles/devices are present in WINNER_METADATA_JSON. Do not fail a slot merely because such winner-authorized structural details are absent from SCRIPT_SUPPORT_JSON. SCRIPT_SUPPORT_JSON remains the semantic ceiling for current-topic claims, medical implications, demographics/age, symptoms, outcomes, mechanisms, and topic-specific objects/details. A presenter role does not authorize inventing doctor/clinician status, age, disease state, treatment effect, or any other topic claim.
 Return slot-specific findings. Do not repair or rewrite the contract."""
     schema={"type":"object","properties":{
         "verdict":{"type":"string","enum":["PASS","FAIL"]},
@@ -532,7 +533,7 @@ Return slot-specific findings. Do not repair or rewrite the contract."""
         },"required":["slot","value","reason"],"additionalProperties":False}},
         "reason":{"type":"string"}},
         "required":["verdict","unsupported_slots","reason"],"additionalProperties":False}
-    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support,ensure_ascii=False)+"\nGENERATED_THUMBNAIL_CONTRACT:\n"+json.dumps({k:v for k,v in adaptation.items() if k!="adaptation_rationale"},ensure_ascii=False)
+    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support,ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(winner_metadata,ensure_ascii=False)+"\nGENERATED_THUMBNAIL_CONTRACT:\n"+json.dumps({k:v for k,v in adaptation.items() if k!="adaptation_rationale"},ensure_ascii=False)
     payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
              "text":{"format":{"type":"json_schema","name":"thumbnail_final_semantic_gate","strict":False,"schema":schema}}}
     req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
@@ -731,7 +732,7 @@ def main() -> int:
             final_semantic_gate=_validate_thumbnail_contract(
                 args.vision_api_key,model=args.vision_model,
                 immutable_title=state["immutable_title"],selected_text=selected_text,
-                script_support=script_support,adaptation=topic_adaptation,
+                script_support=script_support,winner_metadata=fresh_metadata,adaptation=topic_adaptation,
             )
             (support_dir/"final_semantic_gate.json").write_text(json.dumps(final_semantic_gate,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
             print("\nFINAL THUMBNAIL SEMANTIC GATE")
