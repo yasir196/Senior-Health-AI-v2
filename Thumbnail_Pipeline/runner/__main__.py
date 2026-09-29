@@ -527,7 +527,7 @@ Return slot-specific findings. Do not repair or rewrite the contract."""
         },"required":["slot","value","reason"],"additionalProperties":False}},
         "reason":{"type":"string"}},
         "required":["verdict","unsupported_slots","reason"],"additionalProperties":False}
-    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support,ensure_ascii=False)+"\nGENERATED_THUMBNAIL_CONTRACT:\n"+json.dumps(adaptation,ensure_ascii=False)
+    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support,ensure_ascii=False)+"\nGENERATED_THUMBNAIL_CONTRACT:\n"+json.dumps({k:v for k,v in adaptation.items() if k!="adaptation_rationale"},ensure_ascii=False)
     payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
              "text":{"format":{"type":"json_schema","name":"thumbnail_final_semantic_gate","strict":False,"schema":schema}}}
     req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
@@ -560,6 +560,8 @@ Rules:
 - Primary and secondary visuals should communicate different supported tokens. Attention devices must point to a unique informative referent.
 - Do not invent or strengthen claims in order to improve utility.
 PASS only when the contract is both economical and makes good use of available script-supported information and the reusable winner architecture.
+STRICT VERDICT RULE: findings are actionable contract defects. If any finding requires changing generated text, a visual, an attention target, or geometry/hierarchy mapping, verdict MUST be FAIL. PASS requires findings=[] and no contract change needed. Do not report praise, observations, or internal rationale-only inconsistencies as findings.
+Evaluate only generation-visible contract fields: top_banner, primary_headline, boxed_keyword, bottom_callout, primary_visual, secondary_detail, attention_target. Ignore adaptation_rationale completely because it is internal diagnostic text and is not exported to the generation prompt.
 Return actionable findings only; do not rewrite the contract."""
     schema={"type":"object","properties":{
         "verdict":{"type":"string","enum":["PASS","FAIL"]},
