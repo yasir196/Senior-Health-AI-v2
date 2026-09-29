@@ -75,8 +75,8 @@ class V2AnalyticsReadOnlyAdapter:
         ]
         winners.sort(
             key=lambda r: (
-                -float(r.get("impressions") or 0),
                 -float(r.get("ctr") or 0),
+                -float(r.get("impressions") or 0),
                 str(r.get("analytics_id") or ""),
             )
         )
