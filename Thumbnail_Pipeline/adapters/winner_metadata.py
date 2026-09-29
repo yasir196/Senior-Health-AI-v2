@@ -311,6 +311,23 @@ When REVISION_FEEDBACK_JSON is non-empty, this is a repair pass. Fix every actio
         if not isinstance(adapted,dict):
             raise ValueError("Current-topic adapter must return a JSON object.")
         sanitized=_sanitize_topic_adaptation(adapted,immutable_title=immutable_title,selected_text=selected_text)
+        # A presenter/person anchor is a reusable composition role, not historical topic
+        # content. If the model drops that proven role, deterministically restore a neutral
+        # anchor and keep current-topic objects in detail/target roles.
+        meta_text=json.dumps(metadata,ensure_ascii=False).casefold()
+        presenter_anchor=any(token in meta_text for token in (
+            '"presenter"', '"person"', '"portrait"', "presenter anchor", "photographic presenter"
+        ))
+        if presenter_anchor:
+            primary=str(sanitized.get("primary_visual") or "").casefold()
+            has_human=any(token in primary for token in ("presenter","person","man","woman","older adult","senior"))
+            if not has_human:
+                original_primary=sanitized.get("primary_visual")
+                sanitized["primary_visual"]="Neutral older-adult health educator/presenter in the winner-defined presenter zone, preserving the winner's photographic human anchor and directing visual attention toward the current-topic target without implying a medical outcome."
+                if original_primary and not sanitized.get("secondary_detail"):
+                    sanitized["secondary_detail"]=original_primary
+                if original_primary and not sanitized.get("attention_target"):
+                    sanitized["attention_target"]=original_primary
         # adaptation_rationale is internal diagnostic output, never part of the generation contract.
         sanitized.pop("adaptation_rationale",None)
         return sanitized
