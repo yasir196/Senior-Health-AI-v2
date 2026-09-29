@@ -523,6 +523,7 @@ SCRIPT_SUPPORT_JSON is the semantic ceiling. Judge the complete contract, includ
 PASS only when every non-style semantic claim and visual implication is directly supported without strengthening, causal reinterpretation, category substitution, or invented specificity.
 Examples of failure patterns: turning 'reasons a supplement may seem not to work' into 'the supplement fails at night'; calling medicines or other products 'supplemental sources' when the support contract does not say that; inventing exact times, dosage forms, symptoms, outcomes, mechanisms, or product relationships.
 The immutable selected headline must still be supported, but do not fail merely because optional slots are absent.
+IMMUTABLE_TITLE is read-only context and is NOT a generated thumbnail-contract slot. Never return immutable_title in unsupported_slots and never fail this gate solely because wording in IMMUTABLE_TITLE is absent from SCRIPT_SUPPORT_JSON. Validate only the generated contract fields listed above; the selected thumbnail headline is the only immutable generated copy audited here.
 Return slot-specific findings. Do not repair or rewrite the contract."""
     schema={"type":"object","properties":{
         "verdict":{"type":"string","enum":["PASS","FAIL"]},
