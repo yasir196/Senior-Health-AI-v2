@@ -707,27 +707,62 @@ def main() -> int:
     final_semantic_gate=None
     if fresh_metadata and args.vision_api_key:
         topic_adapter=openai_current_topic_adapter(args.vision_api_key,model=args.vision_model)
-        topic_adaptation=topic_adapter(metadata=fresh_metadata,immutable_title=state["immutable_title"],selected_text=selected_text,script_support=script_support)
-        final_semantic_gate=_validate_thumbnail_contract(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],selected_text=selected_text,script_support=script_support,adaptation=topic_adaptation)
         support_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])/"json"
-        (support_dir/"final_semantic_gate.json").write_text(json.dumps(final_semantic_gate,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
-        print("\nFINAL THUMBNAIL SEMANTIC GATE")
-        print("=============================")
-        print(json.dumps(final_semantic_gate,indent=2,ensure_ascii=False))
-        if final_semantic_gate.get("verdict")!="PASS":
-            print("\nFINAL THUMBNAIL SEMANTIC GATE: FAIL")
-            print("The generated slot contract was not exported because it strengthens, reinterprets, or adds semantics beyond the script-support contract.")
-            return 4
+        max_contract_attempts=3
+        revision_feedback=None
+        prior_contract=None
+        for attempt in range(1,max_contract_attempts+1):
+            topic_adaptation=topic_adapter(
+                metadata=fresh_metadata,
+                immutable_title=state["immutable_title"],
+                selected_text=selected_text,
+                script_support=script_support,
+                revision_feedback=revision_feedback,
+                prior_contract=prior_contract,
+            )
+            print(f"\nTHUMBNAIL CONTRACT ATTEMPT {attempt}/{max_contract_attempts}")
+            print("================================")
 
-        utility_gate=_validate_thumbnail_utility(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],selected_text=selected_text,script_support=script_support,winner_metadata=fresh_metadata,adaptation=topic_adaptation)
-        (support_dir/"coverage_utility_gate.json").write_text(json.dumps(utility_gate,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
-        print("\nTHUMBNAIL COVERAGE / UTILITY GATE")
-        print("=================================")
-        print(json.dumps(utility_gate,indent=2,ensure_ascii=False))
-        if utility_gate.get("verdict")!="PASS":
+            final_semantic_gate=_validate_thumbnail_contract(
+                args.vision_api_key,model=args.vision_model,
+                immutable_title=state["immutable_title"],selected_text=selected_text,
+                script_support=script_support,adaptation=topic_adaptation,
+            )
+            (support_dir/"final_semantic_gate.json").write_text(json.dumps(final_semantic_gate,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+            print("\nFINAL THUMBNAIL SEMANTIC GATE")
+            print("=============================")
+            print(json.dumps(final_semantic_gate,indent=2,ensure_ascii=False))
+            if final_semantic_gate.get("verdict")!="PASS":
+                prior_contract=topic_adaptation
+                revision_feedback={"gate":"semantic","attempt":attempt,"result":final_semantic_gate}
+                if attempt<max_contract_attempts:
+                    print("\nFINAL THUMBNAIL SEMANTIC GATE: FAIL — revising contract")
+                    continue
+                print("\nFINAL THUMBNAIL SEMANTIC GATE: FAIL")
+                print("Maximum contract attempts reached; final prompt was not exported.")
+                return 4
+
+            utility_gate=_validate_thumbnail_utility(
+                args.vision_api_key,model=args.vision_model,
+                immutable_title=state["immutable_title"],selected_text=selected_text,
+                script_support=script_support,winner_metadata=fresh_metadata,
+                adaptation=topic_adaptation,
+            )
+            (support_dir/"coverage_utility_gate.json").write_text(json.dumps(utility_gate,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+            print("\nTHUMBNAIL COVERAGE / UTILITY GATE")
+            print("=================================")
+            print(json.dumps(utility_gate,indent=2,ensure_ascii=False))
+            if utility_gate.get("verdict")=="PASS":
+                break
+            prior_contract=topic_adaptation
+            revision_feedback={"gate":"coverage_utility","attempt":attempt,"result":utility_gate}
+            if attempt<max_contract_attempts:
+                print("\nTHUMBNAIL COVERAGE / UTILITY GATE: FAIL — revising contract")
+                continue
             print("\nTHUMBNAIL COVERAGE / UTILITY GATE: FAIL")
-            print("The generated slot contract was not exported because it underuses available script-supported information, duplicates semantic jobs, or drops a useful winner role without justification.")
+            print("Maximum contract attempts reached; final prompt was not exported.")
             return 5
+
     result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
