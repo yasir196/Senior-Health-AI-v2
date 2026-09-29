@@ -450,6 +450,67 @@ def build_project_prompt_state(project: Path, analytics_db: Path | None = None, 
             "db_layout_winners":winner_report,"selected_layout":selected_layout,
             "discovered_cluster":assignment,"cluster_count":len(discovered.get("clusters") or [])}
 
+def _load_final_script(project: Path) -> tuple[Path | None, str | None]:
+    """Read the final script from the project without modifying V2 project files."""
+    candidates=[
+        project/"06_final_script.md",
+        project/"06_final_script.txt",
+        project/"final_script.md",
+        project/"final_script.txt",
+    ]
+    for path in candidates:
+        if path.is_file():
+            text=path.read_text(encoding="utf-8",errors="replace").strip()
+            if text:
+                return path,text
+    return None,None
+
+def _script_support_contract(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_text: str) -> dict[str, Any]:
+    """Extract a conservative script-grounding contract for thumbnail semantics."""
+    import urllib.request
+    instruction="""Audit a YouTube thumbnail promise against the supplied FINAL SCRIPT.
+The FINAL SCRIPT is the semantic ceiling. Do not add facts, symptoms, outcomes, mechanisms, counts, timing, product forms, or visual implications that the script does not support.
+The immutable title is context, not proof. A title claim is allowed in the thumbnail only when the final script materially delivers it.
+For numbered/list promises, verify that the script contains the promised number of clearly identifiable supported items. Do not infer missing items.
+Return concise atomic concepts that are safe to communicate in thumbnail text or imagery. Visual concepts must be directly supported by the script; do not invent anatomy, effects, props, dosage forms, packaging, clocks, foods, or symptoms merely because they are visually convenient.
+Verdict PASS only when the selected thumbnail headline/promise is materially supported by the final script. Otherwise FAIL and explain the mismatch. Never rewrite the immutable title."""
+    schema={
+        "type":"object",
+        "properties":{
+            "verdict":{"type":"string","enum":["PASS","FAIL"]},
+            "supported_concepts":{"type":"array","items":{"type":"string"}},
+            "supported_visual_concepts":{"type":"array","items":{"type":"string"}},
+            "unsupported_or_overstated":{"type":"array","items":{"type":"string"}},
+            "count_promise":{"type":["object","null"],"properties":{
+                "promised":{"type":["integer","null"]},
+                "supported":{"type":["integer","null"]},
+                "clearly_identifiable":{"type":"boolean"}
+            },"required":["promised","supported","clearly_identifiable"],"additionalProperties":False},
+            "reason":{"type":"string"}
+        },
+        "required":["verdict","supported_concepts","supported_visual_concepts","unsupported_or_overstated","count_promise","reason"],
+        "additionalProperties":False
+    }
+    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\n\nFINAL_SCRIPT:\n"+script_text
+    payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
+             "text":{"format":{"type":"json_schema","name":"thumbnail_script_support","strict":False,"schema":schema}}}
+    req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
+    with urllib.request.urlopen(req,timeout=120) as response:
+        body=json.loads(response.read().decode("utf-8"))
+    output_text=str(body.get("output_text") or "").strip()
+    if not output_text:
+        for item in body.get("output") or []:
+            for part in item.get("content") or []:
+                if part.get("type")=="output_text":
+                    output_text=str(part.get("text") or "").strip()
+                    if output_text: break
+            if output_text: break
+    result=json.loads(output_text)
+    if not isinstance(result,dict):
+        raise ValueError("Script support audit must return a JSON object.")
+    return result
+
 def main() -> int:
     parser=argparse.ArgumentParser(description="Thumbnail Pipeline prompt-only project CLI")
     parser.add_argument("--project",required=True,help="Exact folder name under Projects/")
@@ -534,10 +595,39 @@ def main() -> int:
     winner_metadata_analyzer=openai_winner_metadata_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
     winner_metadata=build_fresh_winner_metadata(project=state["project"],selected_layout=state.get("selected_layout") or {},youtube_rows=((state["concept"].get("evidence") or {}).get("youtube_reference_rows") or []),metadata_analyzer=winner_metadata_analyzer)
     fresh_metadata=winner_metadata.get("metadata") if winner_metadata.get("status")=="ready" else None
+    # Script-grounding gate: title is context, but the final script is the semantic ceiling.
+    script_path,script_text=_load_final_script(project)
+    script_support=None
+    if script_text and args.vision_api_key:
+        script_support=_script_support_contract(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],selected_text=selected_text,script_text=script_text)
+        support_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])/"json"
+        support_dir.mkdir(parents=True,exist_ok=True)
+        (support_dir/"script_support.json").write_text(json.dumps(script_support,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+        print("\nSCRIPT GROUNDING")
+        print("================")
+        print(f"Final script: {script_path}")
+        print(json.dumps(script_support,indent=2,ensure_ascii=False))
+        if script_support.get("verdict")!="PASS":
+            print("\nTHUMBNAIL CLAIM GATE: FAIL")
+            print("Final thumbnail prompt was not exported because the selected thumbnail promise is not materially supported by the final script.")
+            return 3
+    elif not script_text:
+        print("\nSCRIPT GROUNDING")
+        print("================")
+        print("THUMBNAIL CLAIM GATE: FAIL")
+        print("No final script found in the project. Expected 06_final_script.md/.txt (or final_script.md/.txt).")
+        return 3
+    elif not args.vision_api_key:
+        print("\nSCRIPT GROUNDING")
+        print("================")
+        print("THUMBNAIL CLAIM GATE: FAIL")
+        print("Final script exists, but no vision/API key is available to perform the script-support audit.")
+        return 3
+
     topic_adaptation=None
     if fresh_metadata and args.vision_api_key:
         topic_adapter=openai_current_topic_adapter(args.vision_api_key,model=args.vision_model)
-        topic_adaptation=topic_adapter(metadata=fresh_metadata,immutable_title=state["immutable_title"],selected_text=selected_text)
+        topic_adaptation=topic_adapter(metadata=fresh_metadata,immutable_title=state["immutable_title"],selected_text=selected_text,script_support=script_support)
     result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
