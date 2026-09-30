@@ -31,7 +31,7 @@ def openai_winner_metadata_analyzer(api_key: str, *, model: str = "gpt-5-mini", 
         data_url="data:image/jpeg;base64,"+base64.b64encode(raw).decode("ascii")
         instruction="""Inspect ONLY the supplied winning YouTube thumbnail pixels. Produce detailed reusable thumbnail metadata as JSON. Do not infer visual facts from the video title, CTR, topic, or other thumbnails. Describe what is visibly present, including exact visible text when readable, canvas/background, full composition, text/visual split, banners, text zones, primary/secondary visuals, presenter/human presence, arrows/circles/boxes/highlights, typography, colors, visual hierarchy, semantic hook structure supported by visible copy, approximate percentage geometry, density, thumbnail patterns, and a reusable_composition_contract. The reusable contract must preserve composition/style roles while clearly separating topic-specific objects/words from reusable structure.
 CRITICAL TEXT-RELATIONSHIP ANALYSIS: analyze the visible copy as a reading sequence, not merely independent boxes. In semantic_structure explicitly record whether adjacent text bands form one progressive/continuous hook or sentence, independent messages, headline-plus-CTA, or another visibly supported relationship; include reading order, how each band continues/completes the prior band, and whether the final band is a conclusion/action to that same hook. In reusable_composition_contract preserve this text-flow relationship as a reusable semantic-composition pattern, while treating the historical words themselves as topic-specific. Do NOT convert each historical band into an obligation to invent a different idea. A future adaptation may collapse/null a band if the current-topic message cannot preserve the same coherent reading flow without redundancy.
-Never invent an element that is not visible. Use null/unknown when uncertain. Font slant must be based on pixels only. Return one JSON object only."""
+STRUCTURAL CONTRACT IS REQUIRED. Create structural_contract.bands[] from the actual visible text panels/bands in reading order. Each band needs stable band_id, numeric x_pct/y_pct/w_pct/h_pct, hierarchy_rank, wrap_policy='inside_band_only', measured rotation_deg and measured glyph slant_deg, alignment, and style_role. Create structural_contract.roles[] for reusable visual roles (presenter, support/chair, target, attention_device, environment) with numeric boxes and optional attention_target_role_id. Historical words, anatomy, products, and topic instances belong only in historical_annotations; they are not reusable requirements. Derive complexity_budget from what is visibly present: exact text_band_count plus ceilings for people, informational objects, and attention devices. Never invent an element that is not visible. Use null/unknown only outside required numeric structural fields; estimate visible percentages conservatively. Font slant must be based on pixels only. Return one JSON object only."""
         # Structured Outputs prevents long vision responses from producing malformed JSON.
         # Keep the schema intentionally flexible inside each major section so fresh visual
         # details are preserved rather than forcing a brittle fixed thumbnail template.
@@ -54,9 +54,32 @@ Never invent an element that is not visible. Use null/unknown when uncertain. Fo
                 "layout_geometry":{"type":"object","additionalProperties":True},
                 "design_density":{"type":"object","additionalProperties":True},
                 "thumbnail_pattern":{"type":"object","additionalProperties":True},
-                "reusable_composition_contract":{"type":"object","additionalProperties":True}
+                "reusable_composition_contract":{"type":"object","additionalProperties":True},
+                "structural_contract":{
+                    "type":"object",
+                    "properties":{
+                        "bands":{"type":"array","items":{"type":"object","properties":{
+                            "band_id":{"type":"string"},"reading_order":{"type":"integer"},
+                            "x_pct":{"type":"number"},"y_pct":{"type":"number"},"w_pct":{"type":"number"},"h_pct":{"type":"number"},
+                            "hierarchy_rank":{"type":"integer"},"wrap_policy":{"type":"string"},
+                            "rotation_deg":{"type":"number"},"slant_deg":{"type":"number"},
+                            "alignment":{"type":["string","null"]},"style_role":{"type":["string","null"]}
+                        },"required":["band_id","reading_order","x_pct","y_pct","w_pct","h_pct","hierarchy_rank","wrap_policy","rotation_deg","slant_deg","alignment","style_role"],"additionalProperties":False}},
+                        "roles":{"type":"array","items":{"type":"object","properties":{
+                            "role_id":{"type":"string"},"role_type":{"type":"string"},"required":{"type":"boolean"},
+                            "x_pct":{"type":"number"},"y_pct":{"type":"number"},"w_pct":{"type":"number"},"h_pct":{"type":"number"},
+                            "saliency_rank":{"type":"integer"},"attention_target_role_id":{"type":["string","null"]}
+                        },"required":["role_id","role_type","required","x_pct","y_pct","w_pct","h_pct","saliency_rank","attention_target_role_id"],"additionalProperties":False}},
+                        "complexity_budget":{"type":"object","properties":{
+                            "text_band_count":{"type":"integer"},"max_people":{"type":"integer"},
+                            "max_informational_objects":{"type":"integer"},"max_attention_devices":{"type":"integer"}
+                        },"required":["text_band_count","max_people","max_informational_objects","max_attention_devices"],"additionalProperties":False},
+                        "historical_annotations":{"type":"object","additionalProperties":True}
+                    },
+                    "required":["bands","roles","complexity_budget","historical_annotations"],"additionalProperties":False
+                }
             },
-            "required":["asset_type","content_category","topic","visual_style","canvas","composition","text","color_system","primary_visual","secondary_visual","attention_devices","visual_hierarchy","semantic_structure","layout_geometry","design_density","thumbnail_pattern","reusable_composition_contract"],
+            "required":["asset_type","content_category","topic","visual_style","canvas","composition","text","color_system","primary_visual","secondary_visual","attention_devices","visual_hierarchy","semantic_structure","layout_geometry","design_density","thumbnail_pattern","reusable_composition_contract","structural_contract"],
             "additionalProperties":False
         }
         payload={
