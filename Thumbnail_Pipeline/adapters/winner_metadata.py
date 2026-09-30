@@ -251,11 +251,10 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     # later slots must not repeat an idea already carried by a stronger earlier
     # slot. This removes adapter oscillation without inventing replacement copy.
     def normalized_copy_tokens(value: Any) -> list[str]:
-        # Strip low-information glue before containment comparison so
-        # "AT NIGHT" can collapse against "NIGHTTIME" while meaningful
-        # multi-token qualifiers remain intact.
-        glue={"A","AN","THE","AT","IN","ON","OF","TO","FOR"}
-        return [t for t in re.findall(r"[A-Z0-9]+",str(value or "").upper()) if t not in glue]
+        # Topic-independent lexical normalization: very short tokens carry too
+        # little information for substring dedup. Longer tokens are compared
+        # exactly/by containment without any vocabulary-specific stop-word list.
+        return [t for t in re.findall(r"[A-Z0-9]+",str(value or "").upper()) if len(t) >= 4]
 
     def token_redundant(later_token: str, earlier_token: str) -> bool:
         # Exact/substring matching intentionally catches NIGHT <-> NIGHTTIME.
