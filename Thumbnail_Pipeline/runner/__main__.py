@@ -18,6 +18,7 @@ from Thumbnail_Pipeline.adapters.youtube_reference import collect_references
 from Thumbnail_Pipeline.adapters.youtube_thumbnail_analysis import analyze_youtube_reference_thumbnails, openai_thumbnail_text_analyzer, clear_youtube_reference_thumbnails
 from Thumbnail_Pipeline.adapters.v2_youtube_api import V2YouTubeReferenceProvider, access_token_from_v2_files_read_only, discover_v2_youtube_oauth_files_read_only
 from Thumbnail_Pipeline.adapters.winner_metadata import build_fresh_winner_metadata, openai_winner_metadata_analyzer, openai_current_topic_adapter
+from Thumbnail_Pipeline.qa.contract_qa import build_render_structure, evaluate_contract_qa
 
 def resolve_project(project: str, root: str = "Projects") -> Path:
     base = Path(root).resolve()
@@ -774,7 +775,21 @@ def main() -> int:
             print("Maximum contract attempts reached; final prompt was not exported.")
             return 5
 
-    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation)
+    if not isinstance(fresh_metadata,dict) or not isinstance(fresh_metadata.get("structural_contract"),dict):
+        print("\nPRE-GENERATION CONTRACT QA: FAIL")
+        print("Fresh winner structural_contract is required; prompt was not exported.")
+        return 6
+    render_structure=build_render_structure(fresh_metadata,topic_adaptation or {},selected_text)
+    contract_qa=evaluate_contract_qa(render_structure)
+    (support_dir/"contract_qa.json").write_text(json.dumps(contract_qa,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+    print("\nPRE-GENERATION CONTRACT QA")
+    print("==========================")
+    print(json.dumps({"verdict":contract_qa["verdict"],"findings":contract_qa["findings"]},indent=2,ensure_ascii=False))
+    if contract_qa["verdict"]!="PASS":
+        print("PRE-GENERATION CONTRACT QA: FAIL — final prompt was not exported.")
+        return 6
+
+    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation,render_structure=render_structure)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
     prompt_path=prompt_output_dir/"final_thumbnail_prompt.txt"
