@@ -121,9 +121,17 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
     title=str(immutable_title or "").strip()
     title_l=title.casefold()
     title_tokens=set(re.findall(r"[a-z0-9]+",title_l))
-    headline=str(selected_text or out.get("primary_headline") or "").strip()
-    if headline:
-        out["primary_headline"]=headline
+    selected=str(selected_text or "").strip()
+    headline=str(out.get("primary_headline") or "").strip()
+    # The selected copy is immutable in wording/presence, NOT in physical band.
+    # The adapter may place it in any visible text slot required by the winner's
+    # reading flow. Restore it only if the model accidentally omitted it entirely.
+    text_slot_keys=("top_banner","primary_headline","boxed_keyword","bottom_callout")
+    if selected:
+        present=any(str(out.get(k) or "").strip().casefold()==selected.casefold() for k in text_slot_keys)
+        if not present:
+            out["primary_headline"]=selected
+            headline=selected
 
     blocked_claims=("fix","cure","reverse","secret","eliminate","guaranteed","all you need")
     generic_cta_phrases=("read this","watch this","see this","click here","learn more","what to watch for")
@@ -269,7 +277,7 @@ PRESERVE WINNER VISUAL ROLE TYPES. If WINNER_METADATA defines a presenter/person
 On repair passes, treat a utility-gate finding that says a winner presenter/person anchor was removed as mandatory: restore the neutral human anchor in primary_visual and move the script-supported topic object to secondary_detail/attention_target as appropriate. Do not repeat the failed object-only primary_visual.
 Use CURRENT_TITLE and SELECTED_THUMBNAIL_TEXT only within the limits of SCRIPT_SUPPORT_JSON. The final script is the semantic ceiling: every emitted text idea, primary visual, secondary visual, and attention target must be supported by SCRIPT_SUPPORT_JSON. If a title idea is not script-supported, do not use it in an optional slot or visual. Never carry historical winner topic words or objects into the adapted content.
 Do not use or combine subjects from other thumbnails.
-Return one coherent generation-ready slot contract. Do not hardcode a generic supplement visual unless it is actually justified by the current title. Keep copy short and mobile-readable. The selected thumbnail text is exact and immutable: preserve it verbatim as the primary headline rather than rewriting it. Other text slots may be concise current-topic context, but must not make stronger health claims than the title.
+Return one coherent generation-ready slot contract. Do not hardcode a generic supplement visual unless it is actually justified by the current title. Keep copy short and mobile-readable. The selected thumbnail text is exact and immutable in WORDING AND PRESENCE, but NOT in physical text-band/slot. It must appear verbatim exactly once somewhere among top_banner, primary_headline, boxed_keyword, or bottom_callout. Choose its slot from the winner's reading flow; do not force it into primary_headline when that breaks the progressive hook. Other text slots may be concise current-topic context, but must not make stronger health claims than the title.
 Before filling text slots, extract CURRENT_TITLE semantics into distinct ideas such as audience, subject, tension/problem, timing/number hook, and any explicitly stated consequence. Assign each emitted slot a distinct communicative job. Do not fill a slot merely because the historical winner had text there.
 Treat winner metadata as geometry/style, not as a mandate to preserve the historical semantic purpose of a slot. The top banner and bottom callout are optional. Emit null when they would only repeat the title, repeat another thumbnail slot, use a generic CTA/filler phrase, or add an unsupported idea.
 Do not use generic filler such as READ THIS, WATCH THIS, SEE THIS, LEARN MORE, or WHAT TO WATCH FOR.
@@ -278,7 +286,7 @@ The banner, when used, should carry a distinct title-grounded tension/context id
 Preserve the winner's geometry, hierarchy, and styling for whichever slots are actually useful; optional null text slots may remain empty rather than being filled with weak copy.
 For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The primary visual should carry the strongest concrete title-grounded token. A secondary detail is OPTIONAL and must express a DIFFERENT title-grounded semantic token than the primary visual; a zoom or repeated label that merely restates the primary subject is not useful. If no distinct honest secondary visual exists without invention, return null for secondary_detail and attention_target. Attention devices are permitted only when they point to a unique informative secondary referent. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, medical effects, or unrelated props unless CURRENT_TITLE explicitly supports them.
 When REVISION_FEEDBACK_JSON is non-empty, this is a repair pass. Fix every actionable finding while preserving already-valid slots where possible. Do not weaken script grounding, rewrite the immutable headline, or invent content merely to satisfy a finding. PRIOR_CONTRACT_JSON is the failed contract to repair, not a new reference source.
-REPAIR INVARIANT: after every repair, compare all non-null text slots (top_banner, primary_headline, boxed_keyword, bottom_callout) case-insensitively. Never return the same visible phrase in more than one slot. If a repair would duplicate an existing phrase, keep the stronger carrier and set the weaker optional slot to null unless a distinct script-supported phrase adds real marginal information.
+REPAIR INVARIANT: after every repair, compare all non-null text slots (top_banner, primary_headline, boxed_keyword, bottom_callout) case-insensitively. Never return the same visible phrase in more than one slot. SELECTED_THUMBNAIL_TEXT must remain verbatim exactly once, but may move between these slots to satisfy the winner reading sequence. If a repair would duplicate an existing phrase, keep the stronger carrier and set the weaker optional slot to null unless a distinct script-supported phrase adds real marginal information.
 REPAIR INVARIANT: preserve presenter -> attention -> target as a structural relationship, but never restore the historical winner's topic-specific body part/object merely to satisfy geometry. The target may be remapped to one unique current-topic object supported by SCRIPT_SUPPORT_JSON, and presenter gesture plus attention device must point to that same target."""
         schema={
             "type":"object",
