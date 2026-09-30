@@ -76,3 +76,26 @@ def test_environment_cannot_be_used_as_informational_object_role():
     result=evaluate_contract_qa(build_render_structure(_winner(),adaptation,"3 NIGHTTIME MISTAKES"))
     assert result["verdict"]=="FAIL"
     assert any("cannot bind" in x for x in result["findings"])
+
+
+def test_text_stack_visual_placement_fails_loudly():
+    winner=_winner()
+    winner["structural_contract"]["roles"].append(
+        {"role_id":"text_stack","role_type":"text_stack","required":True,"x_pct":1,"y_pct":1,"w_pct":55,"h_pct":70,"saliency_rank":1,"attention_target_role_id":None}
+    )
+    adaptation={"top_banner":"MAGNESIUM","primary_headline":"NOT WORKING","boxed_keyword":"3 NIGHTTIME MISTAKES","bottom_callout":"DO | THIS","visual_placements":_placements([
+        {"placement_id":"txt","role_id":"text_stack","kind":"informational_object","description":"duplicate text stack","is_primary_target":False,"attention_target_role_id":None}
+    ])}
+    result=evaluate_contract_qa(build_render_structure(winner,adaptation,"3 NIGHTTIME MISTAKES"))
+    assert result["verdict"]=="FAIL"
+    assert any("text roles are never visual placements; visible text is governed solely by TEXT BANDS JSON" in x for x in result["findings"])
+
+
+def test_text_stack_role_needs_no_visual_placement():
+    winner=_winner()
+    winner["structural_contract"]["roles"].append(
+        {"role_id":"text_stack","role_type":"text_stack","required":True,"x_pct":1,"y_pct":1,"w_pct":55,"h_pct":70,"saliency_rank":1,"attention_target_role_id":None}
+    )
+    adaptation={"top_banner":"MAGNESIUM","primary_headline":"NOT WORKING","boxed_keyword":"3 NIGHTTIME MISTAKES","bottom_callout":"DO | THIS","visual_placements":_placements()}
+    result=evaluate_contract_qa(build_render_structure(winner,adaptation,"3 NIGHTTIME MISTAKES"))
+    assert result["verdict"]=="PASS"
