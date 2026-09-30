@@ -91,7 +91,8 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
         if structure:
             lines.append("RENDER STRUCTURE — HARD, MEASURABLE CONTRACT:")
             lines.append("TEXT BANDS JSON: "+str(structure.get("text_bands") or []))
-            lines.append("VISUAL ROLES JSON: "+str(structure.get("visual_roles") or []))
+            lines.append("WINNER VISUAL ROLES JSON: "+str(structure.get("winner_visual_roles") or []))
+            lines.append("ADAPTED VISUAL PLACEMENTS JSON: "+str(structure.get("visual_placements") or []))
             lines.append("COMPLEXITY BUDGET: "+str(structure.get("complexity_budget") or {}))
             lines.append("RENDER INVARIANTS: Text band count is fixed. Each semantic slot stays inside its assigned band. Wrapping may occur only inside that same rectangle and must never create a new panel. Every band is axis-aligned with rotation_deg=0 and slant_deg=0. Do not create extra informational objects or people beyond the winner-derived complexity budget. Empty optional roles are valid and preferable to clutter.")
         adaptation=topic_adaptation if isinstance(topic_adaptation,dict) else {}
