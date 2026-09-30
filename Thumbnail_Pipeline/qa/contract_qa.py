@@ -8,6 +8,7 @@ SPLIT_MARKER = " | "
 PEOPLE_ROLE_TYPES = {"presenter", "person", "human", "portrait"}
 NON_INFORMATIONAL_ROLE_TYPES = PEOPLE_ROLE_TYPES | {"support/chair", "chair", "support", "environment", "background"}
 ATTENTION_ROLE_TYPES = {"attention_device", "arrow", "circle", "highlight"}
+TEXT_ROLE_TYPES = {"text_stack", "text", "text_band", "typography"}
 
 
 def _segments(slot: str, text: str, selected: str) -> list[tuple[str, str, int | None]]:
@@ -151,6 +152,8 @@ def evaluate_contract_qa(render_structure: dict[str, Any]) -> dict[str, Any]:
             findings.append(f"{placement.get('placement_id')}: attention device must bind to a winner attention role")
         if kind=="informational_object" and role_type in NON_INFORMATIONAL_ROLE_TYPES:
             findings.append(f"{placement.get('placement_id')}: informational object cannot bind to {role_type} role")
+        if role_type in TEXT_ROLE_TYPES:
+            findings.append(f"{placement.get('placement_id')}: text roles are never visual placements; visible text is governed solely by TEXT BANDS JSON")
 
     target_placements=[x for x in placements if str(x.get("kind") or "").casefold()=="informational_object" and bool(x.get("is_primary_target"))]
     if len(target_placements)!=1:
