@@ -555,6 +555,42 @@ Return slot-specific findings. Do not repair or rewrite the contract."""
         raise ValueError("Final thumbnail semantic gate must return a JSON object.")
     return result
 
+def _enforce_optional_text_band_authority(result: dict[str, Any], winner_metadata: dict[str, Any]) -> dict[str, Any]:
+    """Deterministically discard utility findings that invent a required CTA band.
+
+    Only an explicit machine-readable required=true on a structural text band can
+    make that band mandatory. Historical prose, labels, and old CTA semantics have
+    no authority to do so.
+    """
+    out=dict(result or {})
+    structural=(winner_metadata or {}).get("structural_contract") or {}
+    bands=structural.get("bands") or []
+    explicit_required=any(
+        isinstance(band,dict) and band.get("required") is True
+        for band in bands
+    )
+    if explicit_required:
+        return out
+
+    def invented_cta_requirement(finding: Any) -> bool:
+        if not isinstance(finding,dict):
+            return False
+        text=(str(finding.get("area") or "")+" "+str(finding.get("reason") or "")).casefold()
+        cta_terms=("cta","callout","bottom_callout","imperative")
+        missing_terms=("missing","omit","omits","omitted","require","required","must remain","must be")
+        return any(term in text for term in cta_terms) and any(term in text for term in missing_terms)
+
+    findings=[
+        finding for finding in (out.get("findings") or [])
+        if not invented_cta_requirement(finding)
+    ]
+    out["findings"]=findings
+    if not findings:
+        out["verdict"]="PASS"
+        out["reason"]="PASS after deterministic optional-band authority check: no explicit machine-readable required=true text band exists."
+    return out
+
+
 def _validate_thumbnail_utility(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_support: dict[str, Any], winner_metadata: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
     """Coverage/utility gate: require useful script-supported use of high-value winner roles."""
     import urllib.request
@@ -602,7 +638,7 @@ Return actionable findings only; do not rewrite the contract."""
     result=json.loads(output_text)
     if not isinstance(result,dict):
         raise ValueError("Thumbnail coverage/utility gate must return a JSON object.")
-    return result
+    return _enforce_optional_text_band_authority(result,winner_metadata)
 
 def main() -> int:
     parser=argparse.ArgumentParser(description="Thumbnail Pipeline prompt-only project CLI")
