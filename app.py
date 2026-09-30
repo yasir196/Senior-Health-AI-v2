@@ -1769,7 +1769,7 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
             segmentation_issues = production_sheet_segmentation_issues(project)
             if segmentation_issues:
                 scenes = []
-                st.error("Production sheet narration matches 06a_voice_script.md, but scene-boundary validation FAILED. Regenerate Production before Avatar Timing because transcript timing cannot repair invalid narration boundaries.")
+                st.error("Production sheet narration matches 06a_voice_script.md, but scene segmentation/timing FAILED. Regenerate Production before Avatar Timing because transcript timing cannot repair invalid scene boundaries.")
                 for issue in segmentation_issues[:6]:
                     st.caption(f"• {issue}")
     sequence = chunk_sequence_info(discovery)
