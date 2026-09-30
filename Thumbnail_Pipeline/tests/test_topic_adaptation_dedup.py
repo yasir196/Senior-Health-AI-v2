@@ -53,3 +53,25 @@ def test_deterministic_dedup_preserves_distinct_useful_qualifier():
         "bottom_callout":None,
     })
     assert out["boxed_keyword"]=="MEDICINE TIMING"
+
+
+def test_deterministic_dedup_is_topic_independent_for_containment():
+    out=_sanitize({
+        "top_banner":"BETTER CIRCULATION",
+        "primary_headline":"3 NIGHTTIME MISTAKES",
+        "boxed_keyword":"CIRCULATION",
+        "bottom_callout":None,
+    })
+    assert out["top_banner"]=="BETTER CIRCULATION"
+    assert out["boxed_keyword"] is None
+
+
+def test_deterministic_dedup_does_not_collapse_unrelated_long_tokens():
+    out=_sanitize({
+        "top_banner":"BETTER BALANCE",
+        "primary_headline":"3 NIGHTTIME MISTAKES",
+        "boxed_keyword":"LEG STRENGTH",
+        "bottom_callout":None,
+    })
+    assert out["top_banner"]=="BETTER BALANCE"
+    assert out["boxed_keyword"]=="LEG STRENGTH"
