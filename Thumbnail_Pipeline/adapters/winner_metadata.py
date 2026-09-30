@@ -224,25 +224,34 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
             elif near_duplicate(banner,headline):
                 out["top_banner"]=None
 
-    # Nutrient/supplement subject with no explicit dosage form: keep the primary
-    # visual grounded, but do not manufacture a duplicate label zoom merely to fill
-    # the winner's secondary slot. Secondary/attention slots are capacity, not quota.
+    # Nutrient/supplement subject with no explicit dosage form: ground the object
+    # without fighting a winner-defined presenter anchor. A presenter-led winner keeps
+    # the human as primary; the current-topic object occupies the detail/target role.
     dosage_words={"capsule","capsules","tablet","tablets","pill","pills","softgel","softgels","gummy","gummies","powder","powders"}
     explicit_form=bool(title_tokens & dosage_words)
     if subject and not explicit_form:
-        out["primary_visual"]=f"One generic unbranded supplement bottle labeled only '{subject}', positioned in the winner's primary visual zone. No brand, dosage, product color, dosage form, extra props, people, or invented label text."
-        secondary=str(out.get("secondary_detail") or "").casefold()
-        attention=str(out.get("attention_target") or "").casefold()
-        subject_l=subject.casefold()
-        duplicate_label_detail=(
-            subject_l in secondary
-            and any(term in secondary for term in ("label","same bottle","close-up","close up","zoom"))
-        )
-        if duplicate_label_detail:
-            out["secondary_detail"]=None
-            out["attention_target"]=None
-        elif not str(out.get("secondary_detail") or "").strip():
-            out["attention_target"]=None
+        meta_text=str(out.get("_winner_metadata_text") or "").casefold()
+        presenter_anchor=bool(out.get("_winner_presenter_anchor"))
+        object_desc=f"One generic unbranded supplement bottle labeled only '{subject}', with no brand, dosage, product color, dosage form, or invented label text."
+        if presenter_anchor:
+            out["primary_visual"]="Neutral presenter in the winner-defined presenter zone, preserving the winner's photographic human anchor and directing attention toward the current-topic target without implying a medical outcome."
+            if not str(out.get("secondary_detail") or "").strip():
+                out["secondary_detail"]=object_desc
+            if not str(out.get("attention_target") or "").strip():
+                out["attention_target"]=f"The generic unbranded '{subject}' bottle; presenter gesture and winner-defined attention devices point to this same object."
+        else:
+            out["primary_visual"]=object_desc+" Positioned in the winner's primary visual zone."
+            secondary=str(out.get("secondary_detail") or "").casefold()
+            subject_l=subject.casefold()
+            duplicate_label_detail=(
+                subject_l in secondary
+                and any(term in secondary for term in ("label","same bottle","close-up","close up","zoom"))
+            )
+            if duplicate_label_detail:
+                out["secondary_detail"]=None
+                out["attention_target"]=None
+            elif not str(out.get("secondary_detail") or "").strip():
+                out["attention_target"]=None
 
     # Absolute final copy guard. Never emit blocked claims even if the model
     # generated them after earlier slot logic. Use safe title-grounded fallbacks so
@@ -323,14 +332,18 @@ REPAIR INVARIANT: preserve presenter -> attention -> target as a structural rela
         adapted=json.loads(output_text)
         if not isinstance(adapted,dict):
             raise ValueError("Current-topic adapter must return a JSON object.")
-        sanitized=_sanitize_topic_adaptation(adapted,immutable_title=immutable_title,selected_text=selected_text)
-        # A presenter/person anchor is a reusable composition role, not historical topic
-        # content. If the model drops that proven role, deterministically restore a neutral
-        # anchor and keep current-topic objects in detail/target roles.
         meta_text=json.dumps(metadata,ensure_ascii=False).casefold()
         presenter_anchor=any(token in meta_text for token in (
             '"presenter"', '"person"', '"portrait"', "presenter anchor", "photographic presenter"
         ))
+        adapted["_winner_presenter_anchor"]=presenter_anchor
+        adapted["_winner_metadata_text"]=meta_text
+        sanitized=_sanitize_topic_adaptation(adapted,immutable_title=immutable_title,selected_text=selected_text)
+        sanitized.pop("_winner_presenter_anchor",None)
+        sanitized.pop("_winner_metadata_text",None)
+        # A presenter/person anchor is a reusable composition role, not historical topic
+        # content. If the model drops that proven role, deterministically restore a neutral
+        # anchor and keep current-topic objects in detail/target roles.
         if presenter_anchor:
             primary=str(sanitized.get("primary_visual") or "").casefold()
             has_human=any(token in primary for token in ("presenter","person","man","woman","older adult","senior"))
