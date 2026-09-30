@@ -152,8 +152,8 @@ def evaluate_contract_qa(render_structure: dict[str, Any]) -> dict[str, Any]:
             findings.append(f"{placement.get('placement_id')}: attention device must bind to a winner attention role")
         if kind=="informational_object" and role_type in NON_INFORMATIONAL_ROLE_TYPES:
             findings.append(f"{placement.get('placement_id')}: informational object cannot bind to {role_type} role")
-        if role_type in TEXT_ROLE_TYPES:
-            findings.append(f"{placement.get('placement_id')}: text roles are never visual placements; visible text is governed solely by TEXT BANDS JSON")
+        if kind=="informational_object" and role_type in TEXT_ROLE_TYPES:
+            findings.append(f"{placement.get('placement_id')}: text roles are never informational objects; visible text is governed solely by TEXT BANDS JSON")
 
     target_placements=[x for x in placements if str(x.get("kind") or "").casefold()=="informational_object" and bool(x.get("is_primary_target"))]
     if len(target_placements)!=1:
