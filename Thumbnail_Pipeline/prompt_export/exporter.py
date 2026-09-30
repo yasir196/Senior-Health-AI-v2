@@ -94,15 +94,15 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
             lines.append("WINNER VISUAL ROLES JSON: "+str(structure.get("winner_visual_roles") or []))
             lines.append("ADAPTED VISUAL PLACEMENTS JSON: "+str(structure.get("visual_placements") or []))
             lines.append("COMPLEXITY BUDGET: "+str(structure.get("complexity_budget") or {}))
-            lines.append("RENDER INVARIANTS: Text band count is fixed. Each semantic slot stays inside its assigned band. Wrapping may occur only inside that same rectangle and must never create a new panel. Every band is axis-aligned with rotation_deg=0 and slant_deg=0. Do not create extra informational objects or people beyond the winner-derived complexity budget. Empty optional roles are valid and preferable to clutter.")
+            lines.append("RENDER INVARIANTS: Text band count is fixed. Each semantic slot stays inside its assigned band. Wrapping may occur only inside that same rectangle and must never create a new panel. Every band is axis-aligned with rotation_deg=0 and slant_deg=0. ADAPTED VISUAL PLACEMENTS JSON is the SINGLE EXECUTABLE SOURCE OF TRUTH for visible people, objects, supports, environment, and attention devices. Do not render any prop or visual object mentioned elsewhere unless it has its own approved adapted placement. Environment is atmosphere only; support is structure only. Do not create extra informational objects or people beyond the winner-derived complexity budget. Empty optional roles are valid and preferable to clutter.")
         adaptation=topic_adaptation if isinstance(topic_adaptation,dict) else {}
         if adaptation:
             lines.append("CURRENT-TOPIC SLOT CONTRACT (use these exact semantic assignments):")
-            for key,label in (("top_banner","TOP BANNER"),("primary_headline","PRIMARY HEADLINE"),("boxed_keyword","BOXED KEYWORD"),("bottom_callout","BOTTOM CALLOUT"),("primary_visual","PRIMARY VISUAL"),("secondary_detail","SECONDARY DETAIL"),("attention_target","ATTENTION TARGET")):
+            for key,label in (("top_banner","TOP BANNER"),("primary_headline","PRIMARY HEADLINE"),("boxed_keyword","BOXED KEYWORD"),("bottom_callout","BOTTOM CALLOUT")):
                 value=adaptation.get(key)
                 if value not in (None,""):
                     lines.append(f"{label}: {value}")
-            lines.append("SLOT RULE: Preserve the winner metadata geometry/style for each corresponding slot. Historical winner words/objects are reference semantics only and must not appear unless independently required by the current title.")
+            lines.append("SLOT RULE: Preserve winner metadata geometry/style for text slots. Historical winner words/objects are reference semantics only. For visuals, ignore free-prose primary_visual/secondary_detail/attention_target fields at render time; render ONLY ADAPTED VISUAL PLACEMENTS JSON.")
         else:
             lines.append("CURRENT-TOPIC ADAPTATION: Derive topic-specific subject/object wording only from the immutable current video title and selected thumbnail text. Do not import historical winner topic content. Do not combine people/objects from multiple YouTube reference thumbnails.")
     else:
