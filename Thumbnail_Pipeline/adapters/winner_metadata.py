@@ -334,7 +334,12 @@ REPAIR INVARIANT: preserve presenter -> attention -> target as a structural rela
             raise ValueError("Current-topic adapter must return a JSON object.")
         meta_text=json.dumps(metadata,ensure_ascii=False).casefold()
         presenter_anchor=any(token in meta_text for token in (
-            '"presenter"', '"person"', '"portrait"', "presenter anchor", "photographic presenter"
+            '"presenter"', '"presenter_', '"person"', '"person_', '"portrait"',
+            '"human"', '"human_', '"man"', '"male"', "presenter anchor",
+            "photographic presenter", "presenter-led", "presenter_led"
+        )) and not any(token in meta_text for token in (
+            '"presenter_present": false', '"presenter_present":false',
+            '"human_present": false', '"human_present":false'
         ))
         adapted["_winner_presenter_anchor"]=presenter_anchor
         adapted["_winner_metadata_text"]=meta_text
@@ -354,6 +359,19 @@ REPAIR INVARIANT: preserve presenter -> attention -> target as a structural rela
                     sanitized["secondary_detail"]=original_primary
                 if original_primary and not sanitized.get("attention_target"):
                     sanitized["attention_target"]=original_primary
+        # Hard postcondition: immutable selected copy is wording/presence locked, not
+        # slot locked. Sanitization must never accidentally erase it. Preserve the model's
+        # chosen band when present; if absent, restore once as a temporary primary carrier
+        # so the utility repair pass can move it to the winner-correct band.
+        selected=str(selected_text or "").strip()
+        text_slots=("top_banner","primary_headline","boxed_keyword","bottom_callout")
+        if selected:
+            matches=[k for k in text_slots if str(sanitized.get(k) or "").strip().casefold()==selected.casefold()]
+            if not matches:
+                sanitized["primary_headline"]=selected
+            elif len(matches)>1:
+                for k in matches[1:]:
+                    sanitized[k]=None
         # adaptation_rationale is internal diagnostic output, never part of the generation contract.
         sanitized.pop("adaptation_rationale",None)
         return sanitized
