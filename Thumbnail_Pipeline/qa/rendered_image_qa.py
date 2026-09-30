@@ -31,6 +31,9 @@ def evaluate_rendered_image_qa(expected: dict[str, Any], observed: dict[str, Any
             findings.append(f"text band {i} glyph slant exceeds {angle_tolerance_deg} deg")
 
     budget=expected.get("complexity_budget") or {}
+    for field in ("people_count","informational_object_count","attention_device_count"):
+        if field not in observed or observed.get(field) is None:
+            findings.append(f"pixel observation missing required count: {field}")
     people=int(observed.get("people_count") or 0)
     objects=int(observed.get("informational_object_count") or 0)
     attention=int(observed.get("attention_device_count") or 0)
