@@ -67,3 +67,12 @@ def test_presenter_and_chair_do_not_consume_informational_object_budget():
     ])}
     result=evaluate_contract_qa(build_render_structure(_winner(),adaptation,"3 NIGHTTIME MISTAKES"))
     assert result["verdict"]=="PASS"
+
+
+def test_environment_cannot_be_used_as_informational_object_role():
+    adaptation={"top_banner":"MAGNESIUM","primary_headline":"NOT WORKING","boxed_keyword":"3 NIGHTTIME MISTAKES","bottom_callout":"DO | THIS","visual_placements":_placements([
+        {"placement_id":"diary","role_id":"chair","kind":"informational_object","description":"sleep diary hidden in support","is_primary_target":False,"attention_target_role_id":None}
+    ])}
+    result=evaluate_contract_qa(build_render_structure(_winner(),adaptation,"3 NIGHTTIME MISTAKES"))
+    assert result["verdict"]=="FAIL"
+    assert any("cannot bind" in x for x in result["findings"])
