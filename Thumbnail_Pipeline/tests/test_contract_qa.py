@@ -88,7 +88,7 @@ def test_text_stack_visual_placement_fails_loudly():
     ])}
     result=evaluate_contract_qa(build_render_structure(winner,adaptation,"3 NIGHTTIME MISTAKES"))
     assert result["verdict"]=="FAIL"
-    assert any("text roles are never visual placements; visible text is governed solely by TEXT BANDS JSON" in x for x in result["findings"])
+    assert any("text roles are never informational objects; visible text is governed solely by TEXT BANDS JSON" in x for x in result["findings"])
 
 
 def test_text_stack_role_needs_no_visual_placement():
