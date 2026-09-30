@@ -247,6 +247,60 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
             elif near_duplicate(banner,headline):
                 out["top_banner"]=None
 
+    # Deterministic executable form of the existing repair invariant: optional
+    # later slots must not repeat an idea already carried by a stronger earlier
+    # slot. This removes adapter oscillation without inventing replacement copy.
+    def normalized_copy_tokens(value: Any) -> list[str]:
+        return re.findall(r"[A-Z0-9]+",str(value or "").upper())
+
+    def token_redundant(later_token: str, earlier_token: str) -> bool:
+        # Exact/substring matching intentionally catches NIGHT <-> NIGHTTIME.
+        # Require a useful token length so tiny fragments such as A/IN do not
+        # collapse otherwise distinct copy.
+        return (
+            len(later_token) >= 4
+            and len(earlier_token) >= 4
+            and (later_token == earlier_token
+                 or later_token in earlier_token
+                 or earlier_token in later_token)
+        )
+
+    def fully_redundant(later: Any, earlier: Any) -> bool:
+        later_tokens=normalized_copy_tokens(later)
+        earlier_tokens=normalized_copy_tokens(earlier)
+        if not later_tokens or not earlier_tokens:
+            return False
+        return all(
+            any(token_redundant(later_token, earlier_token)
+                for earlier_token in earlier_tokens)
+            for later_token in later_tokens
+        )
+
+    # Reading-order strength: earlier populated carriers win. The immutable
+    # selected copy is never deleted; if it appears in a later slot it remains
+    # authoritative and only optional competing copy may collapse.
+    populated_earlier: list[tuple[str,str]]=[]
+    for key in text_slot_keys:
+        value=str(out.get(key) or "").strip()
+        if not value:
+            continue
+        is_immutable=bool(selected and value.casefold()==selected.casefold())
+        redundant_with_earlier=any(fully_redundant(value,prior) for _,prior in populated_earlier)
+        if redundant_with_earlier and not is_immutable:
+            out[key]=None
+            continue
+        if is_immutable:
+            # If the immutable carrier overlaps weaker optional copy that appeared
+            # before it, preserve immutable copy and collapse those optional slots.
+            kept=[]
+            for prior_key,prior in populated_earlier:
+                if fully_redundant(prior,value) and prior_key!="primary_headline":
+                    out[prior_key]=None
+                else:
+                    kept.append((prior_key,prior))
+            populated_earlier=kept
+        populated_earlier.append((key,value))
+
     # Nutrient/supplement subject with no explicit dosage form: ground the object
     # without fighting a winner-defined presenter anchor. A presenter-led winner keeps
     # the human as primary; the current-topic object occupies the detail/target role.
@@ -319,6 +373,7 @@ Preserve the winner's geometry, hierarchy, and styling for whichever slots are a
 For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The primary visual should carry the strongest concrete title-grounded token. A secondary detail is OPTIONAL and must express a DIFFERENT title-grounded semantic token than the primary visual; a zoom or repeated label that merely restates the primary subject is not useful. If no distinct honest secondary visual exists without invention, return null for secondary_detail and attention_target. Attention devices are permitted only when they point to a unique informative secondary referent. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, medical effects, or unrelated props unless CURRENT_TITLE explicitly supports them.
 When REVISION_FEEDBACK_JSON is non-empty, this is a repair pass. Fix every actionable finding while preserving already-valid slots where possible. Do not weaken script grounding, rewrite the immutable headline, or invent content merely to satisfy a finding. PRIOR_CONTRACT_JSON is the failed contract to repair, not a new reference source.
 REPAIR INVARIANT: after every repair, compare all non-null text slots (top_banner, primary_headline, boxed_keyword, bottom_callout) case-insensitively. Never return the same visible phrase in more than one slot. SELECTED_THUMBNAIL_TEXT must remain verbatim exactly once, but may move between these slots to satisfy the winner reading sequence. If a repair would duplicate an existing phrase, keep the stronger carrier and set the weaker optional slot to null unless a distinct script-supported phrase adds real marginal information.
+If the reading flow is awkward, you may move SELECTED_THUMBNAIL_TEXT verbatim to band_1/top_banner (or the first visible carrier in reading order) and collapse weaker optional copy. Its wording and single presence are immutable; its physical slot is not.
 REPAIR INVARIANT: preserve presenter -> attention -> target as a structural relationship, but never restore the historical winner's topic-specific body part/object merely to satisfy geometry. The target may be remapped to one unique current-topic object supported by SCRIPT_SUPPORT_JSON, and presenter gesture plus attention device must point to that same target.
 STRUCTURED VISUAL PLACEMENTS ARE MANDATORY. Populate visual_placements[] as the executable visual contract, not a prose summary. Every visible person, informational object, attention device, support/chair, or environment role that the generation should render must be one placement bound to an existing WINNER_METADATA structural_contract.roles[].role_id. TEXT ROLES ARE EXCLUDED: role_type text_stack, text, text_band, or typography must never receive a visual_placement of any kind; visible text is governed solely by TEXT BANDS JSON. Never invent a role_id. Script-supported visual concepts are candidates, not a checklist: discard candidates that do not fit an available winner role or budget. Exactly one informational_object must have is_primary_target=true. Presenter/person is kind=person and consumes the people budget, never the informational-object budget. Chair/support and environment are non-informational. Attention devices use kind=attention_device and attention_target_role_id must equal the primary target's role_id. Do not hide multiple informational objects inside one placement description: one visible informational object = one placement. ENVIRONMENT IS ATMOSPHERE ONLY: an environment placement may describe room/background qualities such as lighting, wall, floor, or non-salient ambience, but must not contain or name independent props, products, containers, books/notebooks/diaries, labels, cards, food/drink, devices, or other countable informational objects. SUPPORT IS STRUCTURE ONLY: a support placement may describe only the winner-equivalent structural support (for example chair/table surface when that support role exists) and must not smuggle informational props into its description. Every independent prop must be its own kind=informational_object placement bound to a compatible winner role; if no such role exists, discard it. If only one target role is available, choose the single strongest current-topic target and discard prescription bottles, antacids, laxatives, diaries, labels, or other supported candidates rather than clustering or hiding them in target, support, or environment prose."""
         schema={
