@@ -50,3 +50,22 @@ def test_phase2_rejects_wrong_attention_target_and_safe_zone():
     assert result["verdict"]=="FAIL"
     assert any("attention mapping mismatch" in x for x in result["findings"])
     assert "bottom-right timestamp safe zone is not clear" in result["findings"]
+\n\nfrom Thumbnail_Pipeline.qa.rendered_image_qa import evaluate_rendered_image_qa
+
+
+def test_phase2_fails_closed_when_required_counts_missing():
+    expected={
+        "text_bands":[{"text":"MAGNESIUM","x_pct":4,"y_pct":6,"w_pct":50,"h_pct":20}],
+        "visual_placements":[{"role_id":"target","kind":"informational_object","is_primary_target":True}],
+        "complexity_budget":{"max_people":1,"max_informational_objects":1,"max_attention_devices":1},
+    }
+    observed={
+        "text_bands":[{"text":"MAGNESIUM","x_pct":4,"y_pct":6,"w_pct":50,"h_pct":20,"rotation_deg":0,"slant_deg":0}],
+        "primary_target_role_id":"target","attention_target_role_id":None,
+        "extra_visible_text":[],"extra_informational_objects":[],"timestamp_safe_zone_clear":True,
+    }
+    result=evaluate_rendered_image_qa(expected,observed)
+    assert result["verdict"]=="FAIL"
+    assert "pixel observation missing required count: people_count" in result["findings"]
+    assert "pixel observation missing required count: informational_object_count" in result["findings"]
+    assert "pixel observation missing required count: attention_device_count" in result["findings"]
