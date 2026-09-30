@@ -319,7 +319,8 @@ Preserve the winner's geometry, hierarchy, and styling for whichever slots are a
 For primary_visual and secondary_detail, describe concrete visible current-topic imagery. The primary visual should carry the strongest concrete title-grounded token. A secondary detail is OPTIONAL and must express a DIFFERENT title-grounded semantic token than the primary visual; a zoom or repeated label that merely restates the primary subject is not useful. If no distinct honest secondary visual exists without invention, return null for secondary_detail and attention_target. Attention devices are permitted only when they point to a unique informative secondary referent. Do not invent product color, capsule/tablet form, imprint, dosage, brand, label wording, packaging details, medical effects, or unrelated props unless CURRENT_TITLE explicitly supports them.
 When REVISION_FEEDBACK_JSON is non-empty, this is a repair pass. Fix every actionable finding while preserving already-valid slots where possible. Do not weaken script grounding, rewrite the immutable headline, or invent content merely to satisfy a finding. PRIOR_CONTRACT_JSON is the failed contract to repair, not a new reference source.
 REPAIR INVARIANT: after every repair, compare all non-null text slots (top_banner, primary_headline, boxed_keyword, bottom_callout) case-insensitively. Never return the same visible phrase in more than one slot. SELECTED_THUMBNAIL_TEXT must remain verbatim exactly once, but may move between these slots to satisfy the winner reading sequence. If a repair would duplicate an existing phrase, keep the stronger carrier and set the weaker optional slot to null unless a distinct script-supported phrase adds real marginal information.
-REPAIR INVARIANT: preserve presenter -> attention -> target as a structural relationship, but never restore the historical winner's topic-specific body part/object merely to satisfy geometry. The target may be remapped to one unique current-topic object supported by SCRIPT_SUPPORT_JSON, and presenter gesture plus attention device must point to that same target."""
+REPAIR INVARIANT: preserve presenter -> attention -> target as a structural relationship, but never restore the historical winner's topic-specific body part/object merely to satisfy geometry. The target may be remapped to one unique current-topic object supported by SCRIPT_SUPPORT_JSON, and presenter gesture plus attention device must point to that same target.
+STRUCTURED VISUAL PLACEMENTS ARE MANDATORY. Populate visual_placements[] as the executable visual contract, not a prose summary. Every visible person, informational object, attention device, support/chair, or environment role that the generation should render must be one placement bound to an existing WINNER_METADATA structural_contract.roles[].role_id. Never invent a role_id. Script-supported visual concepts are candidates, not a checklist: discard candidates that do not fit an available winner role or budget. Exactly one informational_object must have is_primary_target=true. Presenter/person is kind=person and consumes the people budget, never the informational-object budget. Chair/support and environment are non-informational. Attention devices use kind=attention_device and attention_target_role_id must equal the primary target's role_id. Do not hide multiple informational objects inside one placement description: one visible informational object = one placement. If only one target role is available, choose the single strongest current-topic target and discard prescription bottles, antacids, laxatives, diaries, labels, or other supported candidates rather than clustering them into that role."""
         schema={
             "type":"object",
             "properties":{
@@ -330,9 +331,17 @@ REPAIR INVARIANT: preserve presenter -> attention -> target as a structural rela
                 "primary_visual":{"type":["string","null"]},
                 "secondary_detail":{"type":["string","null"]},
                 "attention_target":{"type":["string","null"]},
+                "visual_placements":{"type":"array","items":{"type":"object","properties":{
+                    "placement_id":{"type":"string"},
+                    "role_id":{"type":"string"},
+                    "kind":{"type":"string","enum":["person","informational_object","attention_device","support","environment"]},
+                    "description":{"type":"string"},
+                    "is_primary_target":{"type":"boolean"},
+                    "attention_target_role_id":{"type":["string","null"]}
+                },"required":["placement_id","role_id","kind","description","is_primary_target","attention_target_role_id"],"additionalProperties":False}},
                 "adaptation_rationale":{"type":["string","null"]}
             },
-            "required":["top_banner","primary_headline","boxed_keyword","bottom_callout","primary_visual","secondary_detail","attention_target","adaptation_rationale"],
+            "required":["top_banner","primary_headline","boxed_keyword","bottom_callout","primary_visual","secondary_detail","attention_target","visual_placements","adaptation_rationale"],
             "additionalProperties":False
         }
         prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support or {},ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)+"\nPRIOR_CONTRACT_JSON:\n"+json.dumps(prior_contract or {},ensure_ascii=False)+"\nREVISION_FEEDBACK_JSON:\n"+json.dumps(revision_feedback or {},ensure_ascii=False)
