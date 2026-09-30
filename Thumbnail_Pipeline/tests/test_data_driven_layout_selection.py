@@ -81,7 +81,10 @@ def test_winner_query_uses_latest_rows_without_summing_snapshots():
     assert [x["title"] for x in winners] == ["A"]
 
 
-def test_same_coarse_family_does_not_validate_when_primary_visual_is_on_opposite_side():
+def test_same_coarse_family_keeps_db_winner_when_detailed_geometry_differs():
+    # DB winner is the reusable composition authority. Current-topic YouTube validates
+    # only the coarse layout family; detailed signature compatibility is a preference,
+    # not a veto that can outrank an eligible CTR winner.
     winners = [
         _winner("winner one", "Large text on the left, peanut butter jar on the right, spoonful highlighted in the upper-right, top red banner"),
     ]
@@ -97,7 +100,8 @@ def test_same_coarse_family_does_not_validate_when_primary_visual_is_on_opposite
         "views": 76334,
     }]
     selected = _select_data_driven_layout(winners, youtube)
-    assert selected["source"] == "youtube_highest_view_fallback"
+    assert selected["source"] == "db_winner_validated_on_youtube"
+    assert selected["winner_title"] == "winner one"
     assert selected["youtube_match_video_id"] == "YJqtmwzsQYE"
 
 
