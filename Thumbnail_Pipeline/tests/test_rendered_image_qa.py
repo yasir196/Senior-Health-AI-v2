@@ -50,10 +50,7 @@ def test_phase2_rejects_wrong_attention_target_and_safe_zone():
     assert result["verdict"]=="FAIL"
     assert any("attention mapping mismatch" in x for x in result["findings"])
     assert "bottom-right timestamp safe zone is not clear" in result["findings"]
-\n\nfrom Thumbnail_Pipeline.qa.rendered_image_qa import evaluate_rendered_image_qa
-
-
-def test_phase2_fails_closed_when_required_counts_missing():
+\n\ndef test_phase2_fails_closed_when_required_counts_missing():
     expected={
         "text_bands":[{"text":"MAGNESIUM","x_pct":4,"y_pct":6,"w_pct":50,"h_pct":20}],
         "visual_placements":[{"role_id":"target","kind":"informational_object","is_primary_target":True}],
