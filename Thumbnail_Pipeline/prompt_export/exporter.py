@@ -43,7 +43,8 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
         f"SUBJECT PLACEMENT: {contract['subject_placement']}",
         f"TEXT PLACEMENT: {contract['text_placement']}",
         f"SAFE ZONE: {contract['safe_zone']}",
-        "FONT RULE: Use a bold block sans-serif font with perfectly upright, straight vertical letterforms and 0% slant. No italic, oblique, cursive, script, skewed, or slanted text.",
+        "FONT RULE — HARD OVERRIDE: Every visible letter must use a bold condensed/block sans-serif with perfectly upright vertical stems and EXACTLY 0° slant. REGULAR/UPRIGHT ROMAN ONLY. Italic, oblique, faux-italic, cursive, script, skew, shear, perspective-slanted lettering, rotated words, and angled text boxes are forbidden. Do not imitate any slant seen in a reference image. If the chosen font has an italic/oblique variant, use its upright regular/bold variant only.",
+        "TEXT ORIENTATION LOCK: Keep every text baseline horizontal (0° rotation) and every text band/rectangle axis-aligned to the canvas. No tilted cards, diagonal banners, trapezoid/perspective text panels, or leaning glyphs. Text may wrap inside its assigned band, but wrapping must not change the upright 0° typography.",
     ]
     signature=contract.get("structural_signature") or {}
     zone_labels=(("text_zone","TEXT ZONE"),("primary_visual_zone","PRIMARY VISUAL ZONE"),("presenter_zone","PRESENTER ZONE"),("secondary_visual_zone","SECONDARY VISUAL ZONE"))
@@ -103,6 +104,7 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
             lines.append("VISUAL SUBJECT DIRECTION: Use only a subject visibly supported by the current-topic YouTube evidence above; do not copy unrelated historical cluster objects.")
     lines += [
         "Follow the reviewed composition exactly.",
+        "FINAL TYPOGRAPHY CHECK BEFORE RENDER: reject and regenerate internally if ANY glyph, word, baseline, or text panel appears italic, oblique, leaning, skewed, sheared, rotated, or perspective-slanted. All visible copy must remain perfectly upright at 0°.",
         "Do not add extra text, claims, badges, labels, people, or visual elements not specified by the reviewed contract.",
     ]
     return {
