@@ -29,7 +29,7 @@ def _derived_reusable_roles(metadata: dict[str, Any]) -> dict[str, Any]:
         roles["attention_devices"]={"role":"Preserve winner attention-device types and relative placement; retarget them to the substituted current-topic detail","winner_devices":attention.get("present") or attention.get("devices_present")}
     return roles
 
-def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[str, Any], *, selected_text: str | None = None, winner_metadata: dict[str, Any] | None = None, topic_adaptation: dict[str, Any] | None = None) -> dict[str, Any]:
+def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[str, Any], *, selected_text: str | None = None, winner_metadata: dict[str, Any] | None = None, topic_adaptation: dict[str, Any] | None = None, render_structure: dict[str, Any] | None = None) -> dict[str, Any]:
     """Export the reviewed thumbnail prompt contract only; never render or publish."""
     handoff = build_generation_handoff(composition_spec, gate, selected_text=selected_text)
     contract = handoff["render_contract"]
@@ -87,6 +87,13 @@ def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[s
             lines.append("TOPIC SUBSTITUTION RULES: "+str(swap_rules))
         if topic_split:
             lines.append("TOPIC-SPECIFIC VS REUSABLE: "+str(topic_split))
+        structure=render_structure if isinstance(render_structure,dict) else {}
+        if structure:
+            lines.append("RENDER STRUCTURE — HARD, MEASURABLE CONTRACT:")
+            lines.append("TEXT BANDS JSON: "+str(structure.get("text_bands") or []))
+            lines.append("VISUAL ROLES JSON: "+str(structure.get("visual_roles") or []))
+            lines.append("COMPLEXITY BUDGET: "+str(structure.get("complexity_budget") or {}))
+            lines.append("RENDER INVARIANTS: Text band count is fixed. Each semantic slot stays inside its assigned band. Wrapping may occur only inside that same rectangle and must never create a new panel. Every band is axis-aligned with rotation_deg=0 and slant_deg=0. Do not create extra informational objects or people beyond the winner-derived complexity budget. Empty optional roles are valid and preferable to clutter.")
         adaptation=topic_adaptation if isinstance(topic_adaptation,dict) else {}
         if adaptation:
             lines.append("CURRENT-TOPIC SLOT CONTRACT (use these exact semantic assignments):")
