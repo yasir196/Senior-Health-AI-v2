@@ -29,6 +29,25 @@ def _targets(settings: dict[str, Any]) -> dict[str, float]:
     return values
 
 
+def validate_ratio_result(summary: dict[str, Any], *, tolerance_points: float, strict: bool) -> list[str]:
+    """Validate actual duration shares against the user's GUI policy."""
+    issues: list[str] = []
+    allowed = 0.01 if strict else max(0.0, float(tolerance_points))
+    for lane, values in summary.get("targets", {}).items():
+        target = float(values.get("target_percent", 0) or 0)
+        actual = float(values.get("actual_percent", 0) or 0)
+        if target <= 0 and actual <= 0:
+            continue
+        delta = abs(actual - target)
+        if delta > allowed + 1e-9:
+            mode = "STRICT" if strict else f"±{allowed:g} percentage points"
+            issues.append(
+                f"{lane}: actual {actual:.3f}% vs target {target:.3f}% "
+                f"(difference {delta:.3f} points) exceeds {mode}."
+            )
+    return issues
+
+
 def allocate_ratio_targets(project: Path) -> Path:
     """Assign each deterministic slot to the user's production mix by duration.
 
@@ -83,8 +102,14 @@ def allocate_ratio_targets(project: Path) -> Path:
         writer.writeheader()
         writer.writerows(rows)
 
+    strict = bool(settings.get("ratio_strict_mode", False))
+    tolerance = float(settings.get("ratio_tolerance_points", 5.0) or 0.0)
     summary = {
         "total_duration_seconds": round(total_duration, 3),
+        "ratio_policy": {
+            "strict": strict,
+            "tolerance_points": tolerance,
+        },
         "targets": {
             lane: {
                 "target_percent": targets[lane],
@@ -94,6 +119,11 @@ def allocate_ratio_targets(project: Path) -> Path:
             }
             for lane in LANES
         },
+    }
+    issues = validate_ratio_result(summary, tolerance_points=tolerance, strict=strict)
+    summary["validation"] = {
+        "status": "PASS" if not issues else "FAIL",
+        "issues": issues,
     }
     (project / "production_ratio_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf-8", newline="\n"
