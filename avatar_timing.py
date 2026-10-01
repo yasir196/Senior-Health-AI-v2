@@ -33,6 +33,11 @@ TIMELINE_COLUMNS = [
     "Duration", "Avatar Chunk", "Timing Source",
 ]
 
+MASTER_NARRATION_COLUMNS = [
+    "Segment ID", "Transcript Text", "Actual Audio Start", "Actual Audio End",
+    "Duration", "Avatar Chunk", "Timing Source",
+]
+
 
 @dataclass
 class AvatarChunk:
@@ -209,7 +214,20 @@ def transcript_inventory(chunks: Iterable[AvatarChunk], transcript_dir: Path, co
     return {"current": current, "total_duration": total_duration}
 
 
-def avatar_sync_blockers(lock_ready: bool, avatar_folder: Path, scenes: list[dict[str, str]], discovery: ChunkDiscovery | None) -> list[str]:
+def avatar_sync_blockers(
+    lock_ready: bool,
+    avatar_folder: Path,
+    scenes: list[dict[str, str]] | None,
+    discovery: ChunkDiscovery | None,
+    *,
+    require_production_sheet: bool = True,
+) -> list[str]:
+    """Return blockers for avatar transcription/timing.
+
+    Timestamp-first production can transcribe avatars and build the master narration
+    clock before a Production Sheet exists. Legacy Actual Timeline alignment may
+    still opt into the Production Sheet requirement.
+    """
     reasons: list[str] = []
     if not lock_ready:
         reasons.append("Production Lock must be READY.")
@@ -221,8 +239,8 @@ def avatar_sync_blockers(lock_ready: bool, avatar_folder: Path, scenes: list[dic
     if sequence.missing_numbers:
         labels = ", ".join(f"c{number}" for number in sequence.missing_numbers)
         reasons.append(f"Missing sequential avatar chunks: {labels}.")
-    if not scenes:
-        reasons.append("07_production_sheet.csv is required before timing alignment.")
+    if require_production_sheet and not scenes:
+        reasons.append("07_production_sheet.csv is required before legacy scene alignment.")
     return reasons
 
 
@@ -902,6 +920,130 @@ def _resolve_scene_word_ranges(
             )
         resolved.append((scene, start_index, end_index))
     return resolved
+
+def build_master_narration_timeline(
+    project: Path,
+    avatar_folder: Path,
+    config: dict[str, Any],
+    *,
+    transcript_dir: Path | None = None,
+) -> TimelineSummary:
+    """Build a production-independent master clock from actual avatar transcripts.
+
+    This deliberately does not read 07_production_sheet.csv. Segment boundaries and
+    timestamps come only from the transcribed avatar media. Production planning can
+    consume this file later and snap visual decisions to the actual narration clock.
+    """
+    project = project.resolve()
+    discovery = discover_avatar_chunks(avatar_folder)
+    transcript_dir = transcript_dir or project / "avatar_transcripts"
+    timeline_path = project / "08_master_narration_timeline.csv"
+    manifest_path = project / "master_narration_timing_manifest.json"
+    report_path = project / "master_narration_timing_report.md"
+    warnings: list[str] = []
+    missing: list[str] = []
+    sequence = chunk_sequence_info(discovery)
+    if not discovery.chunks:
+        missing.append("No supported avatar chunks were found.")
+    missing.extend(f"c{number}" for number in sequence.missing_numbers)
+
+    payloads, transcript_failures = _load_transcript_payloads(discovery.chunks, transcript_dir, config)
+    missing.extend(f"Transcript missing: {name}" for name in transcript_failures)
+    transcript_words = [word for payload in payloads for word in payload["words"]]
+    transcript_tokens = [_tokens(word["word"])[0] for word in transcript_words if _tokens(word["word"])]
+    approved_path = project / "06a_voice_script.md"
+    approved_text = approved_path.read_text(encoding="utf-8") if approved_path.is_file() else ""
+    approved_tokens = _tokens(approved_text)
+    _mapping, alignment_score = _alignment_map(approved_tokens, transcript_tokens) if approved_tokens and transcript_tokens else ({}, 0.0)
+    threshold = float(config.get("avatar_alignment_threshold", 92.0))
+    if not approved_tokens:
+        missing.append("06a_voice_script.md is missing or empty.")
+    elif alignment_score < threshold:
+        warnings.append(f"Alignment score {alignment_score:.1f}% is below the configured {threshold:.1f}% threshold.")
+
+    rows: list[dict[str, Any]] = []
+    segment_number = 0
+    for payload in payloads:
+        segments = payload["segments"]
+        if not segments:
+            # Word timing remains authoritative; use the whole chunk only as a
+            # fallback segment when the provider omitted segment objects.
+            words = payload["words"]
+            if words:
+                segments = [{
+                    "start": words[0]["start"],
+                    "end": words[-1]["end"],
+                    "text": str(payload["payload"].get("text", "")).strip(),
+                    "chunk": payload["chunk"].path.name,
+                }]
+        for segment in segments:
+            text = str(segment.get("text") or "").strip()
+            start_seconds = float(segment.get("start", 0.0) or 0.0)
+            end_seconds = float(segment.get("end", start_seconds) or start_seconds)
+            if not text or end_seconds <= start_seconds:
+                continue
+            segment_number += 1
+            rows.append({
+                "Segment ID": f"T{segment_number:04d}",
+                "Transcript Text": text,
+                "Actual Audio Start": _seconds_to_timestamp(start_seconds),
+                "Actual Audio End": _seconds_to_timestamp(end_seconds),
+                "Duration": f"{end_seconds - start_seconds:.3f}",
+                "Avatar Chunk": str(segment.get("chunk") or payload["chunk"].path.name),
+                "Timing Source": "TRANSCRIPT",
+            })
+
+    success = bool(rows) and not missing
+    if success:
+        _mkdir_path_safe(timeline_path.parent)
+        with timeline_path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=MASTER_NARRATION_COLUMNS)
+            writer.writeheader()
+            writer.writerows(protect_csv_row(
+                row,
+                text_columns={"Segment ID", "Transcript Text", "Avatar Chunk", "Timing Source"},
+            ) for row in rows)
+
+    settings = transcription_settings(config)
+    manifest = {
+        "version": "1.0",
+        "generated_at": _utc_now(),
+        "architecture": "timestamp_first",
+        "timing_authority": "avatar_transcript",
+        "source_script": "06a_voice_script.md",
+        "production_sheet_required": False,
+        "timeline_file": timeline_path.name,
+        "avatar_folder": str(avatar_folder.resolve()),
+        "alignment_score": alignment_score,
+        "alignment_threshold": threshold,
+        "timeline_status": "PASS" if success else "FAIL",
+        "transcription_model": settings["effective_model"],
+        "timestamp_granularities": settings["timestamp_granularities"],
+        "detected_chunks": sequence.detected_count,
+        "missing_chunk_numbers": sequence.missing_numbers,
+        "total_avatar_duration": round(sum(item["duration"] for item in payloads), 3),
+        "timeline_segments": len(rows),
+    }
+    _write_text_path_safe(manifest_path, json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", newline="\n")
+    report_lines = [
+        "# Master Narration Timing Report", "",
+        f"**Status:** {'PASS' if success else 'FAIL'}", "",
+        "- Architecture: timestamp-first",
+        "- Timing authority: actual avatar transcript",
+        "- Production Sheet required: No",
+        f"- Chunks Found: {sequence.detected_count}",
+        f"- Total Avatar Duration: {sum(item['duration'] for item in payloads):.3f} seconds",
+        f"- Alignment %: {alignment_score:.1f}%",
+        f"- Timeline Segments: {len(rows)}", "",
+        "## Missing / Blockers",
+    ]
+    report_lines.extend([f"- {item}" for item in missing] or ["- None"])
+    report_lines.extend(["", "## Warnings"])
+    report_lines.extend([f"- {item}" for item in warnings] or ["- None"])
+    report_lines.append("")
+    _write_text_path_safe(report_path, "\n".join(report_lines), newline="\n")
+    return TimelineSummary(success, timeline_path, manifest_path, report_path, alignment_score, warnings, missing, discovery.duplicates, len(rows))
+
 
 def build_actual_timeline(
     project: Path,
