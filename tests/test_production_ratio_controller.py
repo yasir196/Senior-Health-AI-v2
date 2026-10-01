@@ -2,7 +2,7 @@ import csv
 import json
 from pathlib import Path
 
-from production_ratio_controller import allocate_ratio_targets
+from production_ratio_controller import allocate_ratio_targets, validate_ratio_result
 
 
 def test_ratio_allocation_uses_duration_not_scene_count(tmp_path: Path) -> None:
@@ -28,3 +28,19 @@ def test_ratio_allocation_uses_duration_not_scene_count(tmp_path: Path) -> None:
     with target.open(encoding="utf-8", newline="") as h:
         allocated=list(csv.DictReader(h))
     assert all(r["ratio_assignment_source"] == "GUI_DURATION_MIX" for r in allocated)
+
+
+def test_ratio_tolerance_passes_within_configured_points() -> None:
+    summary = {"targets": {"avatar": {"target_percent": 40, "actual_percent": 43.5}}}
+    assert validate_ratio_result(summary, tolerance_points=5, strict=False) == []
+
+
+def test_ratio_tolerance_fails_outside_configured_points() -> None:
+    summary = {"targets": {"avatar": {"target_percent": 40, "actual_percent": 46}}}
+    issues = validate_ratio_result(summary, tolerance_points=5, strict=False)
+    assert issues and "exceeds" in issues[0]
+
+
+def test_strict_ratio_mode_uses_near_exact_threshold() -> None:
+    summary = {"targets": {"avatar": {"target_percent": 40, "actual_percent": 40.02}}}
+    assert validate_ratio_result(summary, tolerance_points=5, strict=True)
