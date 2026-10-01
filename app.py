@@ -20,6 +20,7 @@ import streamlit as st
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
 from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation, validate_host_introduction_avatar
 from production_rules import load_rules, save_rules, validate_rules
+from production_timing_controller import build_production_slots
 from scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -1044,6 +1045,36 @@ def render_workflow() -> None:
             )
         else:
             st.info("No production rules are enabled.")
+
+    st.markdown("### Timestamp Rule Preview")
+    st.caption("Applies the saved enabled rules to the actual Master Narration Timeline. This creates deterministic production slots before AI visual planning.")
+    master_for_slots = project / "08_master_narration_timeline.csv"
+    if st.button(
+        "Apply Rules to Actual Timeline",
+        disabled=bool(rule_issues) or not master_for_slots.is_file(),
+        key=f"apply_production_rules_{project.name}",
+    ):
+        try:
+            slots_path = build_production_slots(project, config)
+        except Exception as exc:
+            st.error(f"Timestamp rule application failed: {exc}")
+        else:
+            st.success(f"Timestamp rules applied: {slots_path.name}")
+            st.rerun()
+    slots_path = project / "08_production_slots.csv"
+    if slots_path.is_file():
+        try:
+            slots_df = pd.read_csv(slots_path)
+        except Exception as exc:
+            st.warning(f"Production slot preview could not be loaded: {exc}")
+        else:
+            st.dataframe(slots_df, hide_index=True, width="stretch")
+            if not slots_df.empty:
+                st.caption(
+                    f"Resolved slots: {len(slots_df)} · "
+                    f"Longest slot: {float(slots_df['duration_sec'].max()):.2f}s · "
+                    "Timing source: MASTER_TRANSCRIPT"
+                )
 
     cli_template = detect_codex_command()
     direct_enabled = bool(config.get("direct_run_enabled", True)) and bool(cli_template)
