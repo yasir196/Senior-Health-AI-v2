@@ -477,6 +477,7 @@ def _script_support_contract(api_key: str, *, model: str, immutable_title: str, 
 The FINAL SCRIPT is the semantic ceiling. Do not add facts, symptoms, outcomes, mechanisms, counts, timing, product forms, or visual implications that the script does not support.
 The immutable title is context, not proof. A title claim is allowed in the thumbnail only when the final script materially delivers it.
 For numbered/list promises, verify that the script contains the promised number of clearly identifiable supported items. Do not infer missing items.
+COUNT-PROMISE AUTHORITY: audit an explicit numeric/list promise found in EITHER IMMUTABLE_TITLE or SELECTED_THUMBNAIL_TEXT, even when the selected thumbnail text itself omits the number. If either input contains an explicit list count that could be reused in generated thumbnail copy, count_promise MUST be non-null and must record promised, supported, and clearly_identifiable. Return count_promise=null only when neither input contains an explicit list-count promise.
 Return concise atomic concepts that are safe to communicate in thumbnail text or imagery. Visual concepts must be directly supported by the script; do not invent anatomy, effects, props, dosage forms, packaging, clocks, foods, or symptoms merely because they are visually convenient.
 Verdict PASS only when the selected thumbnail headline/promise is materially supported by the final script. Otherwise FAIL and explain the mismatch. Never rewrite the immutable title."""
     schema={
@@ -516,6 +517,47 @@ Verdict PASS only when the selected thumbnail headline/promise is materially sup
         raise ValueError("Script support audit must return a JSON object.")
     return result
 
+def _enforce_numeric_copy_authority(result: dict[str, Any], script_support: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
+    """Reject generated numeric list copy unless the script audit explicitly validates that count."""
+    import re
+    out=dict(result or {})
+    slots=("top_banner","primary_headline","boxed_keyword","bottom_callout")
+    numeric_claims=[]
+    for slot in slots:
+        value=str((adaptation or {}).get(slot) or "").strip()
+        for match in re.finditer(r"(?<!\\d)(\\d{1,2})(?!\\d)",value):
+            numeric_claims.append((slot,value,int(match.group(1))))
+    if not numeric_claims:
+        return out
+
+    count=(script_support or {}).get("count_promise")
+    authorized=(
+        isinstance(count,dict)
+        and isinstance(count.get("promised"),int)
+        and count.get("supported")==count.get("promised")
+        and count.get("clearly_identifiable") is True
+    )
+    unauthorized=[
+        (slot,value,number) for slot,value,number in numeric_claims
+        if not authorized or number != count.get("promised")
+    ]
+    if not unauthorized:
+        return out
+
+    findings=list(out.get("unsupported_slots") or [])
+    existing={(str(x.get("slot")),str(x.get("value"))) for x in findings if isinstance(x,dict)}
+    for slot,value,number in unauthorized:
+        if (slot,value) not in existing:
+            findings.append({
+                "slot":slot,
+                "value":value,
+                "reason":f"Numeric list promise {number} lacks explicit matching count_promise authority from the script-support audit.",
+            })
+    out["unsupported_slots"]=findings
+    out["verdict"]="FAIL"
+    out["reason"]="FAIL after deterministic numeric-copy authority check: generated list counts require an explicitly validated matching count_promise."
+    return out
+
 def _validate_thumbnail_contract(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_support: dict[str, Any], winner_metadata: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
     """Final semantic gate: generated thumbnail contract may not reinterpret script support."""
     import urllib.request
@@ -553,7 +595,7 @@ Return slot-specific findings. Do not repair or rewrite the contract."""
     result=json.loads(output_text)
     if not isinstance(result,dict):
         raise ValueError("Final thumbnail semantic gate must return a JSON object.")
-    return result
+    return _enforce_numeric_copy_authority(result,script_support,adaptation)
 
 def _enforce_optional_text_band_authority(result: dict[str, Any], winner_metadata: dict[str, Any]) -> dict[str, Any]:
     """Deterministically discard utility findings that invent a required CTA band.
