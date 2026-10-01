@@ -828,6 +828,7 @@ def main() -> int:
     # Script-grounding gate: title is context, but the final script is the semantic ceiling.
     script_path,script_text=_load_final_script(project)
     script_support=None
+    psychology=None
     if selected_text is None and script_text and args.vision_api_key:
         psychology=_thumbnail_copy_psychology(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],script_text=script_text)
         selected_text=str(psychology["selected_text"]).strip()
@@ -880,6 +881,7 @@ def main() -> int:
                 immutable_title=state["immutable_title"],
                 selected_text=selected_text,
                 script_support=script_support,
+                selected_hook_context=psychology,
                 revision_feedback=revision_feedback,
                 prior_contract=prior_contract,
             )
