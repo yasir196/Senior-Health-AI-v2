@@ -525,7 +525,7 @@ def _enforce_numeric_copy_authority(result: dict[str, Any], script_support: dict
     numeric_claims=[]
     for slot in slots:
         value=str((adaptation or {}).get(slot) or "").strip()
-        for match in re.finditer(r"(?<!\\d)(\\d{1,2})(?!\\d)",value):
+        for match in re.finditer(r"(?<!\d)(\d{1,2})(?!\d)",value):
             numeric_claims.append((slot,value,int(match.group(1))))
     if not numeric_claims:
         return out
