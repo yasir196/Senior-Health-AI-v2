@@ -942,7 +942,14 @@ def main() -> int:
         print("PRE-GENERATION CONTRACT QA: FAIL — final prompt was not exported.")
         return 6
 
-    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation,render_structure=render_structure)
+    selected_text_authorized=bool(
+        psychology
+        and str(psychology.get("selected_text") or "").strip()==str(selected_text or "").strip()
+        and script_support and script_support.get("verdict")=="PASS"
+        and final_semantic_gate and final_semantic_gate.get("verdict")=="PASS"
+        and contract_qa.get("verdict")=="PASS"
+    )
+    result=export_final_thumbnail_prompt(spec,gate,selected_text=selected_text,selected_text_authorized=selected_text_authorized,winner_metadata=fresh_metadata,topic_adaptation=topic_adaptation,render_structure=render_structure)
     prompt_output_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])
     prompt_output_dir.mkdir(parents=True,exist_ok=True)
     prompt_path=prompt_output_dir/"final_thumbnail_prompt.txt"
