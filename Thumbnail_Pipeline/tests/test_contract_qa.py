@@ -1,5 +1,5 @@
 from Thumbnail_Pipeline.qa.contract_qa import build_render_structure, evaluate_contract_qa
-from Thumbnail_Pipeline.adapters.winner_metadata import _repair_presenter_role_binding
+from Thumbnail_Pipeline.adapters.winner_metadata import _repair_presenter_role_binding, _enforce_visual_complexity_budget
 
 
 def _winner():
@@ -146,3 +146,26 @@ def test_presenter_binding_does_not_guess_between_multiple_people_roles():
     ]}
     repaired=_repair_presenter_role_binding(winner,adaptation)
     assert repaired["visual_placements"][0]["role_id"]=="target"
+
+
+def test_visual_budget_preflight_drops_second_informational_object():
+    winner=_winner()
+    adaptation={"secondary_detail":"row of five exercise icons","visual_placements":[
+        {"placement_id":"target","role_id":"target","kind":"informational_object","description":"socked foot","is_primary_target":True,"attention_target_role_id":None},
+        {"placement_id":"icons","role_id":"target","kind":"informational_object","description":"five exercise icons","is_primary_target":False,"attention_target_role_id":None},
+    ]}
+    repaired=_enforce_visual_complexity_budget(winner,adaptation)
+    objects=[x for x in repaired["visual_placements"] if x["kind"]=="informational_object"]
+    assert len(objects)==1
+    assert objects[0]["placement_id"]=="target"
+    assert repaired["secondary_detail"] is None
+
+
+def test_visual_budget_preflight_preserves_noninformational_support():
+    winner=_winner()
+    adaptation={"visual_placements":[
+        {"placement_id":"target","role_id":"target","kind":"informational_object","description":"socked foot","is_primary_target":True,"attention_target_role_id":None},
+        {"placement_id":"chair","role_id":"chair","kind":"support","description":"stable chair","is_primary_target":False,"attention_target_role_id":None},
+    ]}
+    repaired=_enforce_visual_complexity_budget(winner,adaptation)
+    assert [x["placement_id"] for x in repaired["visual_placements"]]==["target","chair"]
