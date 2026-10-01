@@ -22,6 +22,7 @@ from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHE
 from production_rules import load_rules, save_rules, validate_rules
 from production_timing_controller import build_production_slots
 from production_ratio_controller import allocate_ratio_targets
+from timeline_qa import audit_timeline
 from scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -1123,6 +1124,57 @@ def render_workflow() -> None:
         except (json.JSONDecodeError, TypeError):
             st.warning("Production ratio summary is invalid and should be regenerated.")
 
+    st.markdown("### Timeline QA + Preview")
+    st.caption("Mandatory pre-asset gate: validates locked timestamp continuity, durations, overlaps, gaps, and resolved production rules.")
+    qa_source = project / "08_ratio_allocated_slots.csv"
+    if st.button(
+        "Run Timeline QA",
+        disabled=not qa_source.is_file(),
+        key=f"run_timeline_qa_{project.name}",
+    ):
+        try:
+            qa_result = audit_timeline(project)
+        except Exception as exc:
+            st.error(f"Timeline QA failed to run: {exc}")
+        else:
+            if qa_result["status"] == "PASS":
+                st.success("Timeline QA: PASS")
+            else:
+                st.error("Timeline QA: FAIL")
+            st.rerun()
+
+    qa_report_path = project / "timeline_qa_report.json"
+    timeline_qa_pass = False
+    if qa_report_path.is_file():
+        try:
+            qa_report = json.loads(safe_read_text(qa_report_path) or "{}")
+            timeline_qa_pass = qa_report.get("status") == "PASS"
+            q1, q2, q3 = st.columns(3)
+            q1.metric("QA Slots", int(qa_report.get("slot_count", 0)))
+            q2.metric("Hard Issues", int(qa_report.get("hard_issue_count", 0)))
+            q3.metric("Soft Warnings", int(qa_report.get("soft_warning_count", 0)))
+            if timeline_qa_pass:
+                st.success("Pre-asset Timeline Gate: PASS")
+            else:
+                st.error("Pre-asset Timeline Gate: FAIL — Production asset planning/generation must remain blocked.")
+            issues = qa_report.get("issues", [])
+            if issues:
+                st.dataframe(pd.DataFrame(issues), hide_index=True, width="stretch")
+        except (json.JSONDecodeError, TypeError):
+            st.error("Timeline QA report is invalid. Run Timeline QA again.")
+
+    if qa_source.is_file():
+        try:
+            qa_preview_df = pd.read_csv(qa_source)
+            preview_columns = [column for column in [
+                "slot_id", "start_time", "end_time", "duration_sec", "scope",
+                "target_lane", "recommended_asset_type", "rule_id", "constraint_type",
+                "transcript_text",
+            ] if column in qa_preview_df.columns]
+            st.dataframe(qa_preview_df[preview_columns], hide_index=True, width="stretch")
+        except Exception as exc:
+            st.warning(f"Timeline preview could not be loaded: {exc}")
+
     cli_template = detect_codex_command()
     direct_enabled = bool(config.get("direct_run_enabled", True)) and bool(cli_template)
     stored_anchor = resolve_title_anchor(project)
@@ -1785,6 +1837,13 @@ def render_production() -> None:
         )
     if not mix_valid:
         generation_reasons.append(mix_reason)
+    qa_report_path = project / "timeline_qa_report.json"
+    try:
+        current_qa = json.loads(safe_read_text(qa_report_path) or "{}") if qa_report_path.is_file() else {}
+    except json.JSONDecodeError:
+        current_qa = {}
+    if current_qa.get("status") != "PASS":
+        generation_reasons.append("Timeline QA must PASS before Production visual planning or asset generation.")
     if not direct_enabled:
         generation_reasons.append("Codex CLI is unavailable or Direct Codex Run is disabled in configuration.")
 
