@@ -29,9 +29,9 @@ def _derived_reusable_roles(metadata: dict[str, Any]) -> dict[str, Any]:
         roles["attention_devices"]={"role":"Preserve winner attention-device types and relative placement; retarget them to the substituted current-topic detail","winner_devices":attention.get("present") or attention.get("devices_present")}
     return roles
 
-def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[str, Any], *, selected_text: str | None = None, winner_metadata: dict[str, Any] | None = None, topic_adaptation: dict[str, Any] | None = None, render_structure: dict[str, Any] | None = None) -> dict[str, Any]:
+def export_final_thumbnail_prompt(composition_spec: dict[str, Any], gate: dict[str, Any], *, selected_text: str | None = None, selected_text_authorized: bool = False, winner_metadata: dict[str, Any] | None = None, topic_adaptation: dict[str, Any] | None = None, render_structure: dict[str, Any] | None = None) -> dict[str, Any]:
     """Export the reviewed thumbnail prompt contract only; never render or publish."""
-    handoff = build_generation_handoff(composition_spec, gate, selected_text=selected_text)
+    handoff = build_generation_handoff(composition_spec, gate, selected_text=selected_text, selected_text_authorized=selected_text_authorized)
     contract = handoff["render_contract"]
     missing = [k for k in ("layout","subject_placement","text_placement","safe_zone") if contract.get(k) in (None,"")]
     if missing:
