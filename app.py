@@ -2216,7 +2216,8 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
                 st.download_button(f"Download {path.name}", path.read_bytes(), file_name=path.name, mime=mime, key=f"download_avatar_timing_{project.name}_{path.name}")
 
     st.markdown("---")
-    st.markdown("## Timeline Builder & CapCut Export")
+    st.markdown("## Timeline Builder & CapCut-Ready Handoff")
+    st.caption("PIPELINE END: generates an editable CapCut Desktop project only. Final MP4 rendering/export is intentionally outside this automation.")
     capcut_dir = project / "capcut"
     capcut_manifest = capcut_dir / "timeline_manifest.json"
     capcut_report = capcut_dir / "export_report.md"
@@ -2227,7 +2228,7 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
         st.caption("• Avatar Timeline status must be PASS.")
     if st.button("Generate CapCut Project", type="primary", disabled=not timeline_pass, key=f"generate_capcut_{project.name}"):
         try:
-            with st.spinner("Building generic timeline manifest and CapCut Desktop project..."):
+            with st.spinner("Building generic timeline manifest and editable CapCut-ready project..."):
                 built = build_timeline_manifest(project, timeline_path)
                 exported = export_capcut_project(project, built.manifest_path)
         except (TimelineBuildError, CapCutExportError) as exc:
@@ -2258,7 +2259,7 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
                 for warning in exported.warnings:
                     st.caption(f"• {warning}")
             else:
-                st.success(f"CapCut project generated: FINAL ASSETS READY. Base avatar duration {exported.duration_seconds:.3f} seconds.")
+                st.success(f"CAPCUT READY — editable project generated. Base avatar duration {exported.duration_seconds:.3f} seconds. Pipeline stops here; no final MP4 is rendered.")
             st.rerun()
 
     capcut_outputs = [capcut_manifest, capcut_dir / "asset_manifest.json", capcut_report,
