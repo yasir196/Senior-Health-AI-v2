@@ -34,7 +34,7 @@ from v31_core import (
 )
 
 from avatar_timing import (
-    avatar_sync_blockers, build_actual_timeline, chunk_sequence_info, discover_avatar_chunks,
+    avatar_sync_blockers, build_actual_timeline, build_master_narration_timeline, chunk_sequence_info, discover_avatar_chunks,
     AvatarTranscriptionError, load_production_scenes, preflight_avatar_chunks, transcribe_avatar_chunks, transcription_settings, transcript_cache_is_current,
     transcript_inventory,
 )
@@ -1730,7 +1730,7 @@ def render_production() -> None:
 def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready: bool) -> None:
     st.markdown("---")
     st.markdown("## Avatar Timing Sync")
-    st.caption("Uses actual avatar speech timing after Production Lock. Approved narration files are read-only.")
+    st.caption("Timestamp-first workflow: transcribe avatars first, build the actual narration clock, then plan production. Approved narration files are read-only.")
 
     model_settings = transcription_settings(config)
     m1, m2, m3, m4 = st.columns(4)
@@ -1808,7 +1808,11 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     e2.metric("Alignment Score", f"{alignment_score:.1f}%" if alignment_score is not None else "Pending")
     e3.metric("Timeline Status", timeline_status)
 
-    blockers = avatar_sync_blockers(lock_ready, avatar_folder, scenes, discovery)
+    # Timestamp-first: transcription and the master narration clock no longer
+    # depend on a pre-existing Production Sheet.
+    blockers = avatar_sync_blockers(
+        lock_ready, avatar_folder, scenes, discovery, require_production_sheet=False
+    )
     if discovery:
         if discovery.unsupported:
             st.warning("Unsupported files: " + ", ".join(discovery.unsupported))
@@ -1899,7 +1903,36 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     if not all_transcripts_present:
         timeline_blockers.append("Every avatar chunk must have current JSON and SRT outputs for the effective transcription model/settings.")
 
-    if st.button("Build Actual Timeline", disabled=bool(timeline_blockers), key=f"build_actual_timeline_{project.name}"):
+    st.markdown("### Timestamp-First Master Clock")
+    st.caption("Builds actual narration timing directly from avatar transcripts. 07_production_sheet.csv is not required.")
+    if st.button("Build Master Narration Timeline", disabled=bool(timeline_blockers), key=f"build_master_narration_timeline_{project.name}"):
+        try:
+            with st.spinner("Building production-independent master narration clock..."):
+                master_result = build_master_narration_timeline(
+                    project, avatar_folder, config, transcript_dir=transcript_dir
+                )
+        except Exception as exc:
+            st.error(f"Master narration timeline failed: {type(exc).__name__}. Review avatar transcripts and approved voice script.")
+        else:
+            if master_result.success:
+                st.success(
+                    f"Master narration timeline generated with {master_result.rows} timestamped segments. "
+                    f"Alignment: {master_result.alignment_score:.1f}%"
+                )
+                st.caption("Timing authority: actual avatar transcript · Production Sheet dependency: NONE")
+            else:
+                st.error("Master narration timeline was not generated because validation failed.")
+                for item in master_result.missing_chunks + master_result.duplicate_chunks + master_result.warnings:
+                    st.caption(f"• {item}")
+            st.rerun()
+
+    # Legacy scene-aligned Actual Timeline remains available during migration,
+    # but unlike the master clock it still requires a valid Production Sheet.
+    legacy_timeline_blockers = list(timeline_blockers)
+    if not scenes:
+        legacy_timeline_blockers.append("07_production_sheet.csv is required for legacy scene-aligned Actual Timeline.")
+
+    if st.button("Build Actual Timeline (Legacy)", disabled=bool(legacy_timeline_blockers), key=f"build_actual_timeline_{project.name}"):
         try:
             with st.spinner("Aligning approved narration to actual spoken timing..."):
                 result = build_actual_timeline(project, avatar_folder, config, transcript_dir=transcript_dir)
