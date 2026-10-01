@@ -380,16 +380,57 @@ def _repair_presenter_role_binding(metadata: dict[str, Any], adaptation: dict[st
     return out
 
 
+def _enforce_visual_complexity_budget(metadata: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
+    """Deterministically trim non-primary visual placements to winner complexity ceilings."""
+    out=dict(adaptation or {})
+    structural=(metadata or {}).get("structural_contract") or {}
+    budget=structural.get("complexity_budget") or {}
+    limits={
+        "person":int(budget.get("max_people") or 0),
+        "informational_object":int(budget.get("max_informational_objects") or 0),
+        "attention_device":int(budget.get("max_attention_devices") or 0),
+    }
+    placements=[dict(x) for x in (out.get("visual_placements") or []) if isinstance(x,dict)]
+    kept=[]
+    counts={key:0 for key in limits}
+    for item in placements:
+        kind=str(item.get("kind") or "").strip().casefold()
+        if kind not in limits:
+            kept.append(item)
+            continue
+        limit=limits[kind]
+        if counts[kind] >= limit:
+            continue
+        kept.append(item)
+        counts[kind]+=1
+    out["visual_placements"]=kept
+
+    # Prose visual slots must not resurrect an object the executable placement
+    # contract trimmed. When the winner allows only one informational object and
+    # that target already exists, secondary detail is structural noise, not a
+    # second object quota.
+    if limits["informational_object"]==1:
+        targets=[x for x in kept if str(x.get("kind") or "").casefold()=="informational_object"]
+        if len(targets)==1:
+            secondary=str(out.get("secondary_detail") or "").strip()
+            target_desc=str(targets[0].get("description") or "").strip()
+            if secondary and secondary.casefold()!=target_desc.casefold():
+                out["secondary_detail"]=None
+    return out
+
+
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
     """Adapt winner composition slots to the current immutable title without mixing references."""
     key=str(api_key or "").strip()
     if not key:
         raise ValueError("OpenAI API key is required for current-topic adaptation.")
 
-    def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None, script_support: dict[str, Any] | None = None, revision_feedback: dict[str, Any] | None = None, prior_contract: dict[str, Any] | None = None) -> dict[str, Any]:
+    def adapt(*, metadata: dict[str, Any], immutable_title: str, selected_text: str | None, script_support: dict[str, Any] | None = None, selected_hook_context: dict[str, Any] | None = None, revision_feedback: dict[str, Any] | None = None, prior_contract: dict[str, Any] | None = None) -> dict[str, Any]:
         instruction="""You are adapting a proven YouTube thumbnail composition to ONE current video topic.
 FIRST build a joint semantic coverage plan before writing any slots. Extract atomic CURRENT_TITLE tokens: subject, audience, number/payload, tension/problem, timing/context, and differentiator when explicitly present. Treat the historical winner's text positions as a CAPACITY CEILING, never a quota.
 Evaluate the ENTIRE text+visual contract together, not each slot independently. Each semantic token should have one best carrier (headline, banner, box, callout, primary visual, secondary visual). Repeating a token is allowed only when it adds clear marginal information; otherwise use null. Account for the always-visible YouTube title and for information already obvious in the image.
+SELECTED-HOOK CONCEPT IS ALREADY OCCUPIED. Treat SELECTED_THUMBNAIL_TEXT plus SELECTED_HOOK_CONTEXT_JSON as one reserved semantic carrier. Optional text bands must add a genuinely different supported idea; do not paraphrase, explain, answer, or restate the selected hook's thesis/support merely to fill another band. If no distinct marginal idea exists, return null for the optional band.
+BUDGET PREFLIGHT IS MANDATORY. Before returning visual_placements or prose visual slots, read WINNER_METADATA.structural_contract.complexity_budget and count every planned person, informational object, and attention device. Never exceed those ceilings. A row/group of exercise icons, silhouettes, cards, bottles, foods, or other countable topic visuals is informational content and cannot be added when the winner's informational-object budget is already consumed by the primary target.
 PRESERVE WINNER TEXT-FLOW LOGIC, NOT JUST TEXT-BOX GEOMETRY. Read WINNER_METADATA semantic_structure and reusable_composition_contract to determine whether the historical bands form one progressive/continuous hook, independent messages, or headline-plus-CTA. If the winner uses a progressive hook, the adapted visible text bands must read naturally in order as one coherent current-topic message. Do not populate those bands with unrelated facts merely because separate slots exist. The exact SELECTED_THUMBNAIL_TEXT remains immutable; use optional surrounding bands only when they naturally extend or complete that same hook without duplicating it. If coherent continuation is impossible, collapse/null optional bands rather than producing a fragmented multi-message thumbnail.
 Use this internal coverage scoreboard for every candidate: token -> best carrier -> emphasis level -> already covered by title? -> already covered by image? -> redundancy flags -> claim-safe? -> final assignment. Do not output the scoreboard; use it to choose the coherent final contract.
 Use the supplied winner metadata ONLY for reusable visual structure, geometry, hierarchy, palette, typography roles, and attention-device roles.
@@ -433,7 +474,7 @@ STRUCTURED VISUAL PLACEMENTS ARE MANDATORY. Populate visual_placements[] as the 
             "required":["top_banner","primary_headline","boxed_keyword","bottom_callout","primary_visual","secondary_detail","attention_target","visual_placements","adaptation_rationale"],
             "additionalProperties":False
         }
-        prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support or {},ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)+"\nPRIOR_CONTRACT_JSON:\n"+json.dumps(prior_contract or {},ensure_ascii=False)+"\nREVISION_FEEDBACK_JSON:\n"+json.dumps(revision_feedback or {},ensure_ascii=False)
+        prompt=instruction+"\n\nCURRENT_TITLE: "+str(immutable_title)+"\nSELECTED_THUMBNAIL_TEXT: "+str(selected_text or "")+"\nSELECTED_HOOK_CONTEXT_JSON:\n"+json.dumps(selected_hook_context or {},ensure_ascii=False)+"\nSCRIPT_SUPPORT_JSON:\n"+json.dumps(script_support or {},ensure_ascii=False)+"\nWINNER_METADATA_JSON:\n"+json.dumps(metadata,ensure_ascii=False)+"\nPRIOR_CONTRACT_JSON:\n"+json.dumps(prior_contract or {},ensure_ascii=False)+"\nREVISION_FEEDBACK_JSON:\n"+json.dumps(revision_feedback or {},ensure_ascii=False)
         payload={
             "model":model,
             "input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
@@ -498,6 +539,7 @@ STRUCTURED VISUAL PLACEMENTS ARE MANDATORY. Populate visual_placements[] as the 
         # Ambiguous or absent people-role metadata remains untouched so deterministic QA
         # still fails loudly rather than guessing.
         sanitized=_repair_presenter_role_binding(metadata,sanitized)
+        sanitized=_enforce_visual_complexity_budget(metadata,sanitized)
         # adaptation_rationale is internal diagnostic output, never part of the generation contract.
         sanitized.pop("adaptation_rationale",None)
         return sanitized
