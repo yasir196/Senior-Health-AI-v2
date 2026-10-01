@@ -3,6 +3,8 @@ import csv
 from pathlib import Path
 from production_sheet_contract import PRODUCTION_SHEET_COLUMNS, normalize_production_sheet, validate_scene_segmentation
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_compact_sheet_normalizes_to_canonical_32_columns_and_preserves_ai_count(tmp_path: Path):
     p=tmp_path/'07_production_sheet.csv'
@@ -153,6 +155,60 @@ def test_asset_distribution_respects_user_zero_percent_lane():
     assert validate_asset_distribution(
         rows, {"avatar": 40, "ai_images": 35, "stock": 0, "overlays": 25}
     ) == []
+
+
+def test_asset_distribution_excludes_no_asset_needed_from_share_denominator():
+    from production_sheet_contract import validate_asset_distribution
+    # Eight non-mix rows must not dilute an otherwise exact 50/50 mapped mix.
+    mapped = ["AVATAR", "AI_IMAGE"] * 8
+    sequence = ["NO_ASSET_NEEDED"] * 8 + mapped
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": asset}
+        for i, asset in enumerate(sequence, 1)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 50, "ai_images": 50, "stock": 0, "overlays": 0}
+    ) == []
+
+
+def test_asset_distribution_excludes_split_screen_from_share_denominator():
+    from production_sheet_contract import validate_asset_distribution
+    sequence = ["SPLIT_SCREEN"] * 8 + ["AVATAR", "AI_IMAGE"] * 8
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": asset}
+        for i, asset in enumerate(sequence, 1)
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 50, "ai_images": 50, "stock": 0, "overlays": 0}
+    ) == []
+
+
+def test_asset_distribution_all_none_lanes_has_zero_guard():
+    from production_sheet_contract import validate_asset_distribution
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": asset}
+        for i, asset in enumerate(
+            ["NO_ASSET_NEEDED", "SPLIT_SCREEN", "NO_ASSET_NEEDED"], 1
+        )
+    ]
+    assert validate_asset_distribution(
+        rows, {"avatar": 50, "ai_images": 50, "stock": 0, "overlays": 0}
+    ) == []
+
+
+def test_none_lane_breaks_consecutive_mapped_lane_run():
+    from production_sheet_contract import validate_asset_distribution
+    # None-lane scenes remain in the sequence and therefore break mapped-lane runs.
+    sequence = ["AVATAR"] * 4 + ["NO_ASSET_NEEDED"] + ["AVATAR"] * 4 + ["AI_IMAGE"] * 8
+    rows = [
+        {"scene_id": f"S{i:03d}", "recommended_asset_type": asset}
+        for i, asset in enumerate(sequence, 1)
+    ]
+    issues = validate_asset_distribution(
+        rows, {"avatar": 50, "ai_images": 50, "stock": 0, "overlays": 0},
+        tolerance_points=5,
+    )
+    assert not any("consecutive avatar scenes" in issue for issue in issues)
 
 
 def test_asset_distribution_allows_user_selected_single_lane_100_percent():

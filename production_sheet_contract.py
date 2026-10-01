@@ -193,8 +193,12 @@ def validate_asset_distribution(rows: list[dict[str, str]], settings: dict[str, 
     active = {lane: pct for lane, pct in configured.items() if pct > 0}
     issues: list[str] = []
 
-    # Shares are always checked against the CURRENT project production_settings.json.
-    total_rows = len(rows)
+    # Shares are checked only across configured mix lanes. Legal non-lane scene
+    # types such as SPLIT_SCREEN and NO_ASSET_NEEDED do not dilute the denominator.
+    # Keep None values in `lanes` itself: they intentionally break consecutive runs.
+    total_rows = sum(1 for lane in lanes if lane is not None)
+    if total_rows == 0:
+        return []
     for lane, target in active.items():
         count = sum(1 for value in lanes if value == lane)
         actual = (count / total_rows) * 100.0
