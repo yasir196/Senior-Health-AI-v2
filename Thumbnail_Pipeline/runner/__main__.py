@@ -470,6 +470,68 @@ def _load_final_script(project: Path) -> tuple[Path | None, str | None]:
                 return path,text
     return None,None
 
+def _thumbnail_copy_psychology(api_key: str, *, model: str, immutable_title: str, script_text: str) -> dict[str, Any]:
+    """Generate an honest psychological thumbnail hook from the final script, not a title summary."""
+    import urllib.request
+    instruction="""Create thumbnail copy from the FINAL SCRIPT using this fixed psychology contract.
+TITLE ROLE: the immutable title already carries information/search context. Thumbnail copy must NOT summarize, paraphrase, or mechanically repeat the title.
+STEP 1 — SURPRISING THESIS: extract one concise, script-supported, non-obvious thesis. The thesis must come from the final script, not merely from title wording.
+STEP 2 — SIX CANDIDATES: create exactly six hooks: two curiosity_gap, two identity_validation, and two stakes.
+- curiosity_gap opens an honest question around the surprising thesis (for example WHY [surprising contrast] or [X] ISN'T STEP 1).
+- identity_validation reframes a plausible failed/incorrect approach only when the script supports that contrast (for example STOP [supported wrong starting approach]). Never invent viewer history.
+- stakes shows a supported cost, sequence, tradeoff, or consequence of the wrong approach. Never invent harm, urgency, fear, outcome, mechanism, or timeframe.
+STEP 3 — HONESTY FILTER: every surviving hook must be materially supported by the final script. No cure/treatment/guarantee, fabricated consequence, unsupported certainty, invented number, invented timeframe, or medical outcome. Curiosity must be a true gap the video actually closes.
+STEP 4 — COMPRESSION: each candidate must be 3 to 5 whitespace-separated words, ALL CAPS. Do not exceed 5 words.
+TITLE SEPARATION: reject candidates that merely restate the title's topic/promise. Reusing unavoidable topic nouns is allowed, but the hook must add a script-supported contrast, tension, validation, stakes, sequence, or open loop.
+Choose selected_text from the six candidates. Prefer the strongest honest information gap; never trade factual support for clickability."""
+    schema={
+        "type":"object",
+        "properties":{
+            "surprising_thesis":{"type":"string"},
+            "candidates":{"type":"array","minItems":6,"maxItems":6,"items":{
+                "type":"object","properties":{
+                    "lever":{"type":"string","enum":["curiosity_gap","identity_validation","stakes"]},
+                    "text":{"type":"string"},
+                    "support":{"type":"string"}
+                },"required":["lever","text","support"],"additionalProperties":False
+            }},
+            "selected_text":{"type":"string"},
+            "selection_reason":{"type":"string"}
+        },
+        "required":["surprising_thesis","candidates","selected_text","selection_reason"],
+        "additionalProperties":False
+    }
+    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\n\nFINAL_SCRIPT:\n"+script_text
+    payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
+             "text":{"format":{"type":"json_schema","name":"thumbnail_copy_psychology","strict":False,"schema":schema}}}
+    req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json","User-Agent":"SeniorHealthAI-ThumbnailPipeline/1.0"},method="POST")
+    with urllib.request.urlopen(req,timeout=120) as response:
+        body=json.loads(response.read().decode("utf-8"))
+    output_text=str(body.get("output_text") or "").strip()
+    if not output_text:
+        for item in body.get("output") or []:
+            for part in item.get("content") or []:
+                if part.get("type")=="output_text":
+                    output_text=str(part.get("text") or "").strip()
+                    if output_text: break
+            if output_text: break
+    result=json.loads(output_text)
+    if not isinstance(result,dict):
+        raise ValueError("Thumbnail copy psychology must return a JSON object.")
+    candidates=result.get("candidates") or []
+    levers=[str(x.get("lever") or "") for x in candidates if isinstance(x,dict)]
+    if len(candidates)!=6 or any(levers.count(name)!=2 for name in ("curiosity_gap","identity_validation","stakes")):
+        raise ValueError("Thumbnail copy psychology must return exactly 2 candidates for each psychological lever.")
+    for row in candidates:
+        text_value=str(row.get("text") or "").strip()
+        if not (3 <= len(text_value.split()) <= 5) or text_value != text_value.upper():
+            raise ValueError("Psychology candidates must be ALL CAPS and 3-5 words.")
+    selected=str(result.get("selected_text") or "").strip()
+    if selected not in [str(x.get("text") or "").strip() for x in candidates]:
+        raise ValueError("selected_text must be one of the six psychology candidates.")
+    return result
+
 def _script_support_contract(api_key: str, *, model: str, immutable_title: str, selected_text: str | None, script_text: str) -> dict[str, Any]:
     """Extract a conservative script-grounding contract for thumbnail semantics."""
     import urllib.request
@@ -760,15 +822,24 @@ def main() -> int:
         },indent=2,ensure_ascii=False))
         return 2
     selected_text=args.thumbnail_text
-    if selected_text is None:
-        candidates=(spec.get("composition") or {}).get("thumbnail_text_candidates") or []
-        selected_text=candidates[0] if candidates else None
     winner_metadata_analyzer=openai_winner_metadata_analyzer(args.vision_api_key,model=args.vision_model) if args.vision_api_key else None
     winner_metadata=build_fresh_winner_metadata(project=state["project"],selected_layout=state.get("selected_layout") or {},youtube_rows=((state["concept"].get("evidence") or {}).get("youtube_reference_rows") or []),metadata_analyzer=winner_metadata_analyzer)
     fresh_metadata=winner_metadata.get("metadata") if winner_metadata.get("status")=="ready" else None
     # Script-grounding gate: title is context, but the final script is the semantic ceiling.
     script_path,script_text=_load_final_script(project)
     script_support=None
+    if selected_text is None and script_text and args.vision_api_key:
+        psychology=_thumbnail_copy_psychology(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],script_text=script_text)
+        selected_text=str(psychology["selected_text"]).strip()
+        psychology_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])/"json"
+        psychology_dir.mkdir(parents=True,exist_ok=True)
+        (psychology_dir/"thumbnail_copy_psychology.json").write_text(json.dumps(psychology,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+        print("\nTHUMBNAIL COPY PSYCHOLOGY")
+        print("=========================")
+        print(json.dumps(psychology,indent=2,ensure_ascii=False))
+    elif selected_text is None:
+        candidates=(spec.get("composition") or {}).get("thumbnail_text_candidates") or []
+        selected_text=candidates[0] if candidates else None
     if script_text and args.vision_api_key:
         script_support=_script_support_contract(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],selected_text=selected_text,script_text=script_text)
         support_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])/"json"
