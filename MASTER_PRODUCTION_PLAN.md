@@ -24,10 +24,10 @@ Avatar transcript timestamps are the timing authority. AI must not invent timing
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Remove/skip pre-avatar estimated Production Plan as timing authority | TODO |
-| 2 | Make avatar-first workflow the production path | TODO |
-| 3 | Make avatar transcript timestamps the Master Clock / timing source of truth | PARTIAL — transcription already provides segment + word timestamps |
-| 4 | Build Master Timeline directly from actual avatar timing | PARTIAL — `08_actual_timeline.csv` exists, but currently depends on `07_production_sheet.csv` |
+| 1 | Remove/skip pre-avatar estimated Production Plan as timing authority | IN PROGRESS — master clock no longer requires Production Sheet |
+| 2 | Make avatar-first workflow the production path | IN PROGRESS — GUI can transcribe/build master clock before Production Sheet |
+| 3 | Make avatar transcript timestamps the Master Clock / timing source of truth | DONE — production-independent master narration timeline added |
+| 4 | Build Master Timeline directly from actual avatar timing | DONE — `08_master_narration_timeline.csv` builds without `07_production_sheet.csv` |
 | 5 | Run Production Planner only after actual timestamps exist | TODO |
 | 6 | Add GUI Production Rule Controller | TODO |
 | 7 | GUI supports add/edit/delete/enable/disable production rules | TODO |
@@ -85,3 +85,18 @@ Do not delete the existing production path until the timestamp-first path is val
 ## First implementation target
 
 Decouple avatar transcription and Master Timeline creation from the requirement that `07_production_sheet.csv` already exists. Preserve narration integrity checks against the approved voice script. After actual narration timing exists, generate production visual assignments against those timestamps.
+
+
+## Implementation progress — Phase 1
+
+Implemented on `masterproduction`:
+
+- Added production-independent `build_master_narration_timeline()`.
+- Added `08_master_narration_timeline.csv` as the timestamp-first narration clock.
+- Added `master_narration_timing_manifest.json` and timing report.
+- Avatar transcription blockers can now explicitly run without a Production Sheet.
+- Production GUI now exposes **Build Master Narration Timeline** before legacy scene alignment.
+- Legacy `08_actual_timeline.csv` remains available during migration and still requires the old Production Sheet.
+- Added regression tests proving timestamp-first transcription/timeline works after deleting `07_production_sheet.csv`.
+
+Next: make the Production Planner consume `08_master_narration_timeline.csv`, then add the GUI Rule Engine and timestamp duration controller.
