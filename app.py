@@ -1111,6 +1111,15 @@ def render_workflow() -> None:
                 })
             if ratio_rows:
                 st.dataframe(pd.DataFrame(ratio_rows), hide_index=True, width="stretch")
+            policy = ratio_summary.get("ratio_policy", {})
+            validation = ratio_summary.get("validation", {})
+            mode_label = "STRICT" if policy.get("strict") else f"±{float(policy.get('tolerance_points', 0)):g} points"
+            if validation.get("status") == "PASS":
+                st.success(f"Ratio QA: PASS · Policy: {mode_label}")
+            else:
+                st.warning(f"Ratio QA: FAIL · Policy: {mode_label}")
+                for issue in validation.get("issues", []):
+                    st.caption(f"• {issue}")
         except (json.JSONDecodeError, TypeError):
             st.warning("Production ratio summary is invalid and should be regenerated.")
 
@@ -1703,7 +1712,7 @@ def render_production() -> None:
         st.success("READY FOR PRODUCTION")
 
     settings_path = project / "production_settings.json"
-    defaults = {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20, "image_duration_seconds": 10, "image_platform": "Genspark Web"}
+    defaults = {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20, "image_duration_seconds": 10, "image_platform": "Genspark Web", "ratio_tolerance_points": 5.0, "ratio_strict_mode": False}
     try:
         settings = {**defaults, **json.loads(safe_read_text(settings_path) or "{}")}
     except json.JSONDecodeError:
@@ -1719,6 +1728,25 @@ def render_production() -> None:
     st.metric("Total", f"{total}%")
 
     duration = st.number_input("AI image display duration (seconds)", 6, 20, int(settings["image_duration_seconds"]))
+    st.markdown("#### Ratio Accuracy")
+    ratio_strict = st.checkbox(
+        "Strict ratio mode",
+        value=bool(settings.get("ratio_strict_mode", False)),
+        help="When enabled, ratio validation requires near-exact duration percentages. Timestamp slot boundaries are never fabricated just to hit the ratio.",
+    )
+    ratio_tolerance = st.number_input(
+        "Ratio tolerance (percentage points)",
+        min_value=0.0,
+        max_value=25.0,
+        value=float(settings.get("ratio_tolerance_points", 5.0)),
+        step=0.5,
+        disabled=ratio_strict,
+        help="Example: target 40% with tolerance 5 allows 35–45%.",
+    )
+    if ratio_strict:
+        st.caption("STRICT mode active: allowed deviation is 0.01 percentage points. Real transcript boundaries remain authoritative.")
+    else:
+        st.caption(f"Tolerance mode active: each configured lane may deviate by ±{ratio_tolerance:g} percentage points.")
     options = ["Genspark Web", "Midjourney", "ChatGPT", "Other"]
     current_platform = settings.get("image_platform", "Genspark Web")
     platform = st.selectbox("Image platform", options, index=options.index(current_platform) if current_platform in options else 0)
@@ -1734,6 +1762,8 @@ def render_production() -> None:
     payload = {
         "avatar": avatar, "ai_images": ai_images, "stock": stock, "overlays": overlays,
         "image_duration_seconds": duration, "image_platform": platform,
+        "ratio_tolerance_points": ratio_tolerance,
+        "ratio_strict_mode": ratio_strict,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
     }
     if st.button("Save Production Mix", disabled=not mix_valid):
