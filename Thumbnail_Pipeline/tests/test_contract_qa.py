@@ -1,4 +1,5 @@
 from Thumbnail_Pipeline.qa.contract_qa import build_render_structure, evaluate_contract_qa
+from Thumbnail_Pipeline.adapters.winner_metadata import _repair_presenter_role_binding
 
 
 def _winner():
@@ -122,3 +123,26 @@ def test_text_stack_role_needs_no_visual_placement():
     adaptation={"top_banner":"MAGNESIUM","primary_headline":"NOT WORKING","boxed_keyword":"3 NIGHTTIME MISTAKES","bottom_callout":"DO | THIS","visual_placements":_placements()}
     result=evaluate_contract_qa(build_render_structure(_winner_with_text_stack(),adaptation,"3 NIGHTTIME MISTAKES"))
     assert result["verdict"]=="PASS"
+
+
+def test_presenter_binding_repairs_single_unambiguous_people_role():
+    winner=_winner()
+    adaptation={"visual_placements":[
+        {"placement_id":"placement_presenter_1","role_id":"target","kind":"person","description":"neutral presenter","is_primary_target":False,"attention_target_role_id":None},
+        {"placement_id":"m","role_id":"target","kind":"informational_object","description":"socked foot","is_primary_target":True,"attention_target_role_id":None},
+    ]}
+    repaired=_repair_presenter_role_binding(winner,adaptation)
+    assert repaired["visual_placements"][0]["role_id"]=="presenter"
+    assert repaired["visual_placements"][1]["role_id"]=="target"
+
+
+def test_presenter_binding_does_not_guess_between_multiple_people_roles():
+    winner=_winner()
+    winner["structural_contract"]["roles"].append(
+        {"role_id":"person_2","role_type":"person","required":False,"x_pct":70,"y_pct":5,"w_pct":20,"h_pct":80,"saliency_rank":2,"attention_target_role_id":None}
+    )
+    adaptation={"visual_placements":[
+        {"placement_id":"placement_presenter_1","role_id":"target","kind":"person","description":"neutral presenter","is_primary_target":False,"attention_target_role_id":None}
+    ]}
+    repaired=_repair_presenter_role_binding(winner,adaptation)
+    assert repaired["visual_placements"][0]["role_id"]=="target"
