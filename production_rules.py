@@ -48,6 +48,8 @@ def validate_rules(rules: list[dict[str, Any]]) -> list[str]:
             issues.append(f"{rid or index}: durations cannot be negative.")
         if rule["max_seconds"] and rule["min_seconds"] > rule["max_seconds"]:
             issues.append(f"{rid or index}: min_seconds cannot exceed max_seconds.")
+        if rule["enabled"] and rule["max_seconds"] <= 0:
+            issues.append(f"{rid or index}: enabled timing rule requires max_seconds greater than zero.")
     return issues
 
 
