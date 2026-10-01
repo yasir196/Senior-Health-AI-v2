@@ -349,6 +349,37 @@ def _sanitize_topic_adaptation(adapted: dict[str, Any], *, immutable_title: str,
             out[key]=None
     return out
 
+def _repair_presenter_role_binding(metadata: dict[str, Any], adaptation: dict[str, Any]) -> dict[str, Any]:
+    """Bind person placements to the winner's people role when that mapping is unambiguous."""
+    out=dict(adaptation or {})
+    structural=(metadata or {}).get("structural_contract") or {}
+    roles=[x for x in (structural.get("roles") or []) if isinstance(x,dict)]
+    people_types={"presenter","person","human","portrait"}
+    people_role_ids=[
+        str(x.get("role_id") or "") for x in roles
+        if str(x.get("role_type") or "").strip().casefold() in people_types and str(x.get("role_id") or "").strip()
+    ]
+    if len(people_role_ids)!=1:
+        return out
+    role_types={
+        str(x.get("role_id") or ""):str(x.get("role_type") or "").strip().casefold()
+        for x in roles if str(x.get("role_id") or "").strip()
+    }
+    repaired=[]
+    for placement in (out.get("visual_placements") or []):
+        if not isinstance(placement,dict):
+            repaired.append(placement)
+            continue
+        item=dict(placement)
+        if str(item.get("kind") or "").strip().casefold()=="person":
+            bound_type=role_types.get(str(item.get("role_id") or ""),"")
+            if bound_type not in people_types:
+                item["role_id"]=people_role_ids[0]
+        repaired.append(item)
+    out["visual_placements"]=repaired
+    return out
+
+
 def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", timeout: int = 90):
     """Adapt winner composition slots to the current immutable title without mixing references."""
     key=str(api_key or "").strip()
@@ -462,6 +493,11 @@ STRUCTURED VISUAL PLACEMENTS ARE MANDATORY. Populate visual_placements[] as the 
             elif len(matches)>1:
                 for k in matches[1:]:
                     sanitized[k]=None
+        # A model can preserve the presenter visually yet bind that person to a target/detail
+        # role. Repair only the unambiguous case: exactly one winner people role exists.
+        # Ambiguous or absent people-role metadata remains untouched so deterministic QA
+        # still fails loudly rather than guessing.
+        sanitized=_repair_presenter_role_binding(metadata,sanitized)
         # adaptation_rationale is internal diagnostic output, never part of the generation contract.
         sanitized.pop("adaptation_rationale",None)
         return sanitized
