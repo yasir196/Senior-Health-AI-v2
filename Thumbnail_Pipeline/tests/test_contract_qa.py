@@ -169,3 +169,19 @@ def test_visual_budget_preflight_preserves_noninformational_support():
     ]}
     repaired=_enforce_visual_complexity_budget(winner,adaptation)
     assert [x["placement_id"] for x in repaired["visual_placements"]]==["target","chair"]
+
+
+def test_presenter_role_repair_accepts_unambiguous_presenter_role_id():
+    metadata={
+        "structural_contract":{
+            "roles":[
+                {"role_id":"presenter_anchor","role_type":"photographic_subject"},
+                {"role_id":"target_foot","role_type":"support/target"},
+            ]
+        }
+    }
+    adaptation={"visual_placements":[
+        {"placement_id":"presenter_01","role_id":"target_foot","kind":"person"}
+    ]}
+    repaired=_repair_presenter_role_binding(metadata,adaptation)
+    assert repaired["visual_placements"][0]["role_id"]=="presenter_anchor"
