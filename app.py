@@ -19,6 +19,7 @@ import streamlit as st
 
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
 from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation, validate_host_introduction_avatar
+from production_rules import load_rules, save_rules, validate_rules
 from scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -987,6 +988,42 @@ def render_workflow() -> None:
     if not project:
         return
     config = load_config()
+    st.markdown("### Production Rule Controller")
+    st.caption("Project-level production timing rules. These values are GUI-controlled and are not hard-coded into the Production Planner.")
+    rules = load_rules(project)
+    edited_rules = st.data_editor(
+        pd.DataFrame(rules),
+        hide_index=True,
+        width="stretch",
+        num_rows="dynamic",
+        key=f"production_rules_editor_{project.name}",
+        column_config={
+            "id": st.column_config.TextColumn("Rule ID", required=True),
+            "name": st.column_config.TextColumn("Rule Name", required=True),
+            "category": st.column_config.SelectboxColumn("Category", options=["IMAGE", "AVATAR", "EVIDENCE", "B-ROLL", "TRANSITION", "CAPCUT"]),
+            "scope": st.column_config.SelectboxColumn("Scope", options=["ALL", "HOOK", "BODY", "EVIDENCE", "CTA"]),
+            "enabled": st.column_config.CheckboxColumn("Enabled"),
+            "priority": st.column_config.NumberColumn("Priority", min_value=0, step=10),
+            "hard": st.column_config.CheckboxColumn("Hard Constraint"),
+            "min_seconds": st.column_config.NumberColumn("Min Seconds", min_value=0.0, step=0.5),
+            "max_seconds": st.column_config.NumberColumn("Max Seconds", min_value=0.0, step=0.5),
+        },
+    )
+    rule_records = edited_rules.fillna("").to_dict("records")
+    rule_issues = validate_rules(rule_records)
+    if rule_issues:
+        st.warning("Production rules need correction before they can be saved.")
+        for issue in rule_issues:
+            st.caption(f"• {issue}")
+    if st.button("Save Production Rules", disabled=bool(rule_issues), key=f"save_production_rules_{project.name}"):
+        try:
+            saved_rules_path = save_rules(project, rule_records)
+        except (OSError, ValueError) as exc:
+            st.error(f"Production rules could not be saved: {exc}")
+        else:
+            st.success(f"Production rules saved: {saved_rules_path.name}")
+            st.rerun()
+
     cli_template = detect_codex_command()
     direct_enabled = bool(config.get("direct_run_enabled", True)) and bool(cli_template)
     stored_anchor = resolve_title_anchor(project)
