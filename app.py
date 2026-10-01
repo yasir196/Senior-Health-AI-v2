@@ -21,6 +21,7 @@ from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv
 from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation, validate_host_introduction_avatar
 from production_rules import load_rules, save_rules, validate_rules
 from production_timing_controller import build_production_slots
+from production_ratio_controller import allocate_ratio_targets
 from scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -1075,6 +1076,43 @@ def render_workflow() -> None:
                     f"Longest slot: {float(slots_df['duration_sec'].max()):.2f}s · "
                     "Timing source: MASTER_TRANSCRIPT"
                 )
+
+    st.markdown("### Production Ratio Allocation")
+    st.caption("Applies the saved Avatar / AI Images / Stock / Overlays mix to actual timestamp duration, not scene counts.")
+    ratio_slots = project / "08_production_slots.csv"
+    if st.button(
+        "Apply Production Mix to Timestamp Slots",
+        disabled=not mix_valid or not ratio_slots.is_file(),
+        key=f"apply_production_ratio_{project.name}",
+    ):
+        if not safe_write_text(settings_path, json.dumps(payload, indent=2) + "\n"):
+            st.error("Production Mix could not be saved before allocation.")
+        else:
+            try:
+                ratio_path = allocate_ratio_targets(project)
+            except Exception as exc:
+                st.error(f"Production ratio allocation failed: {exc}")
+            else:
+                st.success(f"Production ratio allocated by actual duration: {ratio_path.name}")
+                st.rerun()
+
+    ratio_summary_path = project / "production_ratio_summary.json"
+    if ratio_summary_path.is_file():
+        try:
+            ratio_summary = json.loads(safe_read_text(ratio_summary_path) or "{}")
+            ratio_rows = []
+            for lane, values in ratio_summary.get("targets", {}).items():
+                ratio_rows.append({
+                    "Lane": lane,
+                    "Target %": values.get("target_percent", 0),
+                    "Actual %": values.get("actual_percent", 0),
+                    "Target Seconds": values.get("target_seconds", 0),
+                    "Assigned Seconds": values.get("assigned_seconds", 0),
+                })
+            if ratio_rows:
+                st.dataframe(pd.DataFrame(ratio_rows), hide_index=True, width="stretch")
+        except (json.JSONDecodeError, TypeError):
+            st.warning("Production ratio summary is invalid and should be regenerated.")
 
     cli_template = detect_codex_command()
     direct_enabled = bool(config.get("direct_run_enabled", True)) and bool(cli_template)
