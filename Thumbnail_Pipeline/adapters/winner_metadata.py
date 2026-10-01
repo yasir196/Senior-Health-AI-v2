@@ -355,9 +355,18 @@ def _repair_presenter_role_binding(metadata: dict[str, Any], adaptation: dict[st
     structural=(metadata or {}).get("structural_contract") or {}
     roles=[x for x in (structural.get("roles") or []) if isinstance(x,dict)]
     people_types={"presenter","person","human","portrait"}
+    def is_people_role(role: dict[str, Any]) -> bool:
+        role_type=str(role.get("role_type") or "").strip().casefold()
+        role_id=str(role.get("role_id") or "").strip().casefold()
+        # Fresh winner metadata can label the visual type generically while still
+        # giving the role an unambiguous presenter/person identity in role_id.
+        return (
+            role_type in people_types
+            or any(token in role_id for token in ("presenter","person","human","portrait"))
+        )
     people_role_ids=[
         str(x.get("role_id") or "") for x in roles
-        if str(x.get("role_type") or "").strip().casefold() in people_types and str(x.get("role_id") or "").strip()
+        if is_people_role(x) and str(x.get("role_id") or "").strip()
     ]
     if len(people_role_ids)!=1:
         return out
@@ -372,8 +381,9 @@ def _repair_presenter_role_binding(metadata: dict[str, Any], adaptation: dict[st
             continue
         item=dict(placement)
         if str(item.get("kind") or "").strip().casefold()=="person":
-            bound_type=role_types.get(str(item.get("role_id") or ""),"")
-            if bound_type not in people_types:
+            bound_id=str(item.get("role_id") or "")
+            bound_role=next((x for x in roles if str(x.get("role_id") or "")==bound_id),None)
+            if not bound_role or not is_people_role(bound_role):
                 item["role_id"]=people_role_ids[0]
         repaired.append(item)
     out["visual_placements"]=repaired
