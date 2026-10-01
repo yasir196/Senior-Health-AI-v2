@@ -10,7 +10,7 @@ from pathlib import Path
 
 from avatar_timing import (
     avatar_sync_blockers,
-    AvatarTranscriptionError, build_actual_timeline,
+    AvatarTranscriptionError, build_actual_timeline, build_master_narration_timeline,
     discover_avatar_chunks, ffmpeg_available, prepare_transcription_media,
     load_production_scenes,
     transcribe_avatar_chunks,
@@ -718,3 +718,43 @@ def test_s081_timestamp_fixture_normalizes_without_changing_duration() -> None:
     # Millisecond serialization can shift both endpoints equally while the
     # numeric duration source remains untouched.
     assert parse_timeline_time(end_text) - parse_timeline_time(start_text) == pytest.approx(duration_seconds, abs=0.001)
+
+
+def test_timestamp_first_sync_does_not_require_production_sheet(tmp_path: Path) -> None:
+    project, avatars = setup_project(tmp_path)
+    (project / "07_production_sheet.csv").unlink()
+    discovery = discover_avatar_chunks(avatars)
+    blockers = avatar_sync_blockers(
+        True, avatars, [], discovery, require_production_sheet=False
+    )
+    assert not any("07_production_sheet.csv" in item for item in blockers)
+
+
+def test_master_narration_timeline_builds_without_production_sheet(tmp_path: Path) -> None:
+    project, avatars = setup_project(tmp_path)
+    (project / "07_production_sheet.csv").unlink()
+    discovery = discover_avatar_chunks(avatars)
+    transcription = transcribe_avatar_chunks(
+        discovery.chunks, project / "avatar_transcripts", {}, transcriber=fake_payload
+    )
+    assert transcription.success
+
+    result = build_master_narration_timeline(
+        project, avatars, {"avatar_alignment_threshold": 90}
+    )
+    assert result.success
+    assert result.rows == 2
+    assert (project / "08_master_narration_timeline.csv").is_file()
+    manifest = json.loads(
+        (project / "master_narration_timing_manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["architecture"] == "timestamp_first"
+    assert manifest["timing_authority"] == "avatar_transcript"
+    assert manifest["production_sheet_required"] is False
+
+    with (project / "08_master_narration_timeline.csv").open(
+        encoding="utf-8", newline=""
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows[0]["Timing Source"] == "TRANSCRIPT"
+    assert float(rows[0]["Duration"]) > 0
