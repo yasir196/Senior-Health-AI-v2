@@ -27,4 +27,7 @@ def test_psychology_contract_has_six_candidate_formula():
     assert "two curiosity_gap, two identity_validation, and two stakes" in source
     assert "3 to 5 whitespace-separated words" in source
     assert "Thumbnail copy must NOT summarize, paraphrase, or mechanically repeat the title" in source
-    assert "Curiosity must be a true gap the video actually closes" in source\n    assert "5th-6th grade reading level" in source\n    assert "TWO-SECOND TEST" in source\n    assert "simpler script-supported phrase" in source
+    assert "Curiosity must be a true gap the video actually closes" in source
+    assert "5th-6th grade reading level" in source
+    assert "TWO-SECOND TEST" in source
+    assert "simpler script-supported phrase" in source
