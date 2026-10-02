@@ -80,3 +80,12 @@ def test_avatar_master_clock_metrics_use_available_csv_reader() -> None:
     block = source.split("def render_avatar_timing_sync",1)[1].split("def load_production_sheet",1)[0]
     assert 'master_rows = list(csv.DictReader(handle))' in block
     assert 'read_csv_rows(master_clock_path)' not in block
+
+
+def test_master_clock_rebuild_requires_explicit_confirmation() -> None:
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    block = source.split('st.markdown("### Timestamp-First Master Clock")',1)[1].split("# Legacy scene-aligned Actual Timeline",1)[0]
+    assert 'master_button_label = "Rebuild Master Narration Timeline"' in block
+    assert 'confirm_rebuild_master_clock_' in block
+    assert 'or not master_rebuild_confirmed' in block
+    assert 'invalidates timestamp-first Production outputs' in block
