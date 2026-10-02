@@ -588,7 +588,7 @@ def _write_subdraft_json(path: Path, payload: Any) -> None:
     _mkdir_long_safe(path.parent)
     io_path = _windows_long_io_path(path)
     with open(io_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        handle.write(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n")
 
 
 def _copy_subdraft_cover(source: Path, destination: Path) -> None:
@@ -1191,7 +1191,7 @@ def _write_json(path: Path, payload: Any) -> None:
     _mkdir_long_safe(path.parent)
     io_path = _windows_long_io_path(path)
     with open(io_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        handle.write(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n")
 
 
 def _mkdir_long_safe(path: Path) -> None:
