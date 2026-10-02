@@ -28,3 +28,13 @@ def test_gui_capcut_handoff_requires_locked_slots_and_timeline_qa():
     assert 'capcut_qa.get("status") == "PASS"' in app
     assert "build_timeline_manifest(project, locked_timeline_path)" in app
     assert "legacy 08_actual_timeline.csv is not the CapCut production authority" in app
+
+
+def test_gui_capcut_handoff_requires_timestamp_locked_production_plan():
+    app = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    block = app.split('st.markdown("## Timeline Builder & CapCut-Ready Handoff")', 1)[1].split("def render_opus_import", 1)[0]
+    assert 'production_sheet_path = project / "07_production_sheet.csv"' in block
+    assert "validate_ai_timing_lock(project, capcut_production_rows)" in block
+    assert "and production_sheet_path.is_file()" in block
+    assert "and not capcut_timing_lock_issues" in block
+    assert "Production Plan no longer matches the Python-owned locked timestamp slots" in block
