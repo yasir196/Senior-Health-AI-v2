@@ -58,3 +58,20 @@ def test_ratio_is_distributed_from_hook_instead_of_front_loading_ai_images(tmp_p
     with target.open(encoding="utf-8",newline="") as h: allocated=list(csv.DictReader(h))
     hook=[r for r in allocated if r["scope"]=="HOOK"]
     assert {r["recommended_asset_type"] for r in hook}=={"AVATAR","AI_IMAGE"}
+
+
+def test_invalid_image_duration_is_assigned_to_avatar_not_ai_image(tmp_path: Path) -> None:
+    from production_rules import save_rules
+    fields=["slot_id","start_time","end_time","duration_sec","scope","source_segment_ids","transcript_text","rule_id","rule_priority","constraint_type","timing_source"]
+    rows=[
+        {"slot_id":"P0001","start_time":"0","end_time":"3","duration_sec":"3","scope":"BODY","source_segment_ids":"T1","transcript_text":"x","rule_id":"body","rule_priority":"100","constraint_type":"HARD","timing_source":"MASTER_TRANSCRIPT"},
+        {"slot_id":"P0002","start_time":"3","end_time":"10","duration_sec":"7","scope":"BODY","source_segment_ids":"T2","transcript_text":"y","rule_id":"body","rule_priority":"100","constraint_type":"HARD","timing_source":"MASTER_TRANSCRIPT"},
+    ]
+    with (tmp_path/"08_production_slots.csv").open("w",encoding="utf-8",newline="") as h:
+        w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(rows)
+    save_rules(tmp_path,[{"id":"body","name":"Body image","category":"IMAGE","scope":"BODY","enabled":True,"priority":100,"hard":True,"min_seconds":7,"max_seconds":8}])
+    (tmp_path/"production_settings.json").write_text(json.dumps({"avatar":40,"ai_images":60,"stock":0,"overlays":0}),encoding="utf-8")
+    target=allocate_ratio_targets(tmp_path)
+    with target.open(encoding="utf-8",newline="") as h: allocated=list(csv.DictReader(h))
+    assert allocated[0]["recommended_asset_type"]=="AVATAR"
+    assert allocated[1]["recommended_asset_type"]=="AI_IMAGE"
