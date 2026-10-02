@@ -2097,7 +2097,21 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
 
     alignment_score = None
     timeline_status = "NOT GENERATED"
-    if manifest_path.is_file():
+    master_clock_status = "NOT GENERATED"
+    master_clock_runtime = None
+    master_clock_segments = 0
+    if timestamp_first_active:
+        try:
+            master_rows = read_csv_rows(master_clock_path)
+            master_clock_segments = len(master_rows)
+            master_clock_runtime = max(
+                (parse_timeline_time(row.get("Actual Audio End", "0")) for row in master_rows),
+                default=0.0,
+            )
+            master_clock_status = "READY" if master_rows else "EMPTY"
+        except (OSError, TypeError, ValueError):
+            master_clock_status = "INVALID"
+    elif manifest_path.is_file():
         try:
             manifest = json.loads(safe_read_text(manifest_path) or "{}")
             alignment_score = float(manifest.get("alignment_score", 0.0))
@@ -2115,10 +2129,17 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     d2.metric("Total Avatar Duration", f"{inventory['total_duration'] / 60:.2f} min" if inventory["total_duration"] else "Pending")
     d3.metric("Total Production Scenes", len(scenes))
     d4.metric("Transcribed Chunks", f"{inventory['current']}/{chunks_found}" if chunks_found else "0")
-    e1, e2, e3 = st.columns(3)
-    e1.metric("Reused Cached Chunks", inventory["current"])
-    e2.metric("Alignment Score", f"{alignment_score:.1f}%" if alignment_score is not None else "Pending")
-    e3.metric("Timeline Status", timeline_status)
+    if timestamp_first_active:
+        e1, e2, e3, e4 = st.columns(4)
+        e1.metric("Reused Cached Chunks", inventory["current"])
+        e2.metric("Master Clock Status", master_clock_status)
+        e3.metric("Master Runtime", f"{master_clock_runtime / 60:.2f} min" if master_clock_runtime is not None else "Pending")
+        e4.metric("Master Segments", master_clock_segments)
+    else:
+        e1, e2, e3 = st.columns(3)
+        e1.metric("Reused Cached Chunks", inventory["current"])
+        e2.metric("Legacy Alignment Score", f"{alignment_score:.1f}%" if alignment_score is not None else "Pending")
+        e3.metric("Legacy Timeline Status", timeline_status)
 
     # Timestamp-first: transcription and the master narration clock no longer
     # depend on a pre-existing Production Sheet.
