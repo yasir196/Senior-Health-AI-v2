@@ -1911,7 +1911,15 @@ def render_production() -> None:
                             source_ok = False
                             source_issues = ["TIMING_LOCK_QA_FAILED"] + timing_lock_issues
                         else:
-                            source_ok, source_issues = validate_production_sheet_against_voice(project)
+                            # Preserve the existing visual/source provenance gate after the
+                            # timestamp lock. It validates assignment lineage only; it has no
+                            # authority to split, merge, retime, or renumber locked slots.
+                            ledger_issues = production_sheet_ledger_issues(project)
+                            if ledger_issues:
+                                source_ok = False
+                                source_issues = ["SCENE_LEDGER_QA_FAILED"] + ledger_issues
+                            else:
+                                source_ok, source_issues = validate_production_sheet_against_voice(project)
                     else:
                         source_ok = False
                         source_issues = list(contract_issues)
