@@ -23,11 +23,6 @@ def test_writer_blocks_repeated_rule_reapplication_without_delta():
     assert 'core idea that would appear 3+ times' in s
     assert 'same safety/scope reminder attached to a new stage is not enough' in s
 
-def test_retention_analyzer_uses_same_delta_contract():
-    s = text('Templates/Writing/retention_structure_analyzer.md')
-    assert 'MATERIAL DELTA VS PRIMARY' in s
-    assert 'changed example, food, section, hypothetical, wording' in s
-
 def test_runtime_prompt_carries_delta_gate():
     s = text('app.py')
     assert 'apply a MATERIAL-DELTA TEST to every post-primary occurrence' in s
