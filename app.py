@@ -2062,20 +2062,28 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     scenes = load_production_scenes(project / "07_production_sheet.csv")
     production_source_ok = True
     production_source_issues: list[str] = []
-    if scenes:
+    master_clock_path = project / "08_master_narration_timeline.csv"
+    # Timestamp-first projects deliberately build Production *after* avatar
+    # transcription. The resulting script_excerpt comes from the actual transcript,
+    # so it is not required to be an exact substring of 06a_voice_script.md.
+    # The locked master clock + timing-lock QA are the authority here.
+    timestamp_first_active = master_clock_path.is_file()
+    if scenes and not timestamp_first_active:
         production_source_ok, production_source_issues = validate_production_sheet_against_voice(project)
         if not production_source_ok:
             scenes = []
-            st.warning("07_production_sheet.csv does not match the current 06a_voice_script.md. Regenerate Production Plan before avatar timing.")
+            st.warning("Legacy Production Sheet does not match the current 06a_voice_script.md. Rebuild it before legacy avatar timing.")
             for issue in production_source_issues[:8]:
                 st.caption(f"• {issue}")
         else:
             segmentation_issues = production_sheet_segmentation_issues(project)
             if segmentation_issues:
                 scenes = []
-                st.error("Production sheet narration matches 06a_voice_script.md, but scene-boundary validation FAILED. Regenerate Production before Avatar Timing because transcript timing cannot repair invalid narration boundaries.")
+                st.error("Legacy Production Sheet narration matches 06a_voice_script.md, but scene-boundary validation FAILED.")
                 for issue in segmentation_issues[:6]:
                     st.caption(f"• {issue}")
+    elif scenes and timestamp_first_active:
+        st.caption("Timestamp-first Production Sheet is bound to 08_master_narration_timeline.csv; exact 06a script-excerpt matching is not used after transcription.")
     sequence = chunk_sequence_info(discovery)
     chunks_found = sequence.detected_count
     transcript_dir = project / "avatar_transcripts"
