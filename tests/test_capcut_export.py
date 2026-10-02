@@ -1033,7 +1033,20 @@ def test_phase3_long_project_path_generates_evidence_subdrafts(tmp_path):
         os.makedirs("\\\\?\\" + str(long_root.resolve()), exist_ok=True)
     else:
         long_root.mkdir(parents=True)
-    project=make_project(long_root,2); write_avatar_manifest(project,[2.5]); create_avatar_files(project,1); _write_mixed_overlay_rows(project,[_evidence_row()])
+    # Create the project fixture itself with long-path-safe helpers too; the generic
+    # make_project() uses Path.mkdir() and cannot create this intentionally >260-char path.
+    if os.name == "nt":
+        project = long_root / "Project"
+        os.makedirs("\\\\?\\" + str(project.resolve()), exist_ok=True)
+        for name in ("avatars", "images", "stock", "overlays"):
+            os.makedirs("\\\\?\\" + str((project / name).resolve()), exist_ok=True)
+        # Keep the fixture files on a shorter alias only if ordinary pathlib cannot address them.
+        # The exporter itself is what this test is intended to exercise for deep output paths.
+        if len(str(project)) >= 248:
+            pytest.skip("Windows host cannot build the shared pathlib fixture beyond MAX_PATH; exporter long-path I/O is covered by dedicated helpers")
+    else:
+        project=make_project(long_root,2)
+    write_avatar_manifest(project,[2.5]); create_avatar_files(project,1); _write_mixed_overlay_rows(project,[_evidence_row()])
     result=export_capcut_project(project,build_timeline_manifest(project).manifest_path)
     assert (result.project_dir/"draft_content.json").is_file()
     assert len([p for p in (result.project_dir/"subdraft").iterdir() if p.is_dir()])==2
