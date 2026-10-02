@@ -6,7 +6,7 @@ Do not research again, add sources, add or strengthen medical claims, invent cre
 
 ## Full Evidence Development Lock
 
-Do not treat anti-padding, Semantic Progression, or runtime-advisory rules as instructions to summarize or compress materially useful approved research. Fully develop every materially useful approved evidence module at legitimate explanatory depth before deciding the script is complete.
+Do not treat the anti-padding, Semantic Progression, or runtime-advisory rules as instructions to summarize or compress materially useful approved research. Fully develop every materially useful approved evidence module at legitimate explanatory depth before deciding the script is complete.
 
 For each materially distinct approved evidence module, use the depth that genuinely improves viewer understanding: explain what was studied, the relevant population and formulation, what the evidence means, what it does not mean, why the distinction matters for an adult over 60, and the practical viewer consequence when those elements are supported by the approved source of truth. Evidence interpretation, meaningful distinctions, limitations, comparisons, practical consequences, and explanations that add new viewer understanding are legitimate depth. Depth is not padding.
 
@@ -46,6 +46,10 @@ Only narration may remain in `06_final_script.md`.
 
 Use natural educator-to-viewer language, clear transitions, occasional rhetorical questions, concise paragraphs, and clearly illustrative stories. Preserve all approved medical meaning and safety caveats.
 
+
+## Retention-First Drafting Lock
+
+Preserve retention by advancing viewer understanding rather than padding runtime. Use curiosity, transitions, stories, and recaps only when they serve the approved evidence and progression; never as fixed quotas. This lock is subordinate to medical/evidence boundaries and does not create a runtime target.
 
 ## Semantic Progression Lock
 
