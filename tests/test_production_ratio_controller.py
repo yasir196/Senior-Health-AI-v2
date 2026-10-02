@@ -44,3 +44,17 @@ def test_ratio_tolerance_fails_outside_configured_points() -> None:
 def test_strict_ratio_mode_uses_near_exact_threshold() -> None:
     summary = {"targets": {"avatar": {"target_percent": 40, "actual_percent": 40.02}}}
     assert validate_ratio_result(summary, tolerance_points=5, strict=True)
+
+
+def test_ratio_is_distributed_from_hook_instead_of_front_loading_ai_images(tmp_path: Path) -> None:
+    fields=["slot_id","start_time","end_time","duration_sec","scope","source_segment_ids","transcript_text","rule_id","rule_priority","constraint_type","timing_source"]
+    rows=[]
+    for i in range(10):
+        rows.append({"slot_id":f"P{i+1:04d}","start_time":str(i*5),"end_time":str((i+1)*5),"duration_sec":"5","scope":"HOOK" if i<6 else "BODY","source_segment_ids":f"T{i+1}","transcript_text":"x","rule_id":"","rule_priority":"","constraint_type":"NONE","timing_source":"MASTER_TRANSCRIPT"})
+    with (tmp_path/"08_production_slots.csv").open("w",encoding="utf-8",newline="") as h:
+        w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(rows)
+    (tmp_path/"production_settings.json").write_text(json.dumps({"avatar":40,"ai_images":60,"stock":0,"overlays":0}),encoding="utf-8")
+    target=allocate_ratio_targets(tmp_path)
+    with target.open(encoding="utf-8",newline="") as h: allocated=list(csv.DictReader(h))
+    hook=[r for r in allocated if r["scope"]=="HOOK"]
+    assert {r["recommended_asset_type"] for r in hook}=={"AVATAR","AI_IMAGE"}
