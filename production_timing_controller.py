@@ -115,43 +115,29 @@ def _group_scope_rows(rows: list[dict[str, str]], config: dict[str, Any]) -> lis
     return groups
 
 
-def _aggregate_rows(rows: list[dict[str, str]], minimum: float, maximum: float) -> list[list[dict[str, str]]]:
-    """Aggregate adjacent real transcript segments into visual candidate slots.
+def _partition_real_interval(start: float, end: float, minimum: float, maximum: float) -> list[tuple[float, float]]:
+    """Partition one continuous real narration range into rule-compatible candidates.
 
-    No audio time is invented. A group closes once it reaches the rule minimum;
-    a segment that would push the group past max starts the next group. Short final
-    remainders merge backward when the combined duration still fits max.
+    Boundaries may fall inside ASR segments because ASR segmentation is not a visual
+    boundary authority. The range itself is never stretched, shortened, or moved.
     """
-    if not rows:
+    duration = end - start
+    if duration <= 0:
         return []
-    if maximum <= 0:
-        return [[row] for row in rows]
-    groups: list[list[dict[str, str]]] = []
-    current: list[dict[str, str]] = []
-    for row in rows:
-        if not current:
-            current = [row]
-            continue
-        cur_start = _seconds(current[0].get("Actual Audio Start", "0"))
-        row_end = _seconds(row.get("Actual Audio End", "0"))
-        cur_end = _seconds(current[-1].get("Actual Audio End", "0"))
-        cur_duration = cur_end - cur_start
-        combined = row_end - cur_start
-        if cur_duration >= minimum > 0 or combined > maximum + 0.002:
-            groups.append(current)
-            current = [row]
-        else:
-            current.append(row)
-    if current:
-        groups.append(current)
-    if len(groups) > 1 and minimum > 0:
-        last = groups[-1]
-        last_duration = _seconds(last[-1].get("Actual Audio End", "0")) - _seconds(last[0].get("Actual Audio Start", "0"))
-        merged_duration = _seconds(last[-1].get("Actual Audio End", "0")) - _seconds(groups[-2][0].get("Actual Audio Start", "0"))
-        if last_duration < minimum - 0.002 and merged_duration <= maximum + 0.002:
-            groups[-2].extend(groups.pop())
-    return groups
+    if maximum <= 0 or minimum <= 0:
+        return [(start, end)]
+    min_count = max(1, int((duration + maximum - 1e-9) // maximum))
+    max_count = max(1, int(duration // minimum))
+    if min_count <= max_count:
+        count = min_count
+        step = duration / count
+        return [(start + i * step, end if i == count - 1 else start + (i + 1) * step) for i in range(count)]
+    # Very short section/remainder cannot mathematically satisfy both bounds.
+    return [(start, end)]
 
+
+def _rows_overlapping(rows: list[dict[str, str]], start: float, end: float) -> list[dict[str, str]]:
+    return [row for row in rows if _seconds(row.get("Actual Audio End", "0")) > start + 1e-9 and _seconds(row.get("Actual Audio Start", "0")) < end - 1e-9]
 
 def build_production_slots(project: Path, config: dict[str, Any]) -> Path:
     project = Path(project)
@@ -167,30 +153,27 @@ def build_production_slots(project: Path, config: dict[str, Any]) -> Path:
     out: list[dict[str, str]] = []
     slot_no = 0
     for scope, scope_rows in _group_scope_rows(rows, config):
-        # IMAGE rules define constraints for an image *if AI later selects one*.
-        # They do not force this section or slot to become an image.
+        # Duration rules shape neutral visual candidate windows only. They never
+        # choose the asset category; ratio/AI selection happens downstream.
         rule = resolve_rule(rules, scope, "IMAGE")
         minimum = float(rule["min_seconds"]) if rule else 0.0
         maximum = float(rule["max_seconds"]) if rule else 0.0
-        candidates = _aggregate_rows(scope_rows, minimum, maximum) if rule else [[row] for row in scope_rows]
-        for candidate in candidates:
-            start = _seconds(candidate[0].get("Actual Audio Start", "0"))
-            end = _seconds(candidate[-1].get("Actual Audio End", "0"))
-            # A single ASR segment can exceed the visual max. Split only that real
-            # interval; transcript text remains descriptive, timing remains actual.
-            intervals = _split_interval(start, end, minimum, maximum) if maximum > 0 else [(start, end)]
-            ids = "|".join(str(row.get("Segment ID") or "") for row in candidate)
-            text = " ".join(str(row.get("Transcript Text") or "").strip() for row in candidate).strip()
-            for part_start, part_end in intervals:
-                slot_no += 1
-                out.append({
-                    "slot_id": f"P{slot_no:04d}", "start_time": _stamp(part_start), "end_time": _stamp(part_end),
-                    "duration_sec": f"{part_end - part_start:.3f}", "scope": scope,
-                    "source_segment_ids": ids, "transcript_text": text,
-                    "rule_id": str(rule["id"] if rule else ""), "rule_priority": str(rule["priority"] if rule else ""),
-                    "constraint_type": "HARD" if rule and rule["hard"] else ("SOFT" if rule else "NONE"),
-                    "timing_source": "MASTER_TRANSCRIPT",
-                })
+        group_start = _seconds(scope_rows[0].get("Actual Audio Start", "0"))
+        group_end = _seconds(scope_rows[-1].get("Actual Audio End", "0"))
+        intervals = _partition_real_interval(group_start, group_end, minimum, maximum) if rule else [(group_start, group_end)]
+        for part_start, part_end in intervals:
+            covered = _rows_overlapping(scope_rows, part_start, part_end)
+            slot_no += 1
+            ids = "|".join(str(row.get("Segment ID") or "") for row in covered)
+            text = " ".join(str(row.get("Transcript Text") or "").strip() for row in covered).strip()
+            out.append({
+                "slot_id": f"P{slot_no:04d}", "start_time": _stamp(part_start), "end_time": _stamp(part_end),
+                "duration_sec": f"{part_end - part_start:.3f}", "scope": scope,
+                "source_segment_ids": ids, "transcript_text": text,
+                "rule_id": str(rule["id"] if rule else ""), "rule_priority": str(rule["priority"] if rule else ""),
+                "constraint_type": "HARD" if rule and rule["hard"] else ("SOFT" if rule else "NONE"),
+                "timing_source": "MASTER_TRANSCRIPT",
+            })
     target = project / SLOT_TIMELINE
     with target.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=SLOT_COLUMNS); writer.writeheader(); writer.writerows(out)
