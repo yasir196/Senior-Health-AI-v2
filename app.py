@@ -2239,7 +2239,21 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
 
     st.markdown("### Timestamp-First Master Clock")
     st.caption("Builds actual narration timing directly from avatar transcripts. 07_production_sheet.csv is not required.")
-    if st.button("Build Master Narration Timeline", disabled=bool(timeline_blockers), key=f"build_master_narration_timeline_{project.name}"):
+    master_rebuild_confirmed = True
+    master_button_label = "Build Master Narration Timeline"
+    if timestamp_first_active:
+        st.warning("Master Clock is already READY. Rebuilding can change downstream slot boundaries and invalidates timestamp-first Production outputs. Rebuild only when avatar audio/transcripts intentionally changed.")
+        master_rebuild_confirmed = st.checkbox(
+            "I understand: rebuild the Master Clock and regenerate downstream Production outputs.",
+            value=False,
+            key=f"confirm_rebuild_master_clock_{project.name}",
+        )
+        master_button_label = "Rebuild Master Narration Timeline"
+    if st.button(
+        master_button_label,
+        disabled=bool(timeline_blockers) or not master_rebuild_confirmed,
+        key=f"build_master_narration_timeline_{project.name}",
+    ):
         try:
             with st.spinner("Building production-independent master narration clock..."):
                 master_result = build_master_narration_timeline(
