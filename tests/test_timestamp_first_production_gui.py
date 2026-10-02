@@ -42,3 +42,16 @@ def test_gui_offers_deterministic_timestamp_first_preflight_chain():
     assert "audit_timeline(project)" in block
     assert block.index("build_production_slots(project, config)") < block.index("allocate_ratio_targets(project)") < block.index("audit_timeline(project)")
     assert "run_external_command" not in block
+
+
+def test_rule_controller_and_preflight_share_production_scope():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "app.py").read_text(encoding="utf-8")
+    production = source.split("def render_production() -> None:", 1)[1].split("def load_production_sheet", 1)[0]
+    workflow = source.split("def render_workflow() -> None:", 1)[1].split("def render_production() -> None:", 1)[0]
+    assert 'st.markdown("### Production Rule Controller")' in production
+    assert "rule_records = edited_rules.fillna" in production
+    assert "rule_issues = validate_rules(rule_records)" in production
+    assert 'st.markdown("### Timestamp-First Preflight")' in production
+    assert production.index("rule_issues = validate_rules(rule_records)") < production.index('st.markdown("### Timestamp-First Preflight")')
+    assert 'st.markdown("### Production Rule Controller")' not in workflow
