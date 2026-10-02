@@ -998,63 +998,6 @@ def render_workflow() -> None:
     if not project:
         return
     config = load_config()
-    st.markdown("### Production Rule Controller")
-    st.caption("Project-level production timing rules. These values are GUI-controlled and are not hard-coded into the Production Planner.")
-    rules = load_rules(project)
-    st.caption("Add: use the + row at the bottom · Edit: change any cell · Delete: select row(s) and delete · Enable/Disable: toggle Enabled · Priority: larger number wins.")
-    edited_rules = st.data_editor(
-        pd.DataFrame(rules),
-        hide_index=True,
-        width="stretch",
-        num_rows="dynamic",
-        key=f"production_rules_editor_{project.name}",
-        column_config={
-            "id": st.column_config.TextColumn("Rule ID", required=True, help="Stable unique ID used by the rule engine."),
-            "name": st.column_config.TextColumn("Rule Name", required=True),
-            "category": st.column_config.SelectboxColumn("Category", options=["IMAGE", "AVATAR", "EVIDENCE", "B-ROLL", "TRANSITION", "CAPCUT"], required=True),
-            "scope": st.column_config.SelectboxColumn("Scope", options=["ALL", "HOOK", "BODY", "EVIDENCE", "CTA"], required=True),
-            "enabled": st.column_config.CheckboxColumn("Enabled", default=True),
-            "priority": st.column_config.NumberColumn("Priority", min_value=0, step=10, default=100, help="Higher priority is resolved first."),
-            "hard": st.column_config.CheckboxColumn("Hard Constraint", default=True),
-            "min_seconds": st.column_config.NumberColumn("Min Seconds", min_value=0.0, step=0.5, default=0.0),
-            "max_seconds": st.column_config.NumberColumn("Max Seconds", min_value=0.0, step=0.5, default=0.0),
-        },
-    )
-    rule_records = edited_rules.fillna("").to_dict("records")
-    rule_issues = validate_rules(rule_records)
-    enabled_count = sum(1 for rule in rule_records if bool(rule.get("enabled")))
-    hard_count = sum(1 for rule in rule_records if bool(rule.get("hard")))
-    rc1, rc2, rc3 = st.columns(3)
-    rc1.metric("Rules", len(rule_records))
-    rc2.metric("Enabled", enabled_count)
-    rc3.metric("Hard Constraints", hard_count)
-    if rule_issues:
-        st.warning("Production rules need correction before they can be saved.")
-        for issue in rule_issues:
-            st.caption(f"• {issue}")
-    if st.button("Save Production Rules", disabled=bool(rule_issues), key=f"save_production_rules_{project.name}"):
-        try:
-            saved_rules_path = save_rules(project, rule_records)
-        except (OSError, ValueError) as exc:
-            st.error(f"Production rules could not be saved: {exc}")
-        else:
-            st.success(f"Production rules saved: {saved_rules_path.name}")
-            st.rerun()
-
-    active_preview = sorted(
-        (rule for rule in rule_records if bool(rule.get("enabled"))),
-        key=lambda rule: (-int(rule.get("priority") or 0), str(rule.get("id") or "")),
-    )
-    with st.expander("Resolved Rule Priority Preview", expanded=False):
-        if active_preview:
-            st.dataframe(
-                pd.DataFrame(active_preview)[["priority", "id", "name", "category", "scope", "hard", "min_seconds", "max_seconds"]],
-                hide_index=True,
-                width="stretch",
-            )
-        else:
-            st.info("No production rules are enabled.")
-
     st.markdown("### Timestamp Rule Preview")
     st.caption("Applies the saved enabled rules to the actual Master Narration Timeline. This creates deterministic production slots before AI visual planning.")
     master_for_slots = project / "08_master_narration_timeline.csv"
@@ -1857,6 +1800,64 @@ def render_production() -> None:
             st.success("Production mix saved.")
     if not mix_valid:
         st.warning(mix_reason)
+
+    st.markdown("### Production Rule Controller")
+    st.caption("Project-level production timing rules. These values are GUI-controlled and are not hard-coded into the Production Planner.")
+    rules = load_rules(project)
+    st.caption("Add: use the + row at the bottom · Edit: change any cell · Delete: select row(s) and delete · Enable/Disable: toggle Enabled · Priority: larger number wins.")
+    edited_rules = st.data_editor(
+        pd.DataFrame(rules),
+        hide_index=True,
+        width="stretch",
+        num_rows="dynamic",
+        key=f"production_rules_editor_{project.name}",
+        column_config={
+            "id": st.column_config.TextColumn("Rule ID", required=True, help="Stable unique ID used by the rule engine."),
+            "name": st.column_config.TextColumn("Rule Name", required=True),
+            "category": st.column_config.SelectboxColumn("Category", options=["IMAGE", "AVATAR", "EVIDENCE", "B-ROLL", "TRANSITION", "CAPCUT"], required=True),
+            "scope": st.column_config.SelectboxColumn("Scope", options=["ALL", "HOOK", "BODY", "EVIDENCE", "CTA"], required=True),
+            "enabled": st.column_config.CheckboxColumn("Enabled", default=True),
+            "priority": st.column_config.NumberColumn("Priority", min_value=0, step=10, default=100, help="Higher priority is resolved first."),
+            "hard": st.column_config.CheckboxColumn("Hard Constraint", default=True),
+            "min_seconds": st.column_config.NumberColumn("Min Seconds", min_value=0.0, step=0.5, default=0.0),
+            "max_seconds": st.column_config.NumberColumn("Max Seconds", min_value=0.0, step=0.5, default=0.0),
+        },
+    )
+    rule_records = edited_rules.fillna("").to_dict("records")
+    rule_issues = validate_rules(rule_records)
+    enabled_count = sum(1 for rule in rule_records if bool(rule.get("enabled")))
+    hard_count = sum(1 for rule in rule_records if bool(rule.get("hard")))
+    rc1, rc2, rc3 = st.columns(3)
+    rc1.metric("Rules", len(rule_records))
+    rc2.metric("Enabled", enabled_count)
+    rc3.metric("Hard Constraints", hard_count)
+    if rule_issues:
+        st.warning("Production rules need correction before they can be saved.")
+        for issue in rule_issues:
+            st.caption(f"• {issue}")
+    if st.button("Save Production Rules", disabled=bool(rule_issues), key=f"save_production_rules_{project.name}"):
+        try:
+            saved_rules_path = save_rules(project, rule_records)
+        except (OSError, ValueError) as exc:
+            st.error(f"Production rules could not be saved: {exc}")
+        else:
+            st.success(f"Production rules saved: {saved_rules_path.name}")
+            st.rerun()
+
+    active_preview = sorted(
+        (rule for rule in rule_records if bool(rule.get("enabled"))),
+        key=lambda rule: (-int(rule.get("priority") or 0), str(rule.get("id") or "")),
+    )
+    with st.expander("Resolved Rule Priority Preview", expanded=False):
+        if active_preview:
+            st.dataframe(
+                pd.DataFrame(active_preview)[["priority", "id", "name", "category", "scope", "hard", "min_seconds", "max_seconds"]],
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.info("No production rules are enabled.")
+
 
     st.markdown("### Timestamp-First Preflight")
     st.caption("Runs the deterministic chain in order: saved rules → production slots → duration ratio allocation → Timeline QA. It does not call AI or generate assets.")
