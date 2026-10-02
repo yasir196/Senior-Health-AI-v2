@@ -63,8 +63,9 @@ def allocate_ratio_targets(project: Path) -> Path:
     targets = _targets(settings)
 
     with slots_path.open(encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle))
-        fields = list(handle.fieldnames or [])
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+        fields = list(reader.fieldnames or [])
     if not rows:
         raise ValueError("08_production_slots.csv has no slots.")
 
