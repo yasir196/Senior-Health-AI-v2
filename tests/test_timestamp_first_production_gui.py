@@ -63,3 +63,13 @@ def test_avatar_panel_does_not_apply_legacy_voice_excerpt_gate_after_master_cloc
     assert 'timestamp_first_active = master_clock_path.is_file()' in block
     assert 'if scenes and not timestamp_first_active:' in block
     assert 'exact 06a script-excerpt matching is not used after transcription' in block
+
+
+def test_avatar_panel_shows_master_clock_metrics_in_timestamp_first_mode() -> None:
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    block = source.split("def render_avatar_timing_sync",1)[1].split("def load_production_sheet",1)[0]
+    assert 'e2.metric("Master Clock Status", master_clock_status)' in block
+    assert 'e3.metric("Master Runtime"' in block
+    assert 'e4.metric("Master Segments", master_clock_segments)' in block
+    assert 'e2.metric("Legacy Alignment Score"' in block
+    assert 'e3.metric("Legacy Timeline Status"' in block
