@@ -1,3 +1,4 @@
+import os
 import capcut_export
 import shutil
 import csv
