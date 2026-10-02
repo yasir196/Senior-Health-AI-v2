@@ -10,6 +10,7 @@ from csv_safety import validate_script_text
 
 
 REQUIRED_COLUMNS = ["Scene ID", "Script Text", "Actual Audio Start", "Actual Audio End", "Duration", "Avatar Chunk", "Timing Source"]
+LOCKED_SLOT_COLUMNS = ["slot_id", "start_time", "end_time", "duration_sec", "transcript_text", "timing_source"]
 SCHEMA_VERSION = "1.1"
 DEFAULT_DURATION_TOLERANCE_SECONDS = 0.15
 
@@ -272,6 +273,41 @@ def _load_base_avatar_timeline(project: Path) -> dict[str, Any] | None:
         "chunks": base_chunks,
     }
 
+def _load_timestamp_first_rows(project: Path, timeline_csv: Path) -> tuple[list[dict[str, str]], str]:
+    """Load either the locked production slots or the legacy actual timeline.
+
+    08_ratio_allocated_slots.csv is the timestamp-first CapCut authority. Legacy
+    08_actual_timeline.csv remains readable only for backwards compatibility/tests.
+    """
+    with timeline_csv.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = reader.fieldnames or []
+        rows = list(reader)
+    if timeline_csv.name == "08_ratio_allocated_slots.csv":
+        missing = [name for name in LOCKED_SLOT_COLUMNS if name not in fieldnames]
+        if missing:
+            raise TimelineBuildError("Corrupted locked slot CSV or missing columns: " + ", ".join(missing))
+        normalized = []
+        for row in rows:
+            slot_id = str(row.get("slot_id") or "").strip()
+            if not slot_id:
+                raise TimelineBuildError("Locked production slot is missing slot_id")
+            normalized.append({
+                "Scene ID": slot_id,
+                "Script Text": str(row.get("transcript_text") or ""),
+                "Actual Audio Start": str(row.get("start_time") or ""),
+                "Actual Audio End": str(row.get("end_time") or ""),
+                "Duration": str(row.get("duration_sec") or ""),
+                "Avatar Chunk": str(row.get("avatar_chunk") or "MASTER_AVATAR"),
+                "Timing Source": str(row.get("timing_source") or "MASTER_TRANSCRIPT"),
+            })
+        return normalized, timeline_csv.name
+    missing = [name for name in REQUIRED_COLUMNS if name not in fieldnames]
+    if missing:
+        raise TimelineBuildError("Corrupted CSV or missing columns: " + ", ".join(missing))
+    return rows, timeline_csv.name
+
+
 def build_timeline_manifest(
     project: Path,
     timeline_csv: Path | None = None,
@@ -281,17 +317,12 @@ def build_timeline_manifest(
     if duration_tolerance_seconds < 0:
         raise TimelineBuildError("Duration tolerance cannot be negative")
     project = Path(project).resolve()
-    timeline_csv = Path(timeline_csv or project / "08_actual_timeline.csv").resolve()
+    timeline_csv = Path(timeline_csv or (project / "08_ratio_allocated_slots.csv" if (project / "08_ratio_allocated_slots.csv").is_file() else project / "08_actual_timeline.csv")).resolve()
     if not timeline_csv.is_file():
-        raise TimelineBuildError("08_actual_timeline.csv is missing")
+        raise TimelineBuildError("08_ratio_allocated_slots.csv is missing (legacy 08_actual_timeline.csv fallback also unavailable)")
 
     try:
-        with timeline_csv.open("r", encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle)
-            if reader.fieldnames is None or any(column not in reader.fieldnames for column in REQUIRED_COLUMNS):
-                missing = [c for c in REQUIRED_COLUMNS if not reader.fieldnames or c not in reader.fieldnames]
-                raise TimelineBuildError("Corrupted CSV or missing columns: " + ", ".join(missing))
-            rows = list(reader)
+        rows, timing_source_file = _load_timestamp_first_rows(project, timeline_csv)
     except (OSError, UnicodeError, csv.Error) as exc:
         raise TimelineBuildError(f"Could not read timeline CSV: {exc}") from exc
     if not rows:
@@ -365,7 +396,7 @@ def build_timeline_manifest(
         "schema": "senior-health-ai.timeline-manifest",
         "schema_version": SCHEMA_VERSION,
         "project_name": project.name,
-        "timebase": {"unit": "seconds", "source": "08_actual_timeline.csv", "recalculation_allowed": False},
+        "timebase": {"unit": "seconds", "source": timing_source_file, "recalculation_allowed": False},
         "timeline": {"duration_seconds": duration_seconds, "scene_count": len(scenes)},
         "base_avatar": base_avatar,
         "production_assignments": {
