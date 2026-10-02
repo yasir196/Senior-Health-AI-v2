@@ -34,6 +34,9 @@ def test_timeline_qa_detects_gap_overlap_and_rule_violation(tmp_path: Path) -> N
     report=audit_timeline(tmp_path)
     kinds={issue["type"] for issue in report["issues"]}
     assert report["status"]=="FAIL"
-    assert {"GAP","OVERLAP","RULE_MAX","RULE_MIN"}.issubset(kinds)
+    # IMAGE duration rules apply only to AI_IMAGE slots. P1 is AVATAR and
+    # P3 is STOCK_VIDEO, so neither may create an IMAGE RULE_MAX violation.
+    assert {"GAP","OVERLAP","RULE_MIN"}.issubset(kinds)
+    assert "RULE_MAX" not in kinds
     saved=json.loads((tmp_path/"timeline_qa_report.json").read_text(encoding="utf-8"))
     assert saved["status"]=="FAIL"
