@@ -78,12 +78,15 @@ def allocate_ratio_targets(project: Path) -> Path:
 
     for row in rows:
         duration = float(row.get("duration_sec", 0) or 0)
-        lane = max(
+        # Keep the requested mix distributed across the whole timeline instead
+        # of front-loading the largest lane (which made short sections such as
+        # HOOK become 100% AI images). Pick the lane that is least filled relative
+        # to its own target; stable LANES order breaks initial ties.
+        lane = min(
             active,
             key=lambda name: (
-                target_seconds[name] - assigned_seconds[name],
-                targets[name],
-                -LANES.index(name),
+                assigned_seconds[name] / target_seconds[name] if target_seconds[name] > 0 else float("inf"),
+                LANES.index(name),
             ),
         )
         assigned_seconds[lane] += duration
