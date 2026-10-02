@@ -47,10 +47,10 @@ def test_oversized_locked_transcript_slot_is_not_split_by_ai():
     assert not any("40 words" in x and "split" in x for x in issues)
 
 
-def test_elapsed_time_must_not_be_hhmmss():
+def test_locked_timing_validation_is_owned_upstream_not_reinterpreted_as_provisional_scene_timing():
     issues = validate_canonical_rows([_row("This is a normal semantic scene with enough spoken words.", start="26:35:00", end="26:41:00")], PRODUCTION_SHEET_COLUMNS)
-    assert any("start_time must use elapsed M:SS" in x for x in issues)
-    assert any("end_time must use elapsed M:SS" in x for x in issues)
+    assert not any("start_time must use elapsed M:SS" in x for x in issues)
+    assert not any("end_time must use elapsed M:SS" in x for x in issues)
 
 
 def test_33_word_locked_transcript_slot_is_not_split_by_ai():
