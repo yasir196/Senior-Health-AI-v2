@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+from production_rules import enabled_rules
+from production_timing_controller import resolve_rule
+
 LANES = ("avatar", "ai_images", "stock", "overlays")
 ASSET_BY_LANE = {
     "avatar": "AVATAR",
@@ -76,14 +79,24 @@ def allocate_ratio_targets(project: Path) -> Path:
     if not active:
         raise ValueError("At least one Production Mix lane must be greater than 0%.")
 
+    rules = enabled_rules(project)
     for row in rows:
         duration = float(row.get("duration_sec", 0) or 0)
-        # Keep the requested mix distributed across the whole timeline instead
-        # of front-loading the largest lane (which made short sections such as
-        # HOOK become 100% AI images). Pick the lane that is least filled relative
-        # to its own target; stable LANES order breaks initial ties.
+        scope = str(row.get("scope") or "BODY").upper()
+        eligible = list(active)
+        image_rule = resolve_rule(rules, scope, "IMAGE")
+        if "ai_images" in eligible and image_rule:
+            minimum = float(image_rule["min_seconds"])
+            maximum = float(image_rule["max_seconds"])
+            if (minimum > 0 and duration < minimum - 0.002) or (maximum > 0 and duration > maximum + 0.002):
+                eligible.remove("ai_images")
+        if not eligible:
+            eligible = ["avatar"] if "avatar" in active else list(active)
+        # Keep the requested mix distributed across the whole timeline while
+        # respecting category eligibility. A short/long neutral window cannot be
+        # labeled AI_IMAGE merely to hit a ratio target.
         lane = min(
-            active,
+            eligible,
             key=lambda name: (
                 assigned_seconds[name] / target_seconds[name] if target_seconds[name] > 0 else float("inf"),
                 LANES.index(name),
