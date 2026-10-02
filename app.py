@@ -23,6 +23,7 @@ from production_rules import load_rules, save_rules, validate_rules
 from production_timing_controller import build_production_slots
 from production_ratio_controller import allocate_ratio_targets
 from timeline_qa import audit_timeline
+from production_plan_contract import validate_ai_timing_lock
 from scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -1901,17 +1902,16 @@ def render_production() -> None:
                         # Call the segmentation validator directly rather than relying on
                         # validate_canonical_rows(check_segmentation=...), so compatibility
                         # normalization cannot bypass Production-stage scene validity.
-                        segmentation_issues = production_sheet_segmentation_issues(project)
-                        if segmentation_issues:
+                        # Timestamp-first hard acceptance gate: AI may choose visuals only.
+                        # It may not alter deterministic slot count, timing, order, or transcript text.
+                        with (project / "07_production_sheet.csv").open(encoding="utf-8-sig", newline="") as handle:
+                            final_production_rows = list(csv.DictReader(handle))
+                        timing_lock_issues = validate_ai_timing_lock(project, final_production_rows)
+                        if timing_lock_issues:
                             source_ok = False
-                            source_issues = ["SCENE_SEGMENTATION_QA_FAILED"] + segmentation_issues
+                            source_issues = ["TIMING_LOCK_QA_FAILED"] + timing_lock_issues
                         else:
-                            ledger_issues = production_sheet_ledger_issues(project)
-                            if ledger_issues:
-                                source_ok = False
-                                source_issues = ["SCENE_LEDGER_QA_FAILED"] + ledger_issues
-                            else:
-                                source_ok, source_issues = validate_production_sheet_against_voice(project)
+                            source_ok, source_issues = validate_production_sheet_against_voice(project)
                     else:
                         source_ok = False
                         source_issues = list(contract_issues)
@@ -1922,7 +1922,10 @@ def render_production() -> None:
                 if result.returncode == 0 and all(outputs.values()) and source_ok and (semantic_audit is None or semantic_audit.passed):
                     st.success("Production generation completed successfully.")
                 elif result.returncode == 0 and not source_ok:
-                    if source_issues and source_issues[0] == "SCENE_SEGMENTATION_QA_FAILED":
+                    if source_issues and source_issues[0] == "TIMING_LOCK_QA_FAILED":
+                        st.error("Production output rejected: AI changed Python-owned timestamp slots or locked transcript text.")
+                        display_issues = source_issues[1:]
+                    elif source_issues and source_issues[0] == "SCENE_SEGMENTATION_QA_FAILED":
                         st.error("Production output rejected: scene-boundary QA failed. The script source itself still matches 06a_voice_script.md.")
                         display_issues = source_issues[1:]
                     else:
