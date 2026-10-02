@@ -2238,15 +2238,21 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     capcut_dir = project / "capcut"
     capcut_manifest = capcut_dir / "timeline_manifest.json"
     capcut_report = capcut_dir / "export_report.md"
-    timeline_pass = timeline_path.is_file() and timeline_status == "PASS"
-    if not timeline_path.is_file():
-        st.caption("• 08_actual_timeline.csv must exist.")
-    if timeline_path.is_file() and timeline_status != "PASS":
-        st.caption("• Avatar Timeline status must be PASS.")
+    locked_timeline_path = project / "08_ratio_allocated_slots.csv"
+    qa_report_path = project / "timeline_qa_report.json"
+    try:
+        capcut_qa = json.loads(safe_read_text(qa_report_path) or "{}") if qa_report_path.is_file() else {}
+    except json.JSONDecodeError:
+        capcut_qa = {}
+    timeline_pass = locked_timeline_path.is_file() and capcut_qa.get("status") == "PASS"
+    if not locked_timeline_path.is_file():
+        st.caption("• 08_ratio_allocated_slots.csv must exist; legacy 08_actual_timeline.csv is not the CapCut production authority.")
+    if locked_timeline_path.is_file() and capcut_qa.get("status") != "PASS":
+        st.caption("• Timestamp-first Timeline QA must PASS before CapCut handoff.")
     if st.button("Generate CapCut Project", type="primary", disabled=not timeline_pass, key=f"generate_capcut_{project.name}"):
         try:
-            with st.spinner("Building generic timeline manifest and editable CapCut-ready project..."):
-                built = build_timeline_manifest(project, timeline_path)
+            with st.spinner("Building locked timestamp-first timeline manifest and editable CapCut-ready project..."):
+                built = build_timeline_manifest(project, locked_timeline_path)
                 exported = export_capcut_project(project, built.manifest_path)
         except (TimelineBuildError, CapCutExportError) as exc:
             st.error(f"CapCut export failed: {exc}")
