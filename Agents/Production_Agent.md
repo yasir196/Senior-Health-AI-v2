@@ -9,6 +9,8 @@ This override supersedes only legacy timing/allocation authority below; all exis
 - Any older instruction below that asks the agent to create, regroup, or recalculate timing is superseded by this override. In particular, scene timing comes from locked transcript slots, never from a fixed 5–8 second bucket.
 - `07_production_sheet.csv` remains authoritative for AI-image assignments after visual planning; `07_production_sheet.csv` decides which rows are `AI_IMAGE` for downstream prompt generation.
 - Final scene-segmentation hard gate before writing `07_production_sheet.csv`: validate the locked slots rather than changing them; report a timing/segmentation violation for deterministic-controller repair instead of editing timestamps.
+- Legacy validator language such as "Merge every <4-word orphan" or "split every >32-word normal scene" is diagnostic only under timestamp-first mode: never mutate a locked transcript slot to satisfy it; route any conflict back to the deterministic controller.
+- Preserve the legacy FINAL NARRATION-PROVENANCE GATE and POST-ASSET SEGMENTATION GATE as validation-only gates. Production mix remains a TIMELINE distribution, not a quota-block allocation.
 
 # Production_Agent
 
