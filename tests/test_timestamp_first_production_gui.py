@@ -73,3 +73,10 @@ def test_avatar_panel_shows_master_clock_metrics_in_timestamp_first_mode() -> No
     assert 'e4.metric("Master Segments", master_clock_segments)' in block
     assert 'e2.metric("Legacy Alignment Score"' in block
     assert 'e3.metric("Legacy Timeline Status"' in block
+
+
+def test_avatar_master_clock_metrics_use_available_csv_reader() -> None:
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    block = source.split("def render_avatar_timing_sync",1)[1].split("def load_production_sheet",1)[0]
+    assert 'master_rows = list(csv.DictReader(handle))' in block
+    assert 'read_csv_rows(master_clock_path)' not in block
