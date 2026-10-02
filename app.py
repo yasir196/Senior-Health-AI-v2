@@ -2102,7 +2102,8 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     master_clock_segments = 0
     if timestamp_first_active:
         try:
-            master_rows = read_csv_rows(master_clock_path)
+            with master_clock_path.open("r", encoding="utf-8-sig", newline="") as handle:
+                master_rows = list(csv.DictReader(handle))
             master_clock_segments = len(master_rows)
             master_clock_runtime = max(
                 (parse_timeline_time(row.get("Actual Audio End", "0")) for row in master_rows),
