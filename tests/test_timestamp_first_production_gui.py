@@ -55,3 +55,11 @@ def test_rule_controller_and_preflight_share_production_scope():
     assert 'st.markdown("### Timestamp-First Preflight")' in production
     assert production.index("rule_issues = validate_rules(rule_records)") < production.index('st.markdown("### Timestamp-First Preflight")')
     assert 'st.markdown("### Production Rule Controller")' not in workflow
+
+
+def test_avatar_panel_does_not_apply_legacy_voice_excerpt_gate_after_master_clock_exists() -> None:
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    block = source.split("def render_avatar_timing_sync",1)[1].split("def load_production_sheet",1)[0]
+    assert 'timestamp_first_active = master_clock_path.is_file()' in block
+    assert 'if scenes and not timestamp_first_active:' in block
+    assert 'exact 06a script-excerpt matching is not used after transcription' in block
