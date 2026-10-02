@@ -24,3 +24,17 @@ def test_actual_runtime_parser_is_imported_from_timeline_builder():
     source = (root / "app.py").read_text(encoding="utf-8")
     assert "from timeline_builder import TimelineBuildError, build_timeline_manifest, parse_timeline_time" in source
     assert 'parse_timeline_time(row.get("Actual Audio End", "0"))' in source
+
+
+def test_gui_offers_deterministic_timestamp_first_preflight_chain():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "app.py").read_text(encoding="utf-8")
+    start = source.index('st.markdown("### Timestamp-First Preflight")')
+    end = source.index('st.markdown("### Timestamp Rule Preview")', start)
+    block = source[start:end]
+    assert "save_rules(project, rule_records)" in block
+    assert "build_production_slots(project, config)" in block
+    assert "allocate_ratio_targets(project)" in block
+    assert "audit_timeline(project)" in block
+    assert block.index("build_production_slots(project, config)") < block.index("allocate_ratio_targets(project)") < block.index("audit_timeline(project)")
+    assert "run_external_command" not in block
