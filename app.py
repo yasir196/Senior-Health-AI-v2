@@ -1873,11 +1873,26 @@ def render_production() -> None:
         except Exception as exc:
             st.error(f"Timestamp-first preflight failed: {exc}")
         else:
-            if qa_result.get("status") == "PASS":
-                st.success(f"Timestamp-first preflight PASS · {slots_path.name} → {ratio_path.name} → Timeline QA PASS")
-            else:
-                st.error("Timestamp-first preflight completed, but Timeline QA FAILED. Review the issues below.")
+            st.session_state[f"timestamp_preflight_result_{project.name}"] = {
+                "status": qa_result.get("status", "UNKNOWN"),
+                "slots": slots_path.name,
+                "ratio": ratio_path.name,
+                "issues": qa_result.get("issues", []),
+            }
             st.rerun()
+
+    preflight_result = st.session_state.get(f"timestamp_preflight_result_{project.name}")
+    if preflight_result:
+        if preflight_result.get("status") == "PASS":
+            st.success(
+                f"Timestamp-first preflight PASS · {preflight_result.get('slots')} → "
+                f"{preflight_result.get('ratio')} → Timeline QA PASS"
+            )
+        else:
+            st.error("Timestamp-first preflight completed, but Timeline QA FAILED.")
+            issues = preflight_result.get("issues") or []
+            if issues:
+                st.json(issues)
 
 
     cli_template = detect_codex_command()
