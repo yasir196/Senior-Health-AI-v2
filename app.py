@@ -2352,11 +2352,32 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
         capcut_qa = json.loads(safe_read_text(qa_report_path) or "{}") if qa_report_path.is_file() else {}
     except json.JSONDecodeError:
         capcut_qa = {}
-    timeline_pass = locked_timeline_path.is_file() and capcut_qa.get("status") == "PASS"
+    production_sheet_path = project / "07_production_sheet.csv"
+    capcut_timing_lock_issues: list[str] = []
+    if production_sheet_path.is_file() and locked_timeline_path.is_file():
+        try:
+            with production_sheet_path.open(encoding="utf-8-sig", newline="") as handle:
+                capcut_production_rows = list(csv.DictReader(handle))
+            capcut_timing_lock_issues = validate_ai_timing_lock(project, capcut_production_rows)
+        except (OSError, UnicodeError, csv.Error) as exc:
+            capcut_timing_lock_issues = [f"Could not validate 07_production_sheet.csv for CapCut handoff: {exc}"]
+
+    timeline_pass = (
+        locked_timeline_path.is_file()
+        and capcut_qa.get("status") == "PASS"
+        and production_sheet_path.is_file()
+        and not capcut_timing_lock_issues
+    )
     if not locked_timeline_path.is_file():
         st.caption("• 08_ratio_allocated_slots.csv must exist; legacy 08_actual_timeline.csv is not the CapCut production authority.")
     if locked_timeline_path.is_file() and capcut_qa.get("status") != "PASS":
         st.caption("• Timestamp-first Timeline QA must PASS before CapCut handoff.")
+    if not production_sheet_path.is_file():
+        st.caption("• Generate the timestamp-first Production Plan first; 07_production_sheet.csv supplies visual assignments only.")
+    elif capcut_timing_lock_issues:
+        st.error("CapCut handoff blocked: Production Plan no longer matches the Python-owned locked timestamp slots.")
+        for issue in capcut_timing_lock_issues[:10]:
+            st.caption(f"• {issue}")
     if st.button("Generate CapCut Project", type="primary", disabled=not timeline_pass, key=f"generate_capcut_{project.name}"):
         try:
             with st.spinner("Building locked timestamp-first timeline manifest and editable CapCut-ready project..."):
