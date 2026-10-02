@@ -1786,7 +1786,7 @@ def render_production() -> None:
     mix_valid, mix_reason = validate_production_mix(avatar, ai_images, stock, overlays)
     st.metric("Total", f"{total}%")
 
-    duration = st.number_input("AI image display duration (seconds)", 6, 20, int(settings["image_duration_seconds"]))
+    st.caption("Visual durations are controlled by the enabled Production Rules below; there is no global AI-image timing override.")
     st.markdown("#### Ratio Accuracy")
     ratio_strict = st.checkbox(
         "Strict ratio mode",
@@ -1810,17 +1810,44 @@ def render_production() -> None:
     current_platform = settings.get("image_platform", "Genspark Web")
     platform = st.selectbox("Image platform", options, index=options.index(current_platform) if current_platform in options else 0)
 
-    voice_script = safe_read_text(project / "06a_voice_script.md")
-    if voice_script:
-        minutes = count_words(voice_script) / max(1, canonical_runtime(config).wpm)
-        estimated_images = round((minutes * 60 * ai_images / 100) / max(1, duration))
-        st.info(f"Estimated runtime: {minutes:.1f} minutes · Estimated AI images: approximately {estimated_images}")
+    master_timeline_path = project / "08_master_narration_timeline.csv"
+    ratio_slots_path = project / "08_ratio_allocated_slots.csv"
+    actual_runtime_seconds = 0.0
+    actual_segments = 0
+    if master_timeline_path.is_file():
+        try:
+            with master_timeline_path.open("r", encoding="utf-8-sig", newline="") as handle:
+                master_rows = list(csv.DictReader(handle))
+            if master_rows:
+                actual_segments = len(master_rows)
+                actual_runtime_seconds = max(
+                    parse_timeline_time(row.get("Actual Audio End", "0")) for row in master_rows
+                )
+        except (OSError, csv.Error, ValueError):
+            actual_runtime_seconds = 0.0
+    allocated_ai_slots = None
+    if ratio_slots_path.is_file():
+        try:
+            with ratio_slots_path.open("r", encoding="utf-8-sig", newline="") as handle:
+                allocated_rows = list(csv.DictReader(handle))
+            allocated_ai_slots = sum(
+                1 for row in allocated_rows
+                if str(row.get("target_lane") or row.get("recommended_asset_type") or "").strip().upper()
+                in {"AI_IMAGES", "AI_IMAGE", "IMAGE"}
+            )
+        except (OSError, csv.Error):
+            allocated_ai_slots = None
+    if actual_runtime_seconds > 0:
+        summary = f"Actual master runtime: {actual_runtime_seconds / 60:.2f} minutes · Transcript segments: {actual_segments}"
+        if allocated_ai_slots is not None:
+            summary += f" · Deterministically allocated AI-image slots: {allocated_ai_slots}"
+        st.info(summary)
     else:
-        st.info("Runtime estimate will appear when 06a_voice_script.md is available.")
+        st.info("Actual runtime will appear after 08_master_narration_timeline.csv is built from avatar transcription.")
 
     payload = {
         "avatar": avatar, "ai_images": ai_images, "stock": stock, "overlays": overlays,
-        "image_duration_seconds": duration, "image_platform": platform,
+        "image_platform": platform,
         "ratio_tolerance_points": ratio_tolerance,
         "ratio_strict_mode": ratio_strict,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
