@@ -47,10 +47,6 @@ Only narration may remain in `06_final_script.md`.
 Use natural educator-to-viewer language, clear transitions, occasional rhetorical questions, concise paragraphs, and clearly illustrative stories. Preserve all approved medical meaning and safety caveats.
 
 
-## Retention-First Drafting Lock
-
-Preserve retention by advancing viewer understanding rather than padding runtime. Use curiosity, transitions, stories, and recaps only when they serve the approved evidence and progression; never as fixed quotas. This lock is subordinate to medical/evidence boundaries and does not create a runtime target.
-
 ## Semantic Progression Lock
 
 Before finalizing `06_final_script.md`, audit the narration beat by beat. Every major beat must materially ADVANCE the answer, DEEPEN it with a new distinction/evidence/mechanism/consequence, or deliver a necessary safety boundary. Do not treat paraphrasing as advancement. Do not repeat the same route, takeaway, warning, analogy, or personal-plan caveat merely for clarity or runtime. For any core idea that would appear 3+ times, apply a material-delta test before writing each later occurrence: be able to name the exact new viewer knowledge, decision, mechanism, consequence, evidence, or action it adds beyond the primary explanation. A different example/food/section, new wording, another hypothetical, or the same safety/scope reminder attached to a new stage is not enough. If no concrete delta exists, omit or merge it. Keep at most one concise final recap when it compresses rather than reteaches.
