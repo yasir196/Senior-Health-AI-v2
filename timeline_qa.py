@@ -49,7 +49,11 @@ def audit_timeline(project: Path) -> dict[str, Any]:
                 issues.append({"severity":"HARD","type":"OVERLAP","slot_id":slot,"message":f"{abs(delta):.3f}s overlap before slot"})
         previous_end = end
 
-        rule = resolve_rule(rules, scope)
+        # Category-specific duration rules apply only when that asset category
+        # was actually selected. An IMAGE rule must never imply IMAGE selection.
+        asset_type = str(row.get("recommended_asset_type") or "").strip().upper()
+        category = "IMAGE" if asset_type == "AI_IMAGE" else asset_type
+        rule = resolve_rule(rules, scope, category) if category else None
         if rule:
             minimum = float(rule["min_seconds"])
             maximum = float(rule["max_seconds"])
