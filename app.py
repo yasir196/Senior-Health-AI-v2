@@ -43,7 +43,7 @@ from avatar_timing import (
     AvatarTranscriptionError, load_production_scenes, preflight_avatar_chunks, transcribe_avatar_chunks, transcription_settings, transcript_cache_is_current,
     transcript_inventory,
 )
-from timeline_builder import TimelineBuildError, build_timeline_manifest
+from timeline_builder import TimelineBuildError, build_timeline_manifest, parse_timeline_time
 from capcut_export import CapCutExportError, export_capcut_project
 from semantic_coherence import enforce_final_semantic_report
 from image_generation import (
