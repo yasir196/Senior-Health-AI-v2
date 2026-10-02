@@ -1055,6 +1055,26 @@ def render_workflow() -> None:
         else:
             st.info("No production rules are enabled.")
 
+    st.markdown("### Timestamp-First Preflight")
+    st.caption("Runs the deterministic chain in order: saved rules → production slots → duration ratio allocation → Timeline QA. It does not call AI or generate assets.")
+    preflight_ready = master_timeline_path.is_file() and mix_valid and not bool(rule_issues)
+    if st.button("Build Slots + Ratio + Run Timeline QA", type="primary", disabled=not preflight_ready, key=f"timestamp_preflight_{project.name}"):
+        try:
+            saved_rules_path = save_rules(project, rule_records)
+            if not safe_write_text(settings_path, json.dumps(payload, indent=2) + "\n"):
+                raise OSError("Production Mix could not be saved.")
+            slots_path = build_production_slots(project, config)
+            ratio_path = allocate_ratio_targets(project)
+            qa_result = audit_timeline(project)
+        except Exception as exc:
+            st.error(f"Timestamp-first preflight failed: {exc}")
+        else:
+            if qa_result.get("status") == "PASS":
+                st.success(f"Timestamp-first preflight PASS · {slots_path.name} → {ratio_path.name} → Timeline QA PASS")
+            else:
+                st.error("Timestamp-first preflight completed, but Timeline QA FAILED. Review the issues below.")
+            st.rerun()
+
     st.markdown("### Timestamp Rule Preview")
     st.caption("Applies the saved enabled rules to the actual Master Narration Timeline. This creates deterministic production slots before AI visual planning.")
     master_for_slots = project / "08_master_narration_timeline.csv"
