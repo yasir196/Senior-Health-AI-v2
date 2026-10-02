@@ -103,8 +103,9 @@ def _group_scope_rows(rows: list[dict[str, str]], config: dict[str, Any]) -> lis
         start = _seconds(row.get("Actual Audio Start", "0"))
         end = _seconds(row.get("Actual Audio End", "0"))
         scope = resolve_scope(row, start, config)
-        contiguous = previous_end is None or abs(start - previous_end) <= 0.002
-        if current and (scope != current_scope or not contiguous):
+        # Visual coverage continues through natural ASR pauses; transcript segment
+        # gaps are not visual gaps and must not fragment the production timeline.
+        if current and scope != current_scope:
             groups.append((str(current_scope), current))
             current = []
         current_scope = scope
@@ -132,8 +133,17 @@ def _partition_real_interval(start: float, end: float, minimum: float, maximum: 
         count = min_count
         step = duration / count
         return [(start + i * step, end if i == count - 1 else start + (i + 1) * step) for i in range(count)]
-    # Very short section/remainder cannot mathematically satisfy both bounds.
-    return [(start, end)]
+    # If the whole range cannot be divided into all-valid IMAGE windows, emit
+    # max-sized neutral windows plus a real remainder. Downstream allocation may
+    # assign the remainder to AVATAR; IMAGE eligibility is enforced there.
+    intervals: list[tuple[float, float]] = []
+    cursor = start
+    while end - cursor > maximum + 1e-9:
+        intervals.append((cursor, cursor + maximum))
+        cursor += maximum
+    if end - cursor > 1e-9:
+        intervals.append((cursor, end))
+    return intervals
 
 
 def _rows_overlapping(rows: list[dict[str, str]], start: float, end: float) -> list[dict[str, str]]:
