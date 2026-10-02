@@ -1026,7 +1026,12 @@ def test_phase3_sanitized_template_and_generated_payloads_have_no_source_machine
 
 def test_phase3_long_project_path_generates_evidence_subdrafts(tmp_path):
     long_root=tmp_path/('segment_'+'a'*60)/('segment_'+'b'*60)/('segment_'+'c'*60)
-    long_root.mkdir(parents=True)
+    # On Windows, create the deliberately long fixture with the extended-length prefix.
+    # The previous Path.mkdir() failed before export_capcut_project() was exercised.
+    if os.name == "nt":
+        os.makedirs("\\\\?\\" + str(long_root.resolve()), exist_ok=True)
+    else:
+        long_root.mkdir(parents=True)
     project=make_project(long_root,2); write_avatar_manifest(project,[2.5]); create_avatar_files(project,1); _write_mixed_overlay_rows(project,[_evidence_row()])
     result=export_capcut_project(project,build_timeline_manifest(project).manifest_path)
     assert (result.project_dir/"draft_content.json").is_file()
