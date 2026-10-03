@@ -220,55 +220,64 @@ def _load_production_assignments(project: Path) -> dict[str, dict[str, str]]:
 
 
 def _load_base_avatar_timeline(project: Path) -> dict[str, Any] | None:
-    """Load authoritative continuous avatar chunk placement from Avatar Timing Sync."""
-    path = project / "avatar_timing_manifest.json"
-    if not path.is_file():
+    """Load authoritative continuous avatar chunk placement.
+
+    Timestamp-first projects use master_narration_timing_manifest.json, created
+    directly from the immutable avatar media/transcripts.  The legacy
+    avatar_timing_manifest.json remains a backwards-compatible fallback only.
+    """
+    candidates = (
+        project / "master_narration_timing_manifest.json",
+        project / "avatar_timing_manifest.json",
+    )
+    path = next((candidate for candidate in candidates if candidate.is_file()), None)
+    if path is None:
         return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise TimelineBuildError(f"Invalid avatar_timing_manifest.json: {exc}") from exc
+        raise TimelineBuildError(f"Invalid {path.name}: {exc}") from exc
     chunks = payload.get("chunks")
     if not isinstance(chunks, list) or not chunks:
-        raise TimelineBuildError("avatar_timing_manifest.json contains no avatar chunks")
+        raise TimelineBuildError(f"{path.name} contains no avatar chunks")
     base_chunks: list[dict[str, Any]] = []
     previous_end = None
     for index, item in enumerate(chunks, start=1):
         filename = str(item.get("chunk_filename") or "").strip()
         if not filename:
-            raise TimelineBuildError(f"avatar_timing_manifest.json chunk {index} is missing chunk_filename")
+            raise TimelineBuildError(f"{path.name} chunk {index} is missing chunk_filename")
         try:
-            start = float(item["global_audio_start"])
-            end = float(item["global_audio_end"])
+            chunk_start = float(item["global_audio_start"])
+            chunk_end = float(item["global_audio_end"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise TimelineBuildError(f"avatar_timing_manifest.json chunk {filename} has invalid global timing") from exc
-        if start < 0 or end <= start:
-            raise TimelineBuildError(f"avatar_timing_manifest.json chunk {filename} has invalid range {start} -> {end}")
-        if previous_end is not None and abs(start - previous_end) > 0.000001:
+            raise TimelineBuildError(f"{path.name} chunk {filename} has invalid global timing") from exc
+        if chunk_start < 0 or chunk_end <= chunk_start:
+            raise TimelineBuildError(f"{path.name} chunk {filename} has invalid range {chunk_start} -> {chunk_end}")
+        if previous_end is not None and abs(chunk_start - previous_end) > 0.000001:
             raise TimelineBuildError(
-                f"avatar_timing_manifest.json chunks are not continuous: previous end {previous_end:.6f}, "
-                f"{filename} start {start:.6f}"
+                f"{path.name} chunks are not continuous: previous end {previous_end:.6f}, "
+                f"{filename} start {chunk_start:.6f}"
             )
-        previous_end = end
+        previous_end = chunk_end
         base_chunks.append({
             "order": index,
             "filename": filename,
             "reference": _normalize_avatar_reference(filename),
-            "start_seconds": start,
-            "end_seconds": end,
-            "duration_seconds": end - start,
+            "start_seconds": chunk_start,
+            "end_seconds": chunk_end,
+            "duration_seconds": chunk_end - chunk_start,
         })
     try:
         total = float(payload.get("total_avatar_duration", base_chunks[-1]["end_seconds"]))
     except (TypeError, ValueError) as exc:
-        raise TimelineBuildError("avatar_timing_manifest.json has invalid total_avatar_duration") from exc
+        raise TimelineBuildError(f"{path.name} has invalid total_avatar_duration") from exc
     if abs(total - base_chunks[-1]["end_seconds"]) > 0.000001:
         raise TimelineBuildError(
-            "avatar_timing_manifest total duration does not equal final chunk end: "
+            f"{path.name} total duration does not equal final chunk end: "
             f"{total:.6f} vs {base_chunks[-1]['end_seconds']:.6f}"
         )
     return {
-        "source": "avatar_timing_manifest.json",
+        "source": path.name,
         "total_duration_seconds": total,
         "chunks": base_chunks,
     }
