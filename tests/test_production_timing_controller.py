@@ -74,3 +74,35 @@ def test_natural_pause_at_scope_boundary_is_visual_coverage_not_gap(tmp_path: Pa
     assert hook[-1]["end_time"] == "0:32.440"
     assert body[0]["start_time"] == "0:32.440"
     assert all(r["transcript_text"] in {"hook", "body"} for r in rows)
+
+
+def test_split_asr_segment_excerpt_words_are_not_repeated(tmp_path: Path) -> None:
+    text = "one two three four five six seven eight nine ten"
+    with (tmp_path / "08_master_narration_timeline.csv").open("w", encoding="utf-8", newline="") as h:
+        fields=["Segment ID","Transcript Text","Actual Audio Start","Actual Audio End","Duration","Avatar Chunk","Timing Source"]
+        w=csv.DictWriter(h,fieldnames=fields); w.writeheader()
+        w.writerow({"Segment ID":"T1","Transcript Text":text,"Actual Audio Start":"0:00","Actual Audio End":"0:10","Duration":"10","Avatar Chunk":"c1.mp4","Timing Source":"TRANSCRIPT"})
+    save_rules(tmp_path,[{"id":"hook","name":"Hook","category":"IMAGE","scope":"HOOK","enabled":True,"priority":200,"hard":True,"min_seconds":4,"max_seconds":5}])
+    target=build_production_slots(tmp_path,{"production_hook_end_seconds":30})
+    with target.open(encoding="utf-8",newline="") as h:
+        rows=list(csv.DictReader(h))
+    assert len(rows)==2
+    emitted=" ".join(r["transcript_text"] for r in rows).split()
+    assert emitted == text.split()
+    assert len(emitted) == len(set(emitted))
+
+
+def test_natural_pause_does_not_duplicate_excerpt_text(tmp_path: Path) -> None:
+    with (tmp_path / "08_master_narration_timeline.csv").open("w", encoding="utf-8", newline="") as h:
+        fields=["Segment ID","Transcript Text","Actual Audio Start","Actual Audio End","Duration","Avatar Chunk","Timing Source"]
+        w=csv.DictWriter(h,fieldnames=fields); w.writeheader()
+        w.writerows([
+            {"Segment ID":"T1","Transcript Text":"alpha beta gamma delta","Actual Audio Start":"0:00","Actual Audio End":"0:04","Duration":"4"},
+            {"Segment ID":"T2","Transcript Text":"epsilon zeta eta theta","Actual Audio Start":"0:04.720","Actual Audio End":"0:08.720","Duration":"4"},
+        ])
+    save_rules(tmp_path,[{"id":"hook","name":"Hook","category":"IMAGE","scope":"HOOK","enabled":True,"priority":200,"hard":True,"min_seconds":4,"max_seconds":5}])
+    target=build_production_slots(tmp_path,{"production_hook_end_seconds":30})
+    with target.open(encoding="utf-8",newline="") as h:
+        rows=list(csv.DictReader(h))
+    emitted=" ".join(r["transcript_text"] for r in rows).split()
+    assert emitted == "alpha beta gamma delta epsilon zeta eta theta".split()
