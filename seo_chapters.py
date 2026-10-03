@@ -9,7 +9,7 @@ from pathlib import Path
 from timeline_builder import parse_timeline_time
 
 CHAPTER_HEADER = "## 5. Chapters / Timestamps"
-_SCENE_RE = re.compile(r"\b(S\d+)\b", re.IGNORECASE)
+_SCENE_RE = re.compile(r"\b([SP]\d+)\b", re.IGNORECASE)
 _TIME_PREFIX_RE = re.compile(r"^\s*(?:\d{1,2}:)?\d{1,3}:\d{2}(?:\.\d+)?\s+[-–—|:]?\s*")
 
 
