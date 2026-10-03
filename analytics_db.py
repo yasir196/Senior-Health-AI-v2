@@ -962,43 +962,65 @@ def archive_production_learning_checkpoint(
     db_path: Path,
     project_path: Path,
 ) -> dict[str, Any]:
-    """SEO-time final production archive for future production learning."""
+    """SEO-time production archive for timestamp-first projects.
+
+    The final Production Sheet already carries deterministic locked scene timing
+    derived from the avatar Master Clock, so the removed legacy Actual Timeline
+    is not rebuilt or required here.
+    """
     db_path = Path(db_path)
     project_path = Path(project_path)
     analytics_id = ensure_project_record(db_path, project_path)
 
-    timeline = project_path / "08_actual_timeline.csv"
     production = project_path / "07_production_sheet.csv"
-    if not timeline.is_file():
-        raise AnalyticsDBError("SEO production archive requires 08_actual_timeline.csv.")
     if not production.is_file():
         raise AnalyticsDBError("SEO production archive requires 07_production_sheet.csv.")
+
+    pdf = pd.read_csv(production)
+    required = {"scene_id", "start_time", "end_time", "duration_sec"}
+    missing = sorted(required - set(pdf.columns))
+    if missing:
+        raise AnalyticsDBError("07_production_sheet.csv is missing timestamp-first columns: " + ", ".join(missing))
+
+    rows = []
+    for ordinal, (_, row) in enumerate(pdf.iterrows(), start=1):
+        sid = str(row.get("scene_id") or "").strip()
+        start_sec = _parse_time(row.get("start_time"))
+        end_sec = _parse_time(row.get("end_time"))
+        duration_sec = _parse_time(row.get("duration_sec"))
+        if not sid or start_sec is None or end_sec is None:
+            raise AnalyticsDBError(f"07_production_sheet.csv has invalid locked timing at row {ordinal + 1}.")
+        if duration_sec is None:
+            duration_sec = max(0.0, end_sec - start_sec)
+        merged = {
+            "scene_id": sid,
+            "actual_start_sec": float(start_sec),
+            "actual_end_sec": float(end_sec),
+            "actual_duration_sec": float(duration_sec),
+            "timing_authority": "08_master_narration_timeline.csv -> deterministic slots -> 07_production_sheet.csv",
+            "ordinal": ordinal,
+        }
+        for key, value in row.to_dict().items():
+            if key != "scene_id":
+                merged[f"production_{key}"] = value
+        rows.append(merged)
 
     archive_dir = db_path.parent / "project_assets" / str(analytics_id)
     archive_dir.mkdir(parents=True, exist_ok=True)
     merged_path = archive_dir / "production_timeline_snapshot.csv"
+    snapshot = pd.DataFrame(rows)
+    tmp = merged_path.with_suffix(merged_path.suffix + ".tmp")
+    snapshot.to_csv(tmp, index=False)
+    tmp.replace(merged_path)
 
-    snapshot = build_production_timeline_snapshot(timeline, production, merged_path)
-
-    # Refresh SQLite scene rows from authoritative actual timing + final
-    # production metadata. This also invalidates retention mapping cache.
-    scene_count = snapshot_actual_timeline(
-        db_path,
-        analytics_id,
-        timeline,
-        production_sheet_path=production,
-    )
-
-    # snapshot_actual_timeline archives project assets; explicitly copy the
-    # merged canonical snapshot afterwards because it lives in Analytics.
-    for filename in ("06_final_script.md", "07_production_sheet.csv", "08_actual_timeline.csv"):
+    for filename in ("06_final_script.md", "07_production_sheet.csv", "08_master_narration_timeline.csv"):
         source = project_path / filename
         if source.is_file():
             shutil.copy2(source, archive_dir / filename)
 
     return {
         "analytics_id": analytics_id,
-        "scene_count": int(scene_count),
+        "scene_count": int(len(snapshot)),
         "merged_rows": int(len(snapshot)),
         "archive_dir": str(archive_dir),
         "snapshot_path": str(merged_path),
