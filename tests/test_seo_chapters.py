@@ -3,13 +3,13 @@ from pathlib import Path
 import pytest
 from seo_chapters import SEOChapterError, finalize_chapters
 
-FIELDS=["Scene ID","Script Text","Actual Audio Start","Actual Audio End","Duration","Avatar Chunk","Timing Source"]
+FIELDS=["scene_id","start_time","end_time","duration_sec"]
 def timeline(tmp_path, rows):
-    p=tmp_path/'08_actual_timeline.csv'
+    p=tmp_path/'07_production_sheet.csv'
     with p.open('w',encoding='utf-8',newline='') as h:
         w=csv.DictWriter(h,fieldnames=FIELDS); w.writeheader()
         for scene,start in rows:
-            w.writerow({"Scene ID":scene,"Script Text":scene,"Actual Audio Start":start,"Actual Audio End":"99:59","Duration":"1","Avatar Chunk":"c1","Timing Source":"aligned"})
+            w.writerow({"scene_id":scene,"start_time":start,"end_time":"99:59","duration_sec":"1"})
     return p
 
 def doc(body, other='UNCHANGED'):
@@ -27,7 +27,7 @@ def test_over_one_hour(tmp_path):
     assert "1:02:15 Long Topic" in out
 
 def test_missing_timeline_hard_fails(tmp_path):
-    with pytest.raises(SEOChapterError,match="Actual Timeline required"):
+    with pytest.raises(SEOChapterError,match="Timestamp-first Production Sheet required"):
         finalize_chapters(doc("S001 | Intro"),tmp_path/'missing.csv')
 
 def test_missing_scene_drops_without_guess(tmp_path):
@@ -40,7 +40,7 @@ def test_duplicate_second_and_nonmonotonic_are_dropped(tmp_path):
     out,diag=finalize_chapters(doc("S001 | Intro\nS002 | A\nS003 | B\nS004 | C\nS005 | D"),p)
     assert "00:10 A\n" in out and "00:10 B" not in out and "00:09 C" not in out and "00:20 D" in out and len(diag)==2
 
-def test_actual_timeline_change_changes_regenerated_output(tmp_path):
+def test_locked_production_start_change_changes_regenerated_output(tmp_path):
     p=timeline(tmp_path,[("S001",0),("S002",12)])
     source=doc("S001 | Intro\nS002 | Topic")
     out,_=finalize_chapters(source,p); assert "00:12 Topic" in out
