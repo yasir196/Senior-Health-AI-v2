@@ -162,14 +162,25 @@ def build_production_slots(project: Path, config: dict[str, Any]) -> Path:
     rules = enabled_rules(project)
     out: list[dict[str, str]] = []
     slot_no = 0
-    for scope, scope_rows in _group_scope_rows(rows, config):
+    scope_groups = _group_scope_rows(rows, config)
+    for group_index, (scope, scope_rows) in enumerate(scope_groups):
         # Duration rules shape neutral visual candidate windows only. They never
         # choose the asset category; ratio/AI selection happens downstream.
         rule = resolve_rule(rules, scope, "IMAGE")
         minimum = float(rule["min_seconds"]) if rule else 0.0
         maximum = float(rule["max_seconds"]) if rule else 0.0
         group_start = _seconds(scope_rows[0].get("Actual Audio Start", "0"))
-        group_end = _seconds(scope_rows[-1].get("Actual Audio End", "0"))
+        speech_end = _seconds(scope_rows[-1].get("Actual Audio End", "0"))
+        # ASR segments describe speech, not visual coverage. A natural pause at a
+        # section boundary must not become a blank production gap. Keep transcript
+        # timestamps/text immutable and let the previous visual continue until the
+        # next real speech segment starts. This changes only candidate-slot coverage.
+        if group_index + 1 < len(scope_groups):
+            next_rows = scope_groups[group_index + 1][1]
+            next_start = _seconds(next_rows[0].get("Actual Audio Start", "0"))
+            group_end = max(speech_end, next_start)
+        else:
+            group_end = speech_end
         intervals = _partition_real_interval(group_start, group_end, minimum, maximum) if rule else [(group_start, group_end)]
         for part_start, part_end in intervals:
             covered = _rows_overlapping(scope_rows, part_start, part_end)
