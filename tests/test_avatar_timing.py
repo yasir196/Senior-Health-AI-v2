@@ -751,6 +751,11 @@ def test_master_narration_timeline_builds_without_production_sheet(tmp_path: Pat
     assert manifest["architecture"] == "timestamp_first"
     assert manifest["timing_authority"] == "avatar_transcript"
     assert manifest["production_sheet_required"] is False
+    assert len(manifest["chunks"]) == 2
+    assert manifest["chunks"][0]["global_audio_start"] == pytest.approx(0.0)
+    assert manifest["chunks"][0]["global_audio_end"] == pytest.approx(9.0)
+    assert manifest["chunks"][1]["global_audio_start"] == pytest.approx(9.0)
+    assert manifest["chunks"][1]["global_audio_end"] == pytest.approx(20.0)
 
     with (project / "08_master_narration_timeline.csv").open(
         encoding="utf-8", newline=""
