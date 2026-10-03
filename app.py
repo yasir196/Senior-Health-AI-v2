@@ -1974,10 +1974,16 @@ def render_production() -> None:
                         if timing_lock_issues:
                             source_ok = False
                             source_issues = ["TIMING_LOCK_QA_FAILED"] + timing_lock_issues
+                        elif (project / "08_master_narration_timeline.csv").is_file():
+                            # Timestamp-first contract: after avatar transcription the immutable
+                            # Master Narration Timeline + deterministic ratio slots own narration,
+                            # order and timing. Legacy 06a/scene-ledger exact-excerpt gates are
+                            # intentionally NOT authoritative here; they predate transcription and
+                            # can reject a valid transcript-bound Production Sheet.
+                            source_ok = True
+                            source_issues = []
                         else:
-                            # Preserve the existing visual/source provenance gate after the
-                            # timestamp lock. It validates assignment lineage only; it has no
-                            # authority to split, merge, retime, or renumber locked slots.
+                            # Legacy projects still use the pre-avatar source/ledger contract.
                             ledger_issues = production_sheet_ledger_issues(project)
                             if ledger_issues:
                                 source_ok = False
