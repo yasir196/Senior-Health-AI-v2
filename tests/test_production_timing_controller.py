@@ -73,7 +73,12 @@ def test_natural_pause_at_scope_boundary_is_visual_coverage_not_gap(tmp_path: Pa
     body=[r for r in rows if r["scope"]=="BODY"]
     assert hook[-1]["end_time"] == "0:32.440"
     assert body[0]["start_time"] == "0:32.440"
-    assert all(r["transcript_text"] in {"hook", "body"} for r in rows)
+    # Natural silence is visual coverage only. The immutable source words must
+    # still appear exactly once across partitioned production excerpts.
+    emitted = " ".join(r["transcript_text"] for r in rows).split()
+    assert emitted == ["hook", "body"]
+    assert sum(r["transcript_text"].split().count("hook") for r in rows) == 1
+    assert sum(r["transcript_text"].split().count("body") for r in rows) == 1
 
 
 def test_split_asr_segment_excerpt_words_are_not_repeated(tmp_path: Path) -> None:
