@@ -149,6 +149,42 @@ def _partition_real_interval(start: float, end: float, minimum: float, maximum: 
 def _rows_overlapping(rows: list[dict[str, str]], start: float, end: float) -> list[dict[str, str]]:
     return [row for row in rows if _seconds(row.get("Actual Audio End", "0")) > start + 1e-9 and _seconds(row.get("Actual Audio Start", "0")) < end - 1e-9]
 
+
+def _excerpt_for_interval(rows: list[dict[str, str]], start: float, end: float) -> str:
+    """Return a non-overlapping display excerpt for a visual slot.
+
+    Master transcript text/timestamps stay immutable. When a visual boundary falls
+    inside one ASR segment, distribute that segment's words monotonically across
+    time instead of copying the full segment into every overlapping visual slot.
+    Every source word therefore appears in at most one production-slot excerpt.
+    """
+    pieces: list[str] = []
+    for row in rows:
+        seg_start = _seconds(row.get("Actual Audio Start", "0"))
+        seg_end = _seconds(row.get("Actual Audio End", "0"))
+        if seg_end <= start + 1e-9 or seg_start >= end - 1e-9:
+            continue
+        words = str(row.get("Transcript Text") or "").strip().split()
+        if not words:
+            continue
+        duration = seg_end - seg_start
+        if duration <= 0:
+            continue
+        overlap_start = max(start, seg_start)
+        overlap_end = min(end, seg_end)
+        first = max(0, min(len(words), int(((overlap_start - seg_start) / duration) * len(words) + 1e-9)))
+        # Ceil the right edge so adjacent slots partition all words exactly once.
+        right = ((overlap_end - seg_start) / duration) * len(words)
+        last = max(first, min(len(words), int(-(-right // 1))))
+        if end < seg_end - 1e-9:
+            last = min(last, len(words))
+        else:
+            last = len(words)
+        if first < last:
+            pieces.append(" ".join(words[first:last]))
+    return " ".join(pieces).strip()
+
+
 def build_production_slots(project: Path, config: dict[str, Any]) -> Path:
     project = Path(project)
     source = project / MASTER_TIMELINE
@@ -186,7 +222,7 @@ def build_production_slots(project: Path, config: dict[str, Any]) -> Path:
             covered = _rows_overlapping(scope_rows, part_start, part_end)
             slot_no += 1
             ids = "|".join(str(row.get("Segment ID") or "") for row in covered)
-            text = " ".join(str(row.get("Transcript Text") or "").strip() for row in covered).strip()
+            text = _excerpt_for_interval(scope_rows, part_start, part_end)
             out.append({
                 "slot_id": f"P{slot_no:04d}", "start_time": _stamp(part_start), "end_time": _stamp(part_end),
                 "duration_sec": f"{part_end - part_start:.3f}", "scope": scope,
