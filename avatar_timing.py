@@ -1022,6 +1022,19 @@ def build_master_narration_timeline(
         "detected_chunks": sequence.detected_count,
         "missing_chunk_numbers": sequence.missing_numbers,
         "total_avatar_duration": round(sum(item["duration"] for item in payloads), 3),
+        # CapCut base-avatar placement must come from the same immutable media
+        # clock as the timestamp-first narration timeline.  Persist chunk-level
+        # global offsets here so downstream handoff never depends on the legacy
+        # post-Production avatar_timing_manifest.json.
+        "chunks": [
+            {
+                "chunk_filename": payload["chunk"].path.name,
+                "duration": round(payload["duration"], 3),
+                "global_audio_start": round(payload["offset"], 3),
+                "global_audio_end": round(payload["offset"] + payload["duration"], 3),
+            }
+            for payload in payloads
+        ],
         "timeline_segments": len(rows),
     }
     _write_text_path_safe(manifest_path, json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", newline="\n")
