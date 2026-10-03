@@ -998,6 +998,35 @@ def render_workflow() -> None:
     if not project:
         return
     config = load_config()
+
+    # Timestamp-first preview controls render before the editable Production Mix /
+    # Rule Controller below, so derive their gate state from the currently saved
+    # project configuration. The editable controls later in this page intentionally
+    # re-evaluate these values after user changes.
+    settings_path = project / "production_settings.json"
+    preview_defaults = {
+        "avatar": 40,
+        "ai_images": 30,
+        "stock": 10,
+        "overlays": 20,
+        "image_duration_seconds": 10,
+        "image_platform": "Genspark Web",
+        "ratio_tolerance_points": 5.0,
+        "ratio_strict_mode": False,
+    }
+    try:
+        preview_settings = {**preview_defaults, **json.loads(safe_read_text(settings_path) or "{}")}
+    except json.JSONDecodeError:
+        preview_settings = preview_defaults
+    mix_valid, _preview_mix_reason = validate_production_mix(
+        int(preview_settings["avatar"]),
+        int(preview_settings["ai_images"]),
+        int(preview_settings["stock"]),
+        int(preview_settings["overlays"]),
+    )
+    payload = dict(preview_settings)
+    rule_issues = validate_rules(load_rules(project))
+
     st.markdown("### Timestamp Rule Preview")
     st.caption("Applies the saved enabled rules to the actual Master Narration Timeline. This creates deterministic production slots before AI visual planning.")
     master_for_slots = project / "08_master_narration_timeline.csv"
