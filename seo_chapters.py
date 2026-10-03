@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from timeline_builder import REQUIRED_COLUMNS, parse_timeline_time
+from timeline_builder import parse_timeline_time
 
 CHAPTER_HEADER = "## 5. Chapters / Timestamps"
 _SCENE_RE = re.compile(r"\b(S\d+)\b", re.IGNORECASE)
@@ -25,28 +25,36 @@ class Chapter:
 
 
 def _load_timeline(path: Path) -> dict[str, float]:
+    """Load scene starts from timestamp-first Production Sheet.
+
+    07_production_sheet.csv start_time values are copied 1:1 from the locked
+    timestamp slots derived from 08_master_narration_timeline.csv. SEO therefore
+    maps semantic S### anchors to these locked starts without recreating the
+    removed legacy 08_actual_timeline.csv.
+    """
     if not path.is_file():
-        raise SEOChapterError("Actual Timeline required for SEO chapter timestamps.")
+        raise SEOChapterError("Timestamp-first Production Sheet required for SEO chapter timestamps.")
     with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         fields = reader.fieldnames or []
-        missing = [c for c in REQUIRED_COLUMNS if c not in fields]
+        required = ["scene_id", "start_time"]
+        missing = [name for name in required if name not in fields]
         if missing:
-            raise SEOChapterError("08_actual_timeline.csv schema mismatch; missing: " + ", ".join(missing))
+            raise SEOChapterError("07_production_sheet.csv schema mismatch; missing: " + ", ".join(missing))
         rows = list(reader)
     if not rows:
-        raise SEOChapterError("Actual Timeline required for SEO chapter timestamps.")
+        raise SEOChapterError("Timestamp-first Production Sheet required for SEO chapter timestamps.")
     out: dict[str, float] = {}
     for index, row in enumerate(rows, start=2):
-        scene = (row.get("Scene ID") or "").strip().upper()
+        scene = (row.get("scene_id") or "").strip().upper()
         if not scene:
-            raise SEOChapterError(f"08_actual_timeline.csv row {index} has no Scene ID.")
+            raise SEOChapterError(f"07_production_sheet.csv row {index} has no scene_id.")
         if scene in out:
-            raise SEOChapterError(f"08_actual_timeline.csv contains duplicate Scene ID: {scene}")
+            raise SEOChapterError(f"07_production_sheet.csv contains duplicate scene_id: {scene}")
         try:
-            out[scene] = parse_timeline_time(row.get("Actual Audio Start"))
+            out[scene] = parse_timeline_time(row.get("start_time"))
         except ValueError as exc:
-            raise SEOChapterError(f"08_actual_timeline.csv row {index} has invalid Actual Audio Start: {exc}") from exc
+            raise SEOChapterError(f"07_production_sheet.csv row {index} has invalid start_time: {exc}") from exc
     return out
 
 
@@ -101,7 +109,7 @@ def finalize_chapters(metadata_text: str, timeline_path: Path) -> tuple[str, lis
 
     for position, (scene, label) in enumerate(candidates):
         if scene not in timeline:
-            diagnostics.append(f"Dropped chapter '{label}': scene {scene} not found in Actual Timeline.")
+            diagnostics.append(f"Dropped chapter '{label}': scene {scene} not found in timestamp-first Production Sheet.")
             continue
         # Floor fractional actual starts: never display a chapter later than its mapped boundary.
         displayed = math.floor(timeline[scene])
@@ -123,7 +131,7 @@ def finalize_chapters(metadata_text: str, timeline_path: Path) -> tuple[str, lis
 
 def finalize_project_seo(project: Path) -> list[str]:
     metadata = project / "08_youtube_metadata.md"
-    timeline = project / "08_actual_timeline.csv"
+    timeline = project / "07_production_sheet.csv"
     if not metadata.is_file():
         raise SEOChapterError("SEO Agent did not create 08_youtube_metadata.md.")
     original = metadata.read_text(encoding="utf-8-sig")

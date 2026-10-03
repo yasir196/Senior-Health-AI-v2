@@ -2,6 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+APP = ROOT / "app.py"
 
 
 def test_workflow_supports_verbatim_external_deep_research_import():

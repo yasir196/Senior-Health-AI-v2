@@ -545,8 +545,12 @@ def test_production_outputs_reports_expected_files(tmp_path):
 def test_production_page_uses_shared_word_count_and_generation_action():
     app_source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
     production_source = app_source.split("def render_production() -> None:", 1)[1].split("def load_production_sheet", 1)[0]
-    assert "count_words(voice_script)" in production_source
-    assert "word_count(" not in production_source
+    # Timestamp-first Production must not derive runtime/image counts from script
+    # word count. Actual avatar transcript timing is the sole runtime authority.
+    assert "count_words(voice_script)" not in production_source
+    assert "Estimated runtime:" not in production_source
+    assert "Actual master runtime:" in production_source
+    assert '08_master_narration_timeline.csv' in production_source
     assert '"Generate Production Plan"' in production_source
     assert "run_external_command(cli_template, prompt, project)" in production_source
     assert "disabled=generate_disabled" in production_source

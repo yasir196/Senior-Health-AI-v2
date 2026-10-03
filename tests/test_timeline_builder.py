@@ -184,3 +184,26 @@ def test_stock_image_is_loaded_as_broll_assignment(tmp_path):
     assert assignments["S001"]["kind"] == "broll"
     assert assignments["S001"]["production_asset_type"] == "STOCK_IMAGE"
     assert assignments["S001"]["reference"] == "assets/broll/BR001.jpg"
+
+
+def test_timestamp_first_master_manifest_is_capcut_base_avatar_authority(tmp_path):
+    p = make_project(tmp_path, 2)
+    legacy = p / "avatar_timing_manifest.json"
+    legacy.unlink()
+    total = 2 * 1.25
+    (p / "master_narration_timing_manifest.json").write_text(json.dumps({
+        "architecture": "timestamp_first",
+        "timing_authority": "avatar_transcript",
+        "total_avatar_duration": total,
+        "chunks": [{
+            "chunk_filename": "c1.mp4",
+            "global_audio_start": 0.0,
+            "global_audio_end": total,
+            "duration": total,
+        }],
+    }), encoding="utf-8")
+    data = json.loads(build_timeline_manifest(p).manifest_path.read_text(encoding="utf-8"))
+    assert data["base_avatar"]["source"] == "master_narration_timing_manifest.json"
+    assert data["base_avatar"]["chunks"][0]["reference"] == "avatars/c1.mp4"
+    assert data["base_avatar"]["chunks"][0]["start_seconds"] == pytest.approx(0.0)
+    assert data["base_avatar"]["chunks"][0]["end_seconds"] == pytest.approx(total)

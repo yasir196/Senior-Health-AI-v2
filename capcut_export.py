@@ -14,6 +14,8 @@ from timeline_builder import TimelineBuildError, load_timeline_manifest
 from text_overlay import ARTIFACT_NAME, DEFAULT_TEXT_OVERLAY_STYLE, load_artifact, visual_text
 
 SUPPORTED_CAPCUT_SCHEMA = "CapCut Desktop 8.7 Windows multi-file draft layout"
+PIPELINE_TERMINAL_STATE = "CAPCUT_READY"
+FINAL_MP4_RENDERING_SUPPORTED = False
 CAPCUT_APP_VERSION = "8.7.0"
 CAPCUT_NATIVE_NEW_VERSION = "171.0.0"
 CAPCUT_SCHEMA_VERSION = 360000
@@ -31,6 +33,22 @@ NAMESPACE = uuid.UUID("790e21bb-40d1-4af2-b9d0-92fcb6a6e5bf")
 
 class CapCutExportError(ValueError):
     pass
+
+
+def pipeline_terminal_contract() -> dict[str, object]:
+    """Declare the hard pipeline boundary: editable CapCut project, never final MP4."""
+    return {
+        "terminal_state": PIPELINE_TERMINAL_STATE,
+        "final_mp4_rendering_supported": FINAL_MP4_RENDERING_SUPPORTED,
+        "handoff": "CapCut Desktop editable project",
+    }
+
+
+def assert_no_final_mp4_request(*, render_final_mp4: bool = False) -> None:
+    if render_final_mp4:
+        raise CapCutExportError(
+            "Final MP4 rendering is outside this pipeline. Stop at the editable CapCut-ready project."
+        )
 
 @dataclass(frozen=True)
 class CapCutExportResult:
@@ -570,7 +588,7 @@ def _write_subdraft_json(path: Path, payload: Any) -> None:
     _mkdir_long_safe(path.parent)
     io_path = _windows_long_io_path(path)
     with open(io_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        handle.write(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n")
 
 
 def _copy_subdraft_cover(source: Path, destination: Path) -> None:
@@ -1173,7 +1191,7 @@ def _write_json(path: Path, payload: Any) -> None:
     _mkdir_long_safe(path.parent)
     io_path = _windows_long_io_path(path)
     with open(io_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        handle.write(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n")
 
 
 def _mkdir_long_safe(path: Path) -> None:
