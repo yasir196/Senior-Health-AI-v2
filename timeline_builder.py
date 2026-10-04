@@ -346,9 +346,15 @@ def build_timeline_manifest(
     if timeline_csv.name == "08_ratio_allocated_slots.csv" and production_assignments:
         locked_ids = [str(row.get("Scene ID") or "").strip() for row in rows]
         if locked_ids and not any(slot_id in production_assignments for slot_id in locked_ids):
-            ordered_assignments = list(production_assignments.values())
-            if len(ordered_assignments) == len(locked_ids):
-                production_assignments = dict(zip(locked_ids, ordered_assignments))
+            legacy_assignments: dict[str, dict[str, str]] = {}
+            for legacy_id, assignment in production_assignments.items():
+                text_id = str(legacy_id).strip().upper()
+                if text_id.startswith("S") and text_id[1:].isdigit():
+                    slot_number = int(text_id[1:])
+                    if 1 <= slot_number <= len(locked_ids):
+                        legacy_assignments[locked_ids[slot_number - 1]] = assignment
+            if legacy_assignments:
+                production_assignments = legacy_assignments
 
     base_avatar = _load_base_avatar_timeline(project)
     scenes: list[dict[str, Any]] = []
