@@ -1005,6 +1005,45 @@ def archive_production_learning_checkpoint(
                 merged[f"production_{key}"] = value
         rows.append(merged)
 
+    # Refresh permanent scene snapshots directly from the timestamp-first
+    # Production Sheet. Its timing columns are locked to the avatar Master Clock.
+    init_db(db_path)
+    scene_rows = []
+    for ordinal, (_, row) in enumerate(pdf.iterrows(), start=1):
+        sid = str(row.get("scene_id") or "").strip()
+        start_sec = _parse_time(row.get("start_time"))
+        end_sec = _parse_time(row.get("end_time"))
+        duration_sec = _parse_time(row.get("duration_sec"))
+        if duration_sec is None and start_sec is not None and end_sec is not None:
+            duration_sec = max(0.0, end_sec - start_sec)
+        scene_rows.append((
+            analytics_id, sid, start_sec, end_sec, duration_sec,
+            str(row.get("script_excerpt") or "").strip(),
+            str(row.get("visual_mode") or "").strip() or None,
+            str(row.get("recommended_asset_type") or "").strip() or None,
+            str(row.get("overlay_type") or "").strip() or None,
+            None, "master_clock_locked", "timestamp_first_production", ordinal,
+        ))
+    with _db_connect(db_path) as con:
+        con.execute("DELETE FROM scene_snapshots WHERE analytics_id=? AND source='timestamp_first_production'", (analytics_id,))
+        con.executemany(
+            """
+            INSERT INTO scene_snapshots(
+                analytics_id, scene_id, start_sec, end_sec, duration_sec, script_text,
+                visual_mode, asset_type, overlay_type, avatar_chunk, timing_source, source, ordinal
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            scene_rows,
+        )
+        con.execute(
+            """
+            UPDATE videos SET timeline_status='ready', timeline_source='timestamp_first_production',
+            project_folder_status='available', updated_at=? WHERE analytics_id=?
+            """,
+            (_now(), analytics_id),
+        )
+    _invalidate_retention_mapping_cache(db_path, analytics_id)
+
     archive_dir = db_path.parent / "project_assets" / str(analytics_id)
     archive_dir.mkdir(parents=True, exist_ok=True)
     merged_path = archive_dir / "production_timeline_snapshot.csv"
