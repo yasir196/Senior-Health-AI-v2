@@ -344,7 +344,7 @@ def build_timeline_manifest(
     # order, but bind it to the deterministic locked-slot IDs used by CapCut.
     # Timing still comes exclusively from 08_ratio_allocated_slots.csv.
     if timeline_csv.name == "08_ratio_allocated_slots.csv" and production_assignments:
-        locked_ids = [str(row.get("slot_id") or "").strip() for row in rows]
+        locked_ids = [str(row.get("Scene ID") or "").strip() for row in rows]
         if locked_ids and not any(slot_id in production_assignments for slot_id in locked_ids):
             ordered_assignments = list(production_assignments.values())
             if len(ordered_assignments) == len(locked_ids):
