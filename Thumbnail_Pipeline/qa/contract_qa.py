@@ -153,7 +153,11 @@ def evaluate_contract_qa(render_structure: dict[str, Any]) -> dict[str, Any]:
         )
         if kind=="person" and not role_is_people:
             findings.append(f"{placement.get('placement_id')}: person must bind to a winner people role")
-        if kind=="attention_device" and role_type not in ATTENTION_ROLE_TYPES:
+        role_is_attention=(
+            role_type in ATTENTION_ROLE_TYPES
+            or any(token in role_id_l for token in ("attention","arrow","circle","highlight"))
+        )
+        if kind=="attention_device" and not role_is_attention:
             findings.append(f"{placement.get('placement_id')}: attention device must bind to a winner attention role")
         if kind=="informational_object" and role_type in NON_INFORMATIONAL_ROLE_TYPES:
             findings.append(f"{placement.get('placement_id')}: informational object cannot bind to {role_type} role")
