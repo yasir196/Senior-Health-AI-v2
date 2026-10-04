@@ -358,12 +358,26 @@ def _repair_presenter_role_binding(metadata: dict[str, Any], adaptation: dict[st
     def is_people_role(role: dict[str, Any]) -> bool:
         role_type=str(role.get("role_type") or "").strip().casefold()
         role_id=str(role.get("role_id") or "").strip().casefold()
-        # Fresh winner metadata can label the visual type generically while still
-        # giving the role an unambiguous presenter/person identity in role_id.
         return (
             role_type in people_types
             or any(token in role_id for token in ("presenter","person","human","portrait"))
         )
+
+    # Normalize an unambiguous presenter identity into the same canonical role_type
+    # consumed by deterministic QA. Fresh vision metadata may use a generic visual
+    # role_type while its role_id still clearly identifies the presenter.
+    normalized_roles=[]
+    for role in roles:
+        item=dict(role)
+        if is_people_role(item) and str(item.get("role_type") or "").strip().casefold() not in people_types:
+            item["role_type"]="presenter"
+        normalized_roles.append(item)
+    roles=normalized_roles
+    if structural and roles != list(structural.get("roles") or []):
+        structural=dict(structural)
+        structural["roles"]=roles
+        metadata=dict(metadata or {})
+        metadata["structural_contract"]=structural
     people_role_ids=[
         str(x.get("role_id") or "") for x in roles
         if is_people_role(x) and str(x.get("role_id") or "").strip()
