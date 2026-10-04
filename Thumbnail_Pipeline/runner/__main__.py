@@ -503,8 +503,12 @@ Choose selected_text from the six candidates. Prefer the strongest honest inform
         "required":["surprising_thesis","candidates","selected_text","selection_reason"],
         "additionalProperties":False
     }
-    prompt=instruction+"\n\nUSER_MAX_WORDS: "+(str(max_words) if max_words is not None else "AUTO")+
-        "\n\nIMMUTABLE_TITLE: "+immutable_title+"\n\nFINAL_SCRIPT:\n"+script_text
+    prompt=(
+        instruction
+        +"\n\nUSER_MAX_WORDS: "+(str(max_words) if max_words is not None else "AUTO")
+        +"\n\nIMMUTABLE_TITLE: "+immutable_title
+        +"\n\nFINAL_SCRIPT:\n"+script_text
+    )
     payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
              "text":{"format":{"type":"json_schema","name":"thumbnail_copy_psychology","strict":False,"schema":schema}}}
     req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
