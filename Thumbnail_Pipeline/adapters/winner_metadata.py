@@ -454,6 +454,7 @@ def openai_current_topic_adapter(api_key: str, *, model: str = "gpt-5-mini", tim
 FIRST build a joint semantic coverage plan before writing any slots. Extract atomic CURRENT_TITLE tokens: subject, audience, number/payload, tension/problem, timing/context, and differentiator when explicitly present. Treat the historical winner's text positions as a CAPACITY CEILING, never a quota.
 Evaluate the ENTIRE text+visual contract together, not each slot independently. Each semantic token should have one best carrier (headline, banner, box, callout, primary visual, secondary visual). Repeating a token is allowed only when it adds clear marginal information; otherwise use null. Account for the always-visible YouTube title and for information already obvious in the image.
 SELECTED-HOOK CONCEPT IS ALREADY OCCUPIED. Treat SELECTED_THUMBNAIL_TEXT plus SELECTED_HOOK_CONTEXT_JSON as one reserved semantic carrier. Optional text bands must add a genuinely different supported idea; do not paraphrase, explain, answer, or restate the selected hook's thesis/support merely to fill another band. If no distinct marginal idea exists, return null for the optional band.
+USER TEXT DISPLAY BUDGET IS AUTHORITATIVE WHEN PRESENT. Read SELECTED_HOOK_CONTEXT_JSON.display_constraints. max_visible_text_bands is the maximum number of non-null visible text slots across top_banner, primary_headline, boxed_keyword, and bottom_callout. max_total_visible_words is the maximum total whitespace-separated words across those visible slots. These are ceilings, not quotas: use fewer bands/words when clearer. The immutable selected thumbnail text must remain verbatim exactly once; never truncate or rewrite it to satisfy the budget. If optional copy would exceed either user ceiling, set the weaker optional slot to null. Never add disclaimer, educational summary, CTA, or filler merely to consume the user's budget.
 BUDGET PREFLIGHT IS MANDATORY. Before returning visual_placements or prose visual slots, read WINNER_METADATA.structural_contract.complexity_budget and count every planned person, informational object, and attention device. Never exceed those ceilings. A row/group of exercise icons, silhouettes, cards, bottles, foods, or other countable topic visuals is informational content and cannot be added when the winner's informational-object budget is already consumed by the primary target.
 PRESERVE WINNER TEXT-FLOW LOGIC, NOT JUST TEXT-BOX GEOMETRY. Read WINNER_METADATA semantic_structure and reusable_composition_contract to determine whether the historical bands form one progressive/continuous hook, independent messages, or headline-plus-CTA. If the winner uses a progressive hook, the adapted visible text bands must read naturally in order as one coherent current-topic message. Do not populate those bands with unrelated facts merely because separate slots exist. The exact SELECTED_THUMBNAIL_TEXT remains immutable; use optional surrounding bands only when they naturally extend or complete that same hook without duplicating it. If coherent continuation is impossible, collapse/null optional bands rather than producing a fragmented multi-message thumbnail.
 Use this internal coverage scoreboard for every candidate: token -> best carrier -> emphasis level -> already covered by title? -> already covered by image? -> redundancy flags -> claim-safe? -> final assignment. Do not output the scoreboard; use it to choose the coherent final contract.
@@ -564,6 +565,33 @@ STRUCTURED VISUAL PLACEMENTS ARE MANDATORY. Populate visual_placements[] as the 
         # still fails loudly rather than guessing.
         sanitized=_repair_presenter_role_binding(metadata,sanitized)
         sanitized=_enforce_visual_complexity_budget(metadata,sanitized)
+        # Enforce the user's viewer-facing text ceiling deterministically after model
+        # adaptation. Preserve the immutable selected hook; optional copy is dropped
+        # rather than truncated or rewritten.
+        constraints=(selected_hook_context or {}).get("display_constraints") or {}
+        max_bands=constraints.get("max_visible_text_bands")
+        max_words=constraints.get("max_total_visible_words")
+        if max_bands is not None or max_words is not None:
+            slots=("top_banner","primary_headline","boxed_keyword","bottom_callout")
+            selected_norm=str(selected_text or "").strip().casefold()
+            populated=[k for k in slots if str(sanitized.get(k) or "").strip()]
+            def word_count(keys):
+                return sum(len(str(sanitized.get(k) or "").split()) for k in keys)
+            # Remove optional slots from weakest/latest carrier first. The selected
+            # hook is immutable and can never be removed by the display budget.
+            for key in reversed(slots):
+                populated=[k for k in slots if str(sanitized.get(k) or "").strip()]
+                over_bands=max_bands is not None and len(populated)>int(max_bands)
+                over_words=max_words is not None and word_count(populated)>int(max_words)
+                if not (over_bands or over_words):
+                    break
+                value=str(sanitized.get(key) or "").strip()
+                if value and value.casefold()!=selected_norm:
+                    sanitized[key]=None
+            populated=[k for k in slots if str(sanitized.get(k) or "").strip()]
+            if ((max_bands is not None and len(populated)>int(max_bands))
+                    or (max_words is not None and word_count(populated)>int(max_words))):
+                raise ValueError("User text display budget is smaller than the immutable selected thumbnail text.")
         # adaptation_rationale is internal diagnostic output, never part of the generation contract.
         sanitized.pop("adaptation_rationale",None)
         return sanitized
