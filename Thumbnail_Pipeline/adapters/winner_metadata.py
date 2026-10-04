@@ -579,15 +579,15 @@ STRUCTURED VISUAL PLACEMENTS ARE MANDATORY. Populate visual_placements[] as the 
                 return sum(len(str(sanitized.get(k) or "").split()) for k in keys)
             # Remove optional slots from weakest/latest carrier first. The selected
             # hook is immutable and can never be removed by the display budget.
-            for key in reversed(slots):
+            for slot_key in reversed(slots):
                 populated=[k for k in slots if str(sanitized.get(k) or "").strip()]
                 over_bands=max_bands is not None and len(populated)>int(max_bands)
                 over_words=max_words is not None and word_count(populated)>int(max_words)
                 if not (over_bands or over_words):
                     break
-                value=str(sanitized.get(key) or "").strip()
+                value=str(sanitized.get(slot_key) or "").strip()
                 if value and value.casefold()!=selected_norm:
-                    sanitized[key]=None
+                    sanitized[slot_key]=None
             populated=[k for k in slots if str(sanitized.get(k) or "").strip()]
             if ((max_bands is not None and len(populated)>int(max_bands))
                     or (max_words is not None and word_count(populated)>int(max_words))):
