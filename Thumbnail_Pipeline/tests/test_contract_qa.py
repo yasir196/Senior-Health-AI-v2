@@ -185,3 +185,19 @@ def test_presenter_role_repair_accepts_unambiguous_presenter_role_id():
     ]}
     repaired=_repair_presenter_role_binding(metadata,adaptation)
     assert repaired["visual_placements"][0]["role_id"]=="presenter_anchor"
+
+
+def test_contract_qa_accepts_person_bound_to_explicit_presenter_role_id_with_generic_type():
+    from Thumbnail_Pipeline.qa.contract_qa import validate_render_contract
+    metadata={
+        "structural_contract":{
+            "bands":[],
+            "roles":[{"role_id":"presenter_anchor","role_type":"photographic_subject"}],
+            "complexity_budget":{"text_band_count":0,"max_people":1,"max_informational_objects":0,"max_attention_devices":0},
+        }
+    }
+    adaptation={"visual_placements":[
+        {"placement_id":"vp_presenter_01","role_id":"presenter_anchor","kind":"person","is_primary_target":False,"attention_target_role_id":None}
+    ]}
+    result=validate_render_contract(metadata,adaptation,None)
+    assert not any("person must bind to a winner people role" in x for x in result["findings"])
