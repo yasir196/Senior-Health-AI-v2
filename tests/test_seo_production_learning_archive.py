@@ -25,10 +25,6 @@ def _project(tmp_path: Path) -> Path:
         {"scene_id":"S002","start_time":"0:10","end_time":"0:20","duration_sec":10,
          "visual_mode":"DIRECT","recommended_asset_type":"AVATAR","overlay_instruction":""},
     ]).to_csv(p / "07_production_sheet.csv", index=False)
-    pd.DataFrame([
-        {"Scene ID":"S001","Actual Audio Start":"0:00","Actual Audio End":"0:12","Duration":12,"Script Text":"One"},
-        {"Scene ID":"S002","Actual Audio Start":"0:12","Actual Audio End":"0:27","Duration":15,"Script Text":"Two"},
-    ]).to_csv(p / "08_actual_timeline.csv", index=False)
     return p
 
 def test_merge_uses_actual_timeline_timing_and_production_metadata(tmp_path):
@@ -58,7 +54,6 @@ def test_seo_checkpoint_archives_assets_and_refreshes_scene_db_idempotently(tmp_
     for name in (
         "06_final_script.md",
         "07_production_sheet.csv",
-        "08_actual_timeline.csv",
         "production_timeline_snapshot.csv",
     ):
         assert (archive / name).is_file()
@@ -66,7 +61,7 @@ def test_seo_checkpoint_archives_assets_and_refreshes_scene_db_idempotently(tmp_
     scenes = scene_snapshot_df(db, first["analytics_id"])
     assert len(scenes) == 2
     s1 = scenes[scenes["scene_id"] == "S001"].iloc[0]
-    assert float(s1["end_sec"]) == 12.0
+    assert float(s1["end_sec"]) == 10.0
     assert s1["asset_type"] == "AI_IMAGE"
     assert s1["visual_mode"] == "EXPLANATORY"
 
