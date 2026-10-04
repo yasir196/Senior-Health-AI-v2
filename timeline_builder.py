@@ -338,6 +338,18 @@ def build_timeline_manifest(
         raise TimelineBuildError("Timeline CSV contains no scenes")
 
     production_assignments = _load_production_assignments(project)
+
+    # Compatibility bridge for projects whose Production Sheet predates the
+    # timestamp-first P#### slot IDs.  Preserve the existing visual assignment
+    # order, but bind it to the deterministic locked-slot IDs used by CapCut.
+    # Timing still comes exclusively from 08_ratio_allocated_slots.csv.
+    if timeline_csv.name == "08_ratio_allocated_slots.csv" and production_assignments:
+        locked_ids = [str(row.get("slot_id") or "").strip() for row in rows]
+        if locked_ids and not any(slot_id in production_assignments for slot_id in locked_ids):
+            ordered_assignments = list(production_assignments.values())
+            if len(ordered_assignments) == len(locked_ids):
+                production_assignments = dict(zip(locked_ids, ordered_assignments))
+
     base_avatar = _load_base_avatar_timeline(project)
     scenes: list[dict[str, Any]] = []
     warnings: list[str] = []
