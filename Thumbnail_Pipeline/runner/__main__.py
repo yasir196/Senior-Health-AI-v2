@@ -471,7 +471,7 @@ def _load_final_script(project: Path) -> tuple[Path | None, str | None]:
                 return path,text
     return None,None
 
-def _thumbnail_copy_psychology(api_key: str, *, model: str, immutable_title: str, script_text: str) -> dict[str, Any]:
+def _thumbnail_copy_psychology(api_key: str, *, model: str, immutable_title: str, script_text: str, max_words: int | None = None) -> dict[str, Any]:
     """Generate an honest psychological thumbnail hook from the final script, not a title summary."""
     import urllib.request
     instruction="""Create thumbnail copy from the FINAL SCRIPT using this fixed psychology contract.
@@ -482,7 +482,7 @@ STEP 2 — SIX CANDIDATES: create exactly six hooks: two curiosity_gap, two iden
 - identity_validation reframes a plausible failed/incorrect approach only when the script supports that contrast (for example STOP [supported wrong starting approach]). Never invent viewer history.
 - stakes shows a supported cost, sequence, tradeoff, or consequence of the wrong approach. Never invent harm, urgency, fear, outcome, mechanism, or timeframe.
 STEP 3 — HONESTY FILTER: every surviving hook must be materially supported by the final script. No cure/treatment/guarantee, fabricated consequence, unsupported certainty, invented number, invented timeframe, or medical outcome. Curiosity must be a true gap the video actually closes.
-STEP 4 — COMPRESSION: each candidate must be 3 to 5 whitespace-separated words, ALL CAPS. Do not exceed 5 words.\nSTEP 5 — PLAIN-ENGLISH CLARITY: write every candidate at about a 5th-6th grade reading level using short, common, everyday words. Prefer concrete verbs and direct phrases that make sense on the first read. Avoid abstract, academic, clinical, technical, or textbook-style wording when a simpler script-supported phrase expresses the same idea. Simpler wording must never broaden, strengthen, or change the script-supported claim.\nTWO-SECOND TEST: after factual support and honesty, prefer the candidate a scrolling viewer can understand fastest. Then prefer stronger honest curiosity or tension. Do not choose a clever but harder-to-understand phrase over a plain supported one.
+STEP 4 — COMPRESSION: each candidate must be ALL CAPS. Normally use 3 to 5 whitespace-separated words. When USER_MAX_WORDS is supplied, EVERY candidate must instead use at most that many words (minimum 1); prefer the shortest clear script-supported hook that fits. Never pad copy merely to reach a word count.\nSTEP 5 — PLAIN-ENGLISH CLARITY: write every candidate at about a 5th-6th grade reading level using short, common, everyday words. Prefer concrete verbs and direct phrases that make sense on the first read. Avoid abstract, academic, clinical, technical, or textbook-style wording when a simpler script-supported phrase expresses the same idea. Simpler wording must never broaden, strengthen, or change the script-supported claim.\nTWO-SECOND TEST: after factual support and honesty, prefer the candidate a scrolling viewer can understand fastest. Then prefer stronger honest curiosity or tension. Do not choose a clever but harder-to-understand phrase over a plain supported one.
 COMPARISON WORDS: avoid broad superiority words such as BEATS, BEST, BETTER, WORKS, WINS, SAFER, or STRONGER unless the final script directly supports that exact comparison in the same sense. Prefer a plain description of the supported contrast instead.
 TITLE SEPARATION: reject candidates that merely restate the title's topic/promise. Reusing unavoidable topic nouns is allowed, but the hook must add a script-supported contrast, tension, validation, stakes, sequence, or open loop.
 Choose selected_text from the six candidates. Prefer the strongest honest information gap; never trade factual support for clickability."""
@@ -503,7 +503,8 @@ Choose selected_text from the six candidates. Prefer the strongest honest inform
         "required":["surprising_thesis","candidates","selected_text","selection_reason"],
         "additionalProperties":False
     }
-    prompt=instruction+"\n\nIMMUTABLE_TITLE: "+immutable_title+"\n\nFINAL_SCRIPT:\n"+script_text
+    prompt=instruction+"\n\nUSER_MAX_WORDS: "+(str(max_words) if max_words is not None else "AUTO")+
+        "\n\nIMMUTABLE_TITLE: "+immutable_title+"\n\nFINAL_SCRIPT:\n"+script_text
     payload={"model":model,"input":[{"role":"user","content":[{"type":"input_text","text":prompt}]}],
              "text":{"format":{"type":"json_schema","name":"thumbnail_copy_psychology","strict":False,"schema":schema}}}
     req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode("utf-8"),
@@ -527,8 +528,11 @@ Choose selected_text from the six candidates. Prefer the strongest honest inform
         raise ValueError("Thumbnail copy psychology must return exactly 2 candidates for each psychological lever.")
     for row in candidates:
         text_value=str(row.get("text") or "").strip()
-        if not (3 <= len(text_value.split()) <= 5) or text_value != text_value.upper():
-            raise ValueError("Psychology candidates must be ALL CAPS and 3-5 words.")
+        word_count=len(text_value.split())
+        valid_length=(1 <= word_count <= int(max_words)) if max_words is not None else (3 <= word_count <= 5)
+        if not valid_length or text_value != text_value.upper():
+            expected=f"1-{max_words}" if max_words is not None else "3-5"
+            raise ValueError(f"Psychology candidates must be ALL CAPS and {expected} words.")
     selected=str(result.get("selected_text") or "").strip()
     if selected not in [str(x.get("text") or "").strip() for x in candidates]:
         raise ValueError("selected_text must be one of the six psychology candidates.")
@@ -778,8 +782,8 @@ def main() -> int:
             raw=input("Maximum TOTAL visible thumbnail words? [Enter=auto]: ").strip()
             if raw:
                 value=int(raw)
-                if value < 3:
-                    parser.error("--text-words must be at least 3")
+                if value < 1:
+                    parser.error("--text-words must be at least 1")
                 args.text_words=value
     text_display_constraints={
         "max_visible_text_bands":args.text_lines,
@@ -855,7 +859,7 @@ def main() -> int:
     script_support=None
     psychology=None
     if selected_text is None and script_text and args.vision_api_key:
-        psychology=_thumbnail_copy_psychology(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],script_text=script_text)
+        psychology=_thumbnail_copy_psychology(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],script_text=script_text,max_words=args.text_words)
         psychology["display_constraints"]=text_display_constraints
         selected_text=str(psychology["selected_text"]).strip()
         psychology_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])/"json"
