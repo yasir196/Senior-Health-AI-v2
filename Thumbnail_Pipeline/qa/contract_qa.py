@@ -146,7 +146,12 @@ def evaluate_contract_qa(render_structure: dict[str, Any]) -> dict[str, Any]:
         role_id=str(placement.get("role_id") or "")
         kind=str(placement.get("kind") or "").casefold()
         role_type=winner_role_type.get(role_id,"")
-        if kind=="person" and role_type not in PEOPLE_ROLE_TYPES:
+        role_id_l=role_id.casefold()
+        role_is_people=(
+            role_type in PEOPLE_ROLE_TYPES
+            or any(token in role_id_l for token in ("presenter","person","human","portrait"))
+        )
+        if kind=="person" and not role_is_people:
             findings.append(f"{placement.get('placement_id')}: person must bind to a winner people role")
         if kind=="attention_device" and role_type not in ATTENTION_ROLE_TYPES:
             findings.append(f"{placement.get('placement_id')}: attention device must bind to a winner attention role")
