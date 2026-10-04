@@ -756,11 +756,34 @@ def main() -> int:
     parser.add_argument("--text-placement")
     parser.add_argument("--safe-zone")
     parser.add_argument("--thumbnail-text")
+    parser.add_argument("--text-lines",type=int,choices=range(1,5),metavar="1-4",help="Maximum visible thumbnail text bands/lines")
+    parser.add_argument("--text-words",type=int,metavar="N",help="Maximum total visible thumbnail words across all bands")
     parser.add_argument("--youtube-client-json",default=os.environ.get("V2_YOUTUBE_CLIENT_JSON"),help="Existing V2 OAuth client JSON; read only")
     parser.add_argument("--youtube-token-json",default=os.environ.get("V2_YOUTUBE_TOKEN_JSON"),help="Existing V2 OAuth token JSON; never modified")
     parser.add_argument("--vision-api-key",default=os.environ.get("OPENAI_API_KEY"),help="Optional OpenAI API key for thumbnail text vision fallback")
     parser.add_argument("--vision-model",default=os.environ.get("THUMBNAIL_VISION_MODEL","gpt-5-mini"),help="Vision-capable model used for analysis only; this runner never generates images")
     args=parser.parse_args()
+    # Interactive runs may set a deliberate viewer-facing copy budget. Enter keeps
+    # the existing automatic behavior, so CI/non-interactive workflows never block.
+    if sys.stdin.isatty():
+        if args.text_lines is None:
+            raw=input("Visible thumbnail text lines/bands? [1-4, Enter=auto]: ").strip()
+            if raw:
+                value=int(raw)
+                if value not in range(1,5):
+                    parser.error("--text-lines must be between 1 and 4")
+                args.text_lines=value
+        if args.text_words is None:
+            raw=input("Maximum TOTAL visible thumbnail words? [Enter=auto]: ").strip()
+            if raw:
+                value=int(raw)
+                if value < 3:
+                    parser.error("--text-words must be at least 3")
+                args.text_words=value
+    text_display_constraints={
+        "max_visible_text_bands":args.text_lines,
+        "max_total_visible_words":args.text_words,
+    }
     project=resolve_project(args.project,args.projects_root)
     youtube_provider=None
     client_path=Path(args.youtube_client_json) if args.youtube_client_json else None
@@ -832,6 +855,7 @@ def main() -> int:
     psychology=None
     if selected_text is None and script_text and args.vision_api_key:
         psychology=_thumbnail_copy_psychology(args.vision_api_key,model=args.vision_model,immutable_title=state["immutable_title"],script_text=script_text)
+        psychology["display_constraints"]=text_display_constraints
         selected_text=str(psychology["selected_text"]).strip()
         psychology_dir=Path("Thumbnail_Pipeline")/"outputs"/str(state["project"])/"json"
         psychology_dir.mkdir(parents=True,exist_ok=True)
