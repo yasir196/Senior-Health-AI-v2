@@ -188,7 +188,6 @@ def test_presenter_role_repair_accepts_unambiguous_presenter_role_id():
 
 
 def test_contract_qa_accepts_person_bound_to_explicit_presenter_role_id_with_generic_type():
-    from Thumbnail_Pipeline.qa.contract_qa import validate_render_contract
     metadata={
         "structural_contract":{
             "bands":[],
@@ -199,5 +198,6 @@ def test_contract_qa_accepts_person_bound_to_explicit_presenter_role_id_with_gen
     adaptation={"visual_placements":[
         {"placement_id":"vp_presenter_01","role_id":"presenter_anchor","kind":"person","is_primary_target":False,"attention_target_role_id":None}
     ]}
-    result=validate_render_contract(metadata,adaptation,None)
+    render_structure=build_render_structure(metadata,adaptation,None)
+    result=evaluate_contract_qa(render_structure)
     assert not any("person must bind to a winner people role" in x for x in result["findings"])
