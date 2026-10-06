@@ -2485,7 +2485,7 @@ def render_text_overlay_import() -> None:
     st.subheader("Text Overlay Import")
     project = project_selector("text_overlay_import")
     if not project: return
-    timeline_path = project / "08_actual_timeline.csv"
+    timeline_path = project / "08_master_narration_timeline.csv"
     artifact_path = project / ARTIFACT_NAME
     st.caption(f"Selected Project: {project.name}")
     st.caption(f"Authoritative Narration Source: {timeline_path}")

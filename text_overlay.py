@@ -135,7 +135,7 @@ def load_actual_timeline(path: Path) -> list[dict[str, Any]]:
         for row in csv.DictReader(handle):
             start = parse_timeline_time(row.get("Actual Audio Start", ""))
             end = parse_timeline_time(row.get("Actual Audio End", ""))
-            rows.append({**row, "_start": start, "_end": end, "_tokens": _tokens(row.get("Script Text", ""))})
+            rows.append({**row, "_start": start, "_end": end, "_tokens": _tokens(row.get("Transcript Text", ""))})
     return rows
 
 
@@ -362,7 +362,7 @@ def _priority(overlay_type: str) -> int:
 
 def validate_rows(project: Path, rows: list[dict[str, str]]) -> ValidationResult:
     project = Path(project).resolve()
-    timeline_path = project / "08_actual_timeline.csv"
+    timeline_path = project / "08_master_narration_timeline.csv"
     timeline = load_actual_timeline(timeline_path)
     errors, warnings, records = [], [], []
     if not timeline:
