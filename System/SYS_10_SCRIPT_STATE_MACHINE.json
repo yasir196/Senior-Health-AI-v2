@@ -175,8 +175,14 @@
       "id": "I23",
       "rule": "first_practical_value_by_3_00",
       "severity": "block",
+      "definition": "First practical value = the first demonstrated action promised by the title/thumbnail. Safety rules, triage, or expectation-setting do not count unless the title itself promises triage.",
       "exception": "mandatory_triage",
       "exception_requires": "Reason recorded in the outline under 'Time to first practical value'."
+    },
+    {
+      "id": "I24",
+      "rule": "hook_ends_by_00_45",
+      "severity": "block"
     }
   ],
   "retention_engine": {
@@ -372,7 +378,9 @@
     "missing_retention_report": "fail",
     "runtime_shortfall_with_exhausted_source_pool": "escalate as SOURCE_POOL_EXHAUSTED; do not request Writer redevelopment of the same pool",
     "first_practical_value_after_3_00_without_recorded_triage_reason": "fail",
-    "thumbnail_answer_withheld_from_opening": "fail"
+    "thumbnail_answer_withheld_from_opening": "fail",
+    "hook_ends_after_00_45": "fail",
+    "standalone_pre_demonstration_expectation_or_evidence_section": "fail"
   },
   "canonical_runtime_lock": {
     "rule": "Every stage derives narration-word targets from the single canonical runtime profile in config.json. No stage may introduce an independent WPM or minute window.",

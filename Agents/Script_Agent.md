@@ -188,6 +188,7 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Estimated AVD Potential
 - Hook Strength /10
 - Time to First Practical Value
+First practical value = the first demonstrated action promised by the title/thumbnail. Safety rules, triage, or expectation-setting do not count unless the title itself promises triage.
 - Curiosity Loops
 - Pattern Interrupts
 - Mini Stories
@@ -224,7 +225,7 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Every final script must end with: Estimated Runtime, Estimated Word Count, Average Speaking Rate, and Runtime Advisory (ADVISORY ONLY — NON-BLOCKING).
 - Never hardcode a channel name. Use `config.json` value `channel_name` only when non-empty; otherwise use `{{CHANNEL_NAME}}` or a generic subscribe CTA.
 - Never hardcode presenter names. Use `config.json` values `host_name` and `host_title` only when non-empty; otherwise use `{{HOST_NAME}}` and `{{HOST_TITLE}}`.
-- QA must fail if: an opened curiosity loop is never closed; missing pattern interrupts, a mini story claims a medical outcome or is not labeled hypothetical, abrupt ending, CTA before recap, or missing Retention Report, the thumbnail answer is withheld from the opening, or first practical value is after 3:00 without a recorded mandatory-triage reason. Runtime outside the target range is ADVISORY ONLY and never a QA failure.
+- QA must fail if: an opened curiosity loop is never closed; missing pattern interrupts, a mini story claims a medical outcome or is not labeled hypothetical, abrupt ending, CTA before recap, or missing Retention Report, the thumbnail answer is withheld from the opening, or first practical value is after 3:00 without a recorded mandatory-triage reason, the Hook ends after 00:45, or a standalone pre-demonstration expectation/evidence section exists. Runtime outside the target range is ADVISORY ONLY and never a QA failure.
 - Failure routing: script issues return to Script_Agent; evidence gaps return to Research_Agent through Medical_Agent Gate 2.
 
 ## 7. Output Format
@@ -314,6 +315,8 @@ or credentials.
 - Do not write a purely sequential information dump.
 - Do not explain everything immediately in the hook.
 - Do not create a standalone evidence or "can/cannot" section before the body.
+- Do not create any pre-demonstration section whose purpose is expectations, evidence limits, or what-this-can/cannot-do, under any name. Attach each such line to the movement it qualifies.
+- The Hook must end by 00:45. Any Hook plan extending beyond 00:45 is a QA failure.
 - Do not force a fixed cadence for loops, stories, or recaps.
 - Do not leave curiosity loops unresolved.
 - Do not allow more than 3 minutes of uninterrupted explanation.
