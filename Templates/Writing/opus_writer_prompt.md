@@ -57,6 +57,17 @@ Pay off the core title question progressively from the opening onward. Do not po
 
 Consolidate repeated safety/context boundaries while preserving every medically required warning and its meaning. Use all materially useful approved evidence at legitimate depth. Fully develop the strongest complete non-repetitive script supported by that evidence and report its actual length afterward as informational metadata; never restore repetition, expand, compress, or pad with another recap, disclaimer, analogy, hypothetical story, source, or claim because of runtime or word count.
 
+## Outline Structure Lock
+
+The outline's section order, Hook boundary, and first-practical-value placement are binding. This lock governs POSITION only, never total length, and is the sole exception to the ban on numerical drafting constraints in the Execution / No-Negotiation Lock.
+
+- The Hook contains only the outline's hook beats and must end by 00:45 at the configured `narration_words_per_minute`. Do not add extra self-identification, worry, or promise paragraphs to the Hook.
+- Do not create a separate Introduction section. If the outline places a host introduction, deliver it in at most two sentences at the start of the first section after the Hook.
+- Between the Hook and the first title-promised movement, include only the outline's required triage and safety content. No video preview, no scope essay, no "what I am not saying" list.
+- The first title-promised demonstrated action must begin by 03:00 at the configured `narration_words_per_minute`.
+- Never convert outline writer-instructions or "Do not say" lists into narration.
+- In `06_runtime_report.md`, report `Hook ends at` and `First promised action begins at` timestamps. These are position gates, not runtime targets; a violation is a script failure.
+
 ## Execution / No-Negotiation Lock
 
 Do not pre-negotiate the assignment. Do not tell the user that the approved research is insufficient, estimate in advance how many words the evidence can support, propose a shorter target, discuss whether the minimum runtime is achievable, or stop to explain a word-count conflict before drafting. First write the strongest complete production-ready script using all approved material at legitimate depth and following both the Full Evidence Development Lock and the Semantic Progression Lock.
