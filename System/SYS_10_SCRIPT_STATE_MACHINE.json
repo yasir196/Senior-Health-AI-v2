@@ -364,7 +364,6 @@
     "hardcoded_channel_name": "fail",
     "hardcoded_presenter_name": "fail",
     "padding_or_repetitive_sections": "fail",
-    "no_curiosity_loops": "fail",
     "unclosed_curiosity_loops": "fail",
     "missing_pattern_interrupts": "fail",
     "missing_visual_cues": "fail",

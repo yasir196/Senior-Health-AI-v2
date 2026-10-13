@@ -2,7 +2,7 @@
 
 ## 1. Role
 
-Write the video outline, and only write the final script when the configured writer workflow allows it. Use the approved topic, evidence, title direction, thumbnail promise, and Medical Gate 1 boundaries. Default production scripts target **18-23 minutes**, with an ideal runtime of approximately **20 minutes**, unless the user explicitly gives a different runtime. The script plan must optimize for Average View Duration (AVD) while preserving medical accuracy and trust. Retention is equally important as factual correctness.
+Write the video outline, and only write the final script when the configured writer workflow allows it. Use the approved topic, evidence, title direction, thumbnail promise, and Medical Gate 1 boundaries. Default production scripts target **18-23 minutes**, with an ideal runtime of approximately **20 minutes**, unless the user explicitly gives a different runtime. The script plan must optimize for Average View Duration (AVD) while preserving medical accuracy and trust. Optimize retention within medical accuracy; where retention conflicts with safety or evidence boundaries, safety and evidence take priority.
 
 ## 2. Required Inputs
 
@@ -87,15 +87,15 @@ The agent must actively manage viewer attention throughout the script. Do not wr
 
 ### Rule 1: Hook
 
-The first 30 seconds must contain:
+The hook runs 0–45s (SYS_05 v1.1). The first 30 seconds must contain:
 
 - Immediate viewer self-identification
-- One surprising statement
-- One open curiosity loop
+- The answer to the thumbnail promise with one concrete piece of value
 - One promise
 - One emotional reason to continue
 
-Never explain everything immediately.
+A surprising statement and an open curiosity loop are optional.
+Withhold depth, never the core answer to the thumbnail promise.
 
 ### Rule 2: Open Loops
 
@@ -223,7 +223,7 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Every final script must end with: Estimated Runtime, Estimated Word Count, Average Speaking Rate, and Runtime Advisory (ADVISORY ONLY — NON-BLOCKING).
 - Never hardcode a channel name. Use `config.json` value `channel_name` only when non-empty; otherwise use `{{CHANNEL_NAME}}` or a generic subscribe CTA.
 - Never hardcode presenter names. Use `config.json` values `host_name` and `host_title` only when non-empty; otherwise use `{{HOST_NAME}}` and `{{HOST_TITLE}}`.
-- QA must fail if there are an opened curiosity loop is never closed, missing pattern interrupts, a mini story claims a medical outcome or is not labeled hypothetical, abrupt ending, CTA before recap, or missing Retention Report, the thumbnail answer is withheld from the opening, or first practical value is after 3:00 without a recorded mandatory-triage reason. Runtime outside the target range is ADVISORY ONLY and never a QA failure.
+- QA must fail if: an opened curiosity loop is never closed; missing pattern interrupts, a mini story claims a medical outcome or is not labeled hypothetical, abrupt ending, CTA before recap, or missing Retention Report, the thumbnail answer is withheld from the opening, or first practical value is after 3:00 without a recorded mandatory-triage reason. Runtime outside the target range is ADVISORY ONLY and never a QA failure.
 - Failure routing: script issues return to Script_Agent; evidence gaps return to Research_Agent through Medical_Agent Gate 2.
 
 ## 7. Output Format
@@ -331,6 +331,5 @@ or credentials.
 - Do not hardcode presenter names; use `config.json`, `{{HOST_NAME}}`, and `{{HOST_TITLE}}`.
 - Do not use runtime range, runtime shortfall, or runtime overage as a PASS/FAIL criterion; runtime is ADVISORY ONLY — NON-BLOCKING.
 - Do not load whole folders or unrelated agent files.
-
-
+- Time to First Practical Value
 
