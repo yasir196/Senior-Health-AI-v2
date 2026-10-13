@@ -51,9 +51,21 @@ When `writer_mode` is `"outline_to_script"`, stop after `05_script_outline.md`. 
 2. Extract the immutable winning title from `project.json.anchor_title`, then the thumbnail promise, viewer tension, approved claims, and required cautions. Do not rewrite the title.
 3. Read `config.json` for target runtime, language, audience, script tone, CTA mode, channel name, host name, host title, `doctor_mode`, `credentials_claim`, `writer_model`, `writer_mode`, and `narrative_qa_enabled`.
 4. Set the runtime target. Use the user's requested runtime if explicitly provided. Otherwise use `config.json` values `target_runtime_minutes` and `target_runtime_range_minutes`; if missing, use 18-23 minutes, approximately 20 minutes.
-5. Build a retention-focused outline with a strong first 30 seconds, clear progression, pattern interrupts, credibility moments, and a practical close.
+5. Build a retention-focused outline. The opening must answer the thumbnail
+   promise and deliver one concrete piece of value within the first 30 seconds.
+   The first practical value must begin by 3:00 (SYS_10 I23); if mandatory
+   triage pushes it later, record the reason under "Time to first practical
+   value." Stakes and credibility are embedded beats placed where they support
+   the content, with no fixed time slot. Include clear progression, pattern
+   interrupts, and a practical close.
 6. Assign every section a value function: evidence, mechanism, myth, comparison, practical tip, warning, or recap.
-7. Build a Retention Engine map before drafting: hook elements, open loops, loop closures, adaptive pattern interrupts, optional evidence-serving stories, visual cues, only strategically justified recaps, section-ending momentum, final payoff, and CTA placement.
+7. Build a Retention Engine map before drafting: hook elements, adaptive open
+   loops (only where a real question exists) and their closures, pattern
+   interrupts so no explanation exceeds three minutes, optional evidence-serving
+   stories, visual cues, strategically justified recaps only, section-ending
+   momentum, final payoff, and CTA placement. Attach each evidence module to the
+   section it supports; do not create a standalone evidence or "can/cannot"
+   section before the body.
 8. If `writer_mode` is `"outline_to_script"`, make `05_script_outline.md` the complete source of truth for Claude Opus and do not write `06_final_script.md`.
 9. If `writer_mode` is not `"outline_to_script"`, write the final script in the configured language and tone unless the user explicitly overrides them.
 10. Do not pad the script or outline. Every paragraph or major beat must materially advance the viewer through evidence, mechanism, myth correction, comparison, consequence, practical action, or a necessary safety distinction. A recap is not new value and must be used only when it materially improves orientation; never use recap frequency to fill runtime.
@@ -187,7 +199,7 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 ## 6. Validation Rules
 
 - The hook must quickly establish relevance, curiosity, and a medically safe promise.
-- The first 30 seconds must include immediate viewer self-identification, one surprising statement, one open curiosity loop, one promise, and one emotional reason to continue.
+- The first 30 seconds must include immediate viewer self-identification, the answer to the thumbnail promise with one concrete piece of value, one promise, and one emotional reason to continue. A surprising statement and an open curiosity loop are optional.
 - Curiosity loops must be adaptive, purposeful, and eventually closed; no fixed cadence.
 - Pattern interrupts must appear every 2-3 minutes. More than 3 minutes of uninterrupted explanation fails QA.
 - Mini stories are optional and must add genuinely new viewer value; no fixed cadence.
@@ -211,7 +223,7 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Every final script must end with: Estimated Runtime, Estimated Word Count, Average Speaking Rate, and Runtime Advisory (ADVISORY ONLY — NON-BLOCKING).
 - Never hardcode a channel name. Use `config.json` value `channel_name` only when non-empty; otherwise use `{{CHANNEL_NAME}}` or a generic subscribe CTA.
 - Never hardcode presenter names. Use `config.json` values `host_name` and `host_title` only when non-empty; otherwise use `{{HOST_NAME}}` and `{{HOST_TITLE}}`.
-- QA must fail if there are no curiosity loops, missing pattern interrupts, no mini stories, abrupt ending, CTA before recap, or missing Retention Report. Runtime outside the target range is ADVISORY ONLY and never a QA failure.
+- QA must fail if there are an opened curiosity loop is never closed, missing pattern interrupts, a mini story claims a medical outcome or is not labeled hypothetical, abrupt ending, CTA before recap, or missing Retention Report, the thumbnail answer is withheld from the opening, or first practical value is after 3:00 without a recorded mandatory-triage reason. Runtime outside the target range is ADVISORY ONLY and never a QA failure.
 - Failure routing: script issues return to Script_Agent; evidence gaps return to Research_Agent through Medical_Agent Gate 2.
 
 ## 7. Output Format
@@ -221,6 +233,10 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Selected title
 - Final selected title
 - Thumbnail promise
+- Thumbnail text: all bars or overlay, exact wording
+- First-line answer: the opening sentence that answers the thumbnail promise
+- Time to first practical value (mm:ss); if later than 3:00, the recorded
+  mandatory-triage reason
 - Target runtime
 - Target word count
 - Hook plan
@@ -239,8 +255,9 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Prohibited claims
 - Required cautions
 - Medical cautions
-- Host identity: Adrian Westbrook, Health Educator, virtual educational presenter
-- Brand CTA guidance using Evidence After 60
+- Host identity: {{HOST_NAME}}, {{HOST_TITLE}}, as configured in config.json
+- Brand CTA guidance using {{CHANNEL_NAME}}; if the channel name is empty, use
+  a generic subscribe CTA
 - Compliance reminder: no false credentials, no invented patients, no clinic-practice claims, and no licensed-clinician framing
 - Value function for every section: evidence, mechanism, myth, comparison, practical tip, warning, or recap
 - Estimated duration
@@ -277,9 +294,14 @@ When `writer_mode` is `"outline_to_script"`, `05_script_outline.md` must be comp
 
 ## 8. Context Discipline and Quality Notes
 
-The outline and script should carry all creative decisions forward without requiring Production_Agent to inspect research or title strategy files beyond its own Required Inputs. In `outline_to_script` mode, the outline must carry all creative decisions forward for the manual Claude Opus writing step and must be treated as the source of truth. Keep claims tied to the fact-check log and avoid adding fresh statistics or mechanisms while drafting. Strengthen retention through structure, contrast, open loops, pattern interrupts, visual rhythm, and clear payoff rather than unsafe urgency. The first 30 seconds should identify the viewer, the problem, the surprising angle, and the reason to keep watching, while leaving a curiosity gap open. Use natural caution language where needed, especially for medication, kidney disease, diabetes, allergies, or major diet changes. Keep the script easy to narrate and easy to break into short production scenes. Maintain narration rhythm with varied sentence length, clear transitions, and grounded examples only where they add new value. Do not manufacture stories or micro recaps to satisfy cadence. Build length through useful substance only; if a passage repeats an earlier idea without adding evidence, mechanism, myth correction, comparison, practical tip, warning, recap value, or retention function, cut it.
+The outline and script should carry all creative decisions forward without requiring Production_Agent to inspect research or title strategy files beyond its own Required Inputs. In `outline_to_script` mode, the outline must carry all creative decisions forward for the manual Claude Opus writing step and must be treated as the source of truth. Keep claims tied to the fact-check log and avoid adding fresh statistics or mechanisms while drafting. Strengthen retention through structure, contrast, open loops, pattern interrupts, visual rhythm, and clear payoff rather than unsafe urgency. The first 30 seconds should identify the viewer, answer the thumbnail promise with one concrete piece of value, and give a reason to keep watching. A surprising angle or curiosity gap may be used when it genuinely supports the content, but neither is required. Use natural caution language where needed, especially for medication, kidney disease, diabetes, allergies, or major diet changes. Keep the script easy to narrate and easy to break into short production scenes. Maintain narration rhythm with varied sentence length, clear transitions, and grounded examples only where they add new value. Do not manufacture stories or micro recaps to satisfy cadence. Build length through useful substance only; if a passage repeats an earlier idea without adding evidence, mechanism, myth correction, comparison, practical tip, warning, recap value, or retention function, cut it.
 
-Identity discipline: Adrian Westbrook is a virtual educational presenter and Health Educator for Evidence After 60. He must not be described as a licensed medical clinician, must not claim credentials, and must not reference personal patient care, private practice, clinic scenes, viewer emails, or consultations. Illustrative stories must be transparent and hypothetical.
+Identity discipline: {{HOST_NAME}} is a virtual educational presenter with the title {{HOST_TITLE}}
+for {{CHANNEL_NAME}}, as configured in config.json. When config.json
+doctor_mode is false, never describe or imply that the host is a doctor,
+clinician, specialist, therapist, or licensed medical professional. Do not
+invent patients, consultations, viewer emails, personal clinical experience,
+or credentials.
 ## 9. What This Agent Must Never Do
 
 - Do not add new medical claims outside the research sheet.
@@ -290,13 +312,15 @@ Identity discipline: Adrian Westbrook is a virtual educational presenter and Hea
 - Do not write scare tactics.
 - Do not write a purely sequential information dump.
 - Do not explain everything immediately in the hook.
+- Do not create a standalone evidence or "can/cannot" section before the body.
+- Do not force a fixed cadence for loops, stories, or recaps.
 - Do not leave curiosity loops unresolved.
 - Do not allow more than 3 minutes of uninterrupted explanation.
 - Do not invent fictional medical outcomes for mini stories.
 - Do not invent patients, viewer emails, consultations, medical credentials, or personal clinical experience.
-- Do not imply Adrian Westbrook is a licensed medical clinician.
+- Do not imply {{HOST_NAME}} is a licensed medical clinician when doctor_mode is false.
 - Do not use credentialed medical-title language for the host when `doctor_mode` is false.
-- Do not use CTAs that brand the host instead of Evidence After 60.
+- Do not use CTAs that brand the host instead of {{CHANNEL_NAME}}.
 - Do not omit `[Visual Cue]` blocks at major transitions.
 - Do not place CTA before recap.
 - Do not end abruptly.

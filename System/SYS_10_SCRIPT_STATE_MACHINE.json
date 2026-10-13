@@ -1,9 +1,9 @@
 {
   "module": "script_state_machine",
-  "version": "1.2",
+  "version": "1.3",
   "objective": {
     "primary": "Optimize Average View Duration while preserving medical accuracy and trust.",
-    "principle": "Retention is equally important as factual correctness. Scripts must create curiosity, momentum, and visual rhythm instead of presenting information only sequentially."
+    "principle": "Optimize retention within medical accuracy. Where retention and safety or evidence boundaries conflict, safety and evidence take priority. Scripts must create curiosity, momentum, and visual rhythm instead of presenting information only sequentially."
   },
   "default_runtime": {
     "authority": "config.json is the canonical runtime authority. Read narration_words_per_minute, target_runtime_minutes, and target_runtime_range_minutes from config.json. The values below are inert fallbacks for use only when config.json supplies no runtime keys; they must never override config.json and must never be used to compute a second narration-word floor.",
@@ -28,31 +28,29 @@
       "target_words_at_145_wpm": 2900,
       "max_words_at_160_wpm": 3680
     },
-    "override_policy": "A script outside the canonical config.json runtime window fails QA unless the user explicitly provides a different runtime target or an explicit runtime override. Runtime must never force restoration of repetition or creation of low-value factual material; see canonical_runtime_lock."
+    "override_policy": "Runtime is ADVISORY ONLY — NON-BLOCKING. A script outside the canonical config.json runtime window is reported as informational metadata and never fails QA for runtime reasons. Runtime must never force restoration of repetition or creation of low-value factual material; see canonical_runtime_lock."
   },
   "states": [
     {
       "state": "HOOK",
-      "t": "0-60s",
-      "exit_condition": "first_30s_contains_self_id_surprise_open_loop_promise_emotional_reason",
-      "next": "STAKES"
-    },
-    {
-      "state": "STAKES",
-      "t": "60-120s",
-      "exit_condition": "personal_relevance_established",
-      "next": "CREDIBILITY"
-    },
-    {
-      "state": "CREDIBILITY",
-      "t": "120-180s",
-      "exit_condition": "presenter_and_study_cited",
+      "t": "0-45s",
+      "exit_condition": "thumbnail_promise_answered_and_concrete_value_delivered",
       "next": "BODY"
     },
     {
       "state": "BODY",
       "t": "bulk",
-      "exit_condition": "all_items_revealed_ascending",
+      "exit_condition": "all_items_delivered",
+      "embedded_beats": [
+        "stakes",
+        "credibility",
+        "triage_when_required"
+      ],
+      "rules": [
+        "mandatory_triage_before_movement_or_action",
+        "evidence_attaches_to_supported_item",
+        "no_standalone_evidence_block_before_body"
+      ],
       "next": "RECAP"
     },
     {
@@ -65,18 +63,18 @@
   "invariants": [
     {
       "id": "I1",
-      "rule": "loop_open_every_60_90s",
-      "severity": "block"
+      "rule": "open_loops_adaptive_and_every_opened_loop_closed",
+      "severity": "advisory"
     },
     {
       "id": "I2",
-      "rule": "items_ascending_importance",
-      "severity": "block"
+      "rule": "item_order_serves_viewer_strongest_may_lead_for_thumbnail_payoff",
+      "severity": "advisory"
     },
     {
       "id": "I3",
-      "rule": "strongest_item_last_and_pre_teased",
-      "severity": "warn"
+      "rule": "strongest_item_last_and_pre_teased_optional_never_delay_thumbnail_answer",
+      "severity": "advisory"
     },
     {
       "id": "I4",
@@ -95,8 +93,8 @@
     },
     {
       "id": "I7",
-      "rule": "default_runtime_18_to_23_minutes_unless_explicitly_overridden",
-      "severity": "block"
+      "rule": "runtime_target_advisory_non_blocking",
+      "severity": "advisory"
     },
     {
       "id": "I8",
@@ -130,8 +128,8 @@
     },
     {
       "id": "I14",
-      "rule": "curiosity_loop_opened_every_60_to_90_seconds_and_closed",
-      "severity": "block"
+      "rule": "curiosity_loops_adaptive_only_for_real_questions_and_every_opened_loop_closed",
+      "severity": "advisory"
     },
     {
       "id": "I15",
@@ -140,8 +138,8 @@
     },
     {
       "id": "I16",
-      "rule": "mini_story_every_4_to_5_minutes",
-      "severity": "block"
+      "rule": "mini_stories_optional_evidence_serving_no_fixed_cadence",
+      "severity": "advisory"
     },
     {
       "id": "I17",
@@ -150,8 +148,8 @@
     },
     {
       "id": "I18",
-      "rule": "micro_recap_every_4_to_5_minutes_under_20_seconds",
-      "severity": "block"
+      "rule": "micro_recaps_strategic_only_no_time_fill",
+      "severity": "advisory"
     },
     {
       "id": "I19",
@@ -172,27 +170,37 @@
       "id": "I22",
       "rule": "retention_report_present",
       "severity": "block"
+    },
+    {
+      "id": "I23",
+      "rule": "first_practical_value_by_3_00",
+      "severity": "block",
+      "exception": "mandatory_triage",
+      "exception_requires": "Reason recorded in the outline under 'Time to first practical value'."
     }
   ],
   "retention_engine": {
     "hook_first_30_seconds": {
       "required_elements": [
         "immediate_viewer_self_identification",
-        "one_surprising_statement",
-        "one_open_curiosity_loop",
+        "one_concrete_promised_value",
         "one_promise",
         "one_emotional_reason_to_continue"
       ],
       "prohibited": [
+        "withholding_thumbnail_answer",
         "explaining_everything_immediately",
         "soft_greeting_before_tension"
-      ]
+      ],
+      "optional_elements": [
+        "one_surprising_statement",
+        "one_open_curiosity_loop"
+      ],
+      "withhold_policy": "withhold_depth_not_answer"
     },
     "open_loops": {
-      "cadence_seconds": [
-        60,
-        90
-      ],
+      "cadence": "adaptive",
+      "open_only_when_real_question_exists": true,
       "must_eventually_close": true,
       "examples": [
         "That isn't even the biggest mistake...",
@@ -215,22 +223,20 @@
         "practical_demonstration",
         "visual_question",
         "common_mistake",
-        "doctor_insight",
         "checklist"
       ]
     },
     "mini_stories": {
-      "cadence_minutes": [
-        4,
-        5
-      ],
-      "purpose": "Use short real-world scenarios to make abstract health guidance concrete.",
+      "required": false,
+      "cadence": "none_fixed",
+      "purpose": "Optional and evidence-serving; use only when it clarifies approved content.",
       "examples": [
         "Imagine two adults, both 72 years old...",
         "Many people do this every morning without realizing..."
       ],
       "rules": [
         "stories_must_remain_educational",
+        "hypothetical_stories_must_be_labeled_hypothetical",
         "no_fictional_medical_outcomes"
       ]
     },
@@ -245,12 +251,9 @@
       "consumer": "Production_Agent"
     },
     "micro_recaps": {
-      "cadence_minutes": [
-        4,
-        5
-      ],
+      "cadence": "strategic",
       "max_seconds": 20,
-      "purpose": "Briefly remind viewers what has been learned so far."
+      "purpose": "Use only when strategically justified; never use recaps to fill time."
     },
     "section_endings": {
       "must_tease_next_section": true,
@@ -290,13 +293,9 @@
       "Estimated Runtime",
       "Estimated Word Count",
       "Average Speaking Rate",
-      "Target Runtime Status"
+      "Runtime Advisory"
     ],
-    "target_runtime_status_values": [
-      "PASS",
-      "FAIL"
-    ],
-    "pass_condition": "PASS only when estimated runtime is within target range or an explicit runtime override is documented."
+    "runtime_advisory_value": "ADVISORY ONLY — NON-BLOCKING"
   },
   "required_retention_report": {
     "must_appear_at_end": true,
@@ -310,7 +309,8 @@
       "Micro Recaps",
       "Estimated Engagement",
       "Weakest Section",
-      "Strongest Section"
+      "Strongest Section",
+      "Time to First Practical Value"
     ]
   },
   "placeholder_policy": {
@@ -321,8 +321,13 @@
     },
     "presenter_names": {
       "host_placeholder": "{{HOST_NAME}}",
+      "host_title_placeholder": "{{HOST_TITLE}}",
       "doctor_placeholder": "{{DOCTOR_NAME}}",
+      "doctor_placeholder_condition": "doctor_mode true only",
       "hardcoded_presenter_names": "prohibited"
+    },
+    "clinician_boundary": {
+      "when_doctor_mode_false": "Never describe or imply the host is a licensed clinician, doctor, or medical professional."
     }
   },
   "transition_style": "bridge_via_reteased_loop",
@@ -355,7 +360,6 @@
     ]
   },
   "qa_failure_rules": {
-    "runtime_outside_target_without_override": "fail (measured against the canonical config.json window only)",
     "missing_runtime_metrics_block": "fail",
     "hardcoded_channel_name": "fail",
     "hardcoded_presenter_name": "fail",
@@ -363,17 +367,17 @@
     "no_curiosity_loops": "fail",
     "unclosed_curiosity_loops": "fail",
     "missing_pattern_interrupts": "fail",
-    "no_mini_stories": "fail",
     "missing_visual_cues": "fail",
-    "missing_micro_recaps": "fail",
     "abrupt_ending": "fail",
     "cta_before_recap": "fail",
     "missing_retention_report": "fail",
-    "runtime_shortfall_with_exhausted_source_pool": "escalate as SOURCE_POOL_EXHAUSTED; do not request Writer redevelopment of the same pool"
+    "runtime_shortfall_with_exhausted_source_pool": "escalate as SOURCE_POOL_EXHAUSTED; do not request Writer redevelopment of the same pool",
+    "first_practical_value_after_3_00_without_recorded_triage_reason": "fail",
+    "thumbnail_answer_withheld_from_opening": "fail"
   },
   "canonical_runtime_lock": {
     "rule": "Every stage derives narration-word targets from the single canonical runtime profile in config.json. No stage may introduce an independent WPM or minute window.",
-    "runtime_pass_condition": "After all required semantic/retention cuts are applied, if projected narration words fall inside the canonical range, runtime PASSES and no Writer redevelopment may be requested for runtime reasons.",
+    "runtime_pass_condition": "Runtime is ADVISORY ONLY — NON-BLOCKING. Report projected narration words against the canonical config.json range as informational metadata only; runtime does not produce PASS/FAIL and must not request Writer redevelopment for runtime reasons.",
     "prohibited": [
       "Requesting new factual material solely to approach a target or midpoint.",
       "Restoring repetition, recaps, disclaimers, analogies, or hypotheticals to regain words.",
