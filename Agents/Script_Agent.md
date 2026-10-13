@@ -187,6 +187,7 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 
 - Estimated AVD Potential
 - Hook Strength /10
+- Time to First Practical Value
 - Curiosity Loops
 - Pattern Interrupts
 - Mini Stories
@@ -331,5 +332,4 @@ or credentials.
 - Do not hardcode presenter names; use `config.json`, `{{HOST_NAME}}`, and `{{HOST_TITLE}}`.
 - Do not use runtime range, runtime shortfall, or runtime overage as a PASS/FAIL criterion; runtime is ADVISORY ONLY — NON-BLOCKING.
 - Do not load whole folders or unrelated agent files.
-- Time to First Practical Value
 
