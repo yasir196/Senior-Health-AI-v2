@@ -62,7 +62,7 @@ Consolidate repeated safety/context boundaries while preserving every medically 
 The outline's section order, Hook boundary, and first-practical-value placement are binding. This lock governs POSITION only, never total length, and is the sole exception to the ban on numerical drafting constraints in the Execution / No-Negotiation Lock.
 
 - The Hook contains only the outline's hook beats and must end by 00:45 at the configured `narration_words_per_minute`. Do not add extra self-identification, worry, or promise paragraphs to the Hook.
-- Do not create a separate Introduction section. If the outline places a host introduction, deliver it in at most two sentences at the start of the first section after the Hook.
+- Do not create a separate Introduction section and do not add a host introduction unless the outline explicitly includes one. If the outline explicitly includes host identification within the Hook, keep it within the Hook without creating an additional paragraph or delaying the Hook payoff.
 - Between the Hook and the first title-promised movement, include only the outline's required triage and safety content. No video preview, no scope essay, no "what I am not saying" list.
 - The first title-promised demonstrated action must begin by 03:00 at the configured `narration_words_per_minute`.
 - Never convert outline writer-instructions or "Do not say" lists into narration.
