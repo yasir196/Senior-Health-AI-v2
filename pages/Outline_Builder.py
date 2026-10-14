@@ -13,10 +13,17 @@ ROOT = Path(__file__).resolve().parents[1]
 DYNAMIC_DIR = ROOT / "Templates" / "Dynamic"
 STRATEGY_PATH = DYNAMIC_DIR / "outline_strategy.json"
 BACKUP_DIR = DYNAMIC_DIR / "backups"
+REPEAT_MODES = {
+    "seconds": "Every X seconds",
+    "minutes": "Every X minutes",
+    "blocks": "Every X blocks",
+    "specific_positions": "Specific positions",
+    "ai_natural": "AI decides naturally",
+}
 
 
 def _default_payload() -> dict:
-    return {"version": 2, "blocks": []}
+    return {"version": 3, "blocks": []}
 
 
 def _load_payload() -> dict:
@@ -47,6 +54,23 @@ def _save_payload(payload: dict) -> None:
     )
 
 
+def _normalize_repeat(raw: object) -> dict:
+    repeat = raw if isinstance(raw, dict) else {}
+    mode = str(repeat.get("mode") or "seconds")
+    if mode not in REPEAT_MODES:
+        mode = "seconds"
+    try:
+        value = max(1, int(repeat.get("value", 60)))
+    except (TypeError, ValueError):
+        value = 60
+    return {
+        "enabled": bool(repeat.get("enabled", False)),
+        "mode": mode,
+        "value": value,
+        "positions": str(repeat.get("positions") or ""),
+    }
+
+
 def _normalize_children(children: list) -> list[dict]:
     normalized = []
     for index, raw in enumerate(children or [], 1):
@@ -57,6 +81,7 @@ def _normalize_children(children: list) -> list[dict]:
             "name": str(raw.get("name") or f"Child Block {index}"),
             "enabled": bool(raw.get("enabled", True)),
             "instruction": str(raw.get("instruction") or ""),
+            "repeat": _normalize_repeat(raw.get("repeat")),
         })
     return normalized
 
@@ -71,6 +96,7 @@ def _normalize_blocks(blocks: list) -> list[dict]:
             "name": str(raw.get("name") or f"Block {index}"),
             "enabled": bool(raw.get("enabled", True)),
             "instruction": str(raw.get("instruction") or ""),
+            "repeat": _normalize_repeat(raw.get("repeat")),
             "children": _normalize_children(raw.get("children", [])),
         })
     return normalized
@@ -91,6 +117,55 @@ def _sortable(items: list[dict], key: str) -> list[dict]:
     return [by_id[label_to_id[label]] for label in sorted_labels]
 
 
+def _repeat_editor(item: dict, key_prefix: str) -> None:
+    repeat = item["repeat"]
+    repeat["enabled"] = st.toggle(
+        "Repeat / interval",
+        value=repeat["enabled"],
+        key=f"{key_prefix}_repeat_enabled",
+    )
+    if not repeat["enabled"]:
+        return
+
+    modes = list(REPEAT_MODES)
+    repeat["mode"] = st.selectbox(
+        "Repeat mode",
+        modes,
+        index=modes.index(repeat["mode"]),
+        format_func=lambda value: REPEAT_MODES[value],
+        key=f"{key_prefix}_repeat_mode",
+    )
+    if repeat["mode"] in {"seconds", "minutes", "blocks"}:
+        repeat["value"] = int(st.number_input(
+            "Interval value",
+            min_value=1,
+            value=int(repeat["value"]),
+            step=1,
+            key=f"{key_prefix}_repeat_value",
+        ))
+    elif repeat["mode"] == "specific_positions":
+        repeat["positions"] = st.text_input(
+            "Specific positions",
+            value=repeat["positions"],
+            placeholder="Example: after block 2, after block 5",
+            key=f"{key_prefix}_repeat_positions",
+        )
+    else:
+        st.caption("Placement is left to the future Outline Agent using this block's instruction and context.")
+
+
+def _serialize_repeat(repeat: dict) -> dict:
+    result = {
+        "enabled": bool(repeat["enabled"]),
+        "mode": repeat["mode"],
+    }
+    if repeat["mode"] in {"seconds", "minutes", "blocks"}:
+        result["value"] = max(1, int(repeat["value"]))
+    elif repeat["mode"] == "specific_positions":
+        result["positions"] = repeat["positions"].strip()
+    return result
+
+
 def _serialized_blocks(blocks: list[dict]) -> list[dict]:
     result = []
     for parent_order, block in enumerate(blocks, 1):
@@ -102,6 +177,7 @@ def _serialized_blocks(blocks: list[dict]) -> list[dict]:
                 "name": child["name"].strip() or f"Child Block {child_order}",
                 "enabled": bool(child["enabled"]),
                 "instruction": child["instruction"].strip(),
+                "repeat": _serialize_repeat(child["repeat"]),
             })
         result.append({
             "id": block["id"],
@@ -109,6 +185,7 @@ def _serialized_blocks(blocks: list[dict]) -> list[dict]:
             "name": block["name"].strip() or f"Block {parent_order}",
             "enabled": bool(block["enabled"]),
             "instruction": block["instruction"].strip(),
+            "repeat": _serialize_repeat(block["repeat"]),
             "children": children,
         })
     return result
@@ -117,7 +194,7 @@ def _serialized_blocks(blocks: list[dict]) -> list[dict]:
 st.set_page_config(page_title="Outline Builder", page_icon="🧩", layout="wide")
 st.title("Outline Builder")
 st.caption(
-    "Build a fully dynamic nested outline. Parent blocks and child blocks can be added, edited, enabled, disabled, deleted, and reordered. "
+    "Build a fully dynamic nested outline. Parent and child blocks can be added, edited, enabled, disabled, deleted, reordered, and optionally repeated by interval. "
     "This page only saves Templates/Dynamic/outline_strategy.json and timestamped backups of its previous versions."
 )
 
@@ -137,22 +214,10 @@ else:
 st.markdown("### Parent blocks")
 for parent_index, block in enumerate(list(blocks), 1):
     with st.expander(f"{parent_index}. {block['name']} {'✓' if block['enabled'] else '— disabled'}", expanded=False):
-        block["name"] = st.text_input(
-            "Parent block name",
-            value=block["name"],
-            key=f"outline_parent_name_{block['id']}",
-        )
-        block["instruction"] = st.text_area(
-            "Parent instruction",
-            value=block["instruction"],
-            height=110,
-            key=f"outline_parent_instruction_{block['id']}",
-        )
-        block["enabled"] = st.toggle(
-            "Parent enabled",
-            value=block["enabled"],
-            key=f"outline_parent_enabled_{block['id']}",
-        )
+        block["name"] = st.text_input("Parent block name", value=block["name"], key=f"outline_parent_name_{block['id']}")
+        block["instruction"] = st.text_area("Parent instruction", value=block["instruction"], height=110, key=f"outline_parent_instruction_{block['id']}")
+        block["enabled"] = st.toggle("Parent enabled", value=block["enabled"], key=f"outline_parent_enabled_{block['id']}")
+        _repeat_editor(block, f"outline_parent_{block['id']}")
 
         st.markdown("#### Child block order")
         children = block.get("children", [])
@@ -166,22 +231,10 @@ for parent_index, block in enumerate(list(blocks), 1):
         for child_index, child in enumerate(list(children), 1):
             with st.container(border=True):
                 st.markdown(f"**{child_index}. {child['name']}**")
-                child["name"] = st.text_input(
-                    "Child block name",
-                    value=child["name"],
-                    key=f"outline_child_name_{child['id']}",
-                )
-                child["instruction"] = st.text_area(
-                    "Child instruction",
-                    value=child["instruction"],
-                    height=90,
-                    key=f"outline_child_instruction_{child['id']}",
-                )
-                child["enabled"] = st.toggle(
-                    "Child enabled",
-                    value=child["enabled"],
-                    key=f"outline_child_enabled_{child['id']}",
-                )
+                child["name"] = st.text_input("Child block name", value=child["name"], key=f"outline_child_name_{child['id']}")
+                child["instruction"] = st.text_area("Child instruction", value=child["instruction"], height=90, key=f"outline_child_instruction_{child['id']}")
+                child["enabled"] = st.toggle("Child enabled", value=child["enabled"], key=f"outline_child_enabled_{child['id']}")
+                _repeat_editor(child, f"outline_child_{child['id']}")
                 if st.button("Delete child block", key=f"outline_child_delete_{child['id']}"):
                     block["children"] = [item for item in children if item["id"] != child["id"]]
                     st.rerun()
@@ -201,6 +254,7 @@ for parent_index, block in enumerate(list(blocks), 1):
                         "name": child_name.strip(),
                         "enabled": bool(child_enabled),
                         "instruction": child_instruction.strip(),
+                        "repeat": _normalize_repeat({}),
                     })
                     st.rerun()
 
@@ -224,6 +278,7 @@ with st.form("outline_add_parent_block", clear_on_submit=True):
                 "name": new_name.strip(),
                 "enabled": bool(new_enabled),
                 "instruction": new_instruction.strip(),
+                "repeat": _normalize_repeat({}),
                 "children": [],
             })
             st.session_state.outline_builder_blocks = blocks
@@ -234,7 +289,7 @@ left, right = st.columns([1, 3])
 if left.button("Save JSON", type="primary", use_container_width=True):
     final_blocks = _serialized_blocks(st.session_state.outline_builder_blocks)
     saved = {
-        "version": 2,
+        "version": 3,
         "saved_at": datetime.now().isoformat(timespec="seconds"),
         "blocks": final_blocks,
     }
@@ -249,7 +304,4 @@ if left.button("Save JSON", type="primary", use_container_width=True):
 right.code(str(STRATEGY_PATH.relative_to(ROOT)), language=None)
 
 with st.expander("Current JSON preview"):
-    st.json({
-        "version": 2,
-        "blocks": _serialized_blocks(st.session_state.outline_builder_blocks),
-    })
+    st.json({"version": 3, "blocks": _serialized_blocks(st.session_state.outline_builder_blocks)})
