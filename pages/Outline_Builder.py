@@ -16,7 +16,7 @@ BACKUP_DIR = DYNAMIC_DIR / "backups"
 
 
 def _default_payload() -> dict:
-    return {"version": 1, "blocks": []}
+    return {"version": 2, "blocks": []}
 
 
 def _load_payload() -> dict:
@@ -47,6 +47,20 @@ def _save_payload(payload: dict) -> None:
     )
 
 
+def _normalize_children(children: list) -> list[dict]:
+    normalized = []
+    for index, raw in enumerate(children or [], 1):
+        if not isinstance(raw, dict):
+            continue
+        normalized.append({
+            "id": str(raw.get("id") or uuid.uuid4().hex),
+            "name": str(raw.get("name") or f"Child Block {index}"),
+            "enabled": bool(raw.get("enabled", True)),
+            "instruction": str(raw.get("instruction") or ""),
+        })
+    return normalized
+
+
 def _normalize_blocks(blocks: list) -> list[dict]:
     normalized = []
     for index, raw in enumerate(blocks, 1):
@@ -57,13 +71,55 @@ def _normalize_blocks(blocks: list) -> list[dict]:
             "name": str(raw.get("name") or f"Block {index}"),
             "enabled": bool(raw.get("enabled", True)),
             "instruction": str(raw.get("instruction") or ""),
+            "children": _normalize_children(raw.get("children", [])),
         })
     return normalized
 
 
+def _sortable(items: list[dict], key: str) -> list[dict]:
+    if not items:
+        return items
+    label_to_id = {}
+    labels = []
+    for index, item in enumerate(items, 1):
+        state = "ON" if item["enabled"] else "OFF"
+        label = f"{index:02d} · {item['name']} · {state} · {item['id'][:8]}"
+        labels.append(label)
+        label_to_id[label] = item["id"]
+    sorted_labels = sort_items(labels, direction="vertical", key=key)
+    by_id = {item["id"]: item for item in items}
+    return [by_id[label_to_id[label]] for label in sorted_labels]
+
+
+def _serialized_blocks(blocks: list[dict]) -> list[dict]:
+    result = []
+    for parent_order, block in enumerate(blocks, 1):
+        children = []
+        for child_order, child in enumerate(block.get("children", []), 1):
+            children.append({
+                "id": child["id"],
+                "order": child_order,
+                "name": child["name"].strip() or f"Child Block {child_order}",
+                "enabled": bool(child["enabled"]),
+                "instruction": child["instruction"].strip(),
+            })
+        result.append({
+            "id": block["id"],
+            "order": parent_order,
+            "name": block["name"].strip() or f"Block {parent_order}",
+            "enabled": bool(block["enabled"]),
+            "instruction": block["instruction"].strip(),
+            "children": children,
+        })
+    return result
+
+
 st.set_page_config(page_title="Outline Builder", page_icon="🧩", layout="wide")
 st.title("Outline Builder")
-st.caption("Drag blocks into any order. Add, edit, enable, disable, or delete blocks. This page only saves Templates/Dynamic/outline_strategy.json and timestamped backups of its previous versions.")
+st.caption(
+    "Build a fully dynamic nested outline. Parent blocks and child blocks can be added, edited, enabled, disabled, deleted, and reordered. "
+    "This page only saves Templates/Dynamic/outline_strategy.json and timestamped backups of its previous versions."
+)
 
 payload = _load_payload()
 if "outline_builder_blocks" not in st.session_state:
@@ -71,64 +127,104 @@ if "outline_builder_blocks" not in st.session_state:
 
 blocks = st.session_state.outline_builder_blocks
 
-st.markdown("### Block order")
+st.markdown("### Parent block order")
 if blocks:
-    label_to_id = {}
-    sortable_labels = []
-    for index, block in enumerate(blocks, 1):
-        state = "ON" if block["enabled"] else "OFF"
-        label = f"{index:02d} · {block['name']} · {state} · {block['id'][:8]}"
-        sortable_labels.append(label)
-        label_to_id[label] = block["id"]
-    sorted_labels = sort_items(sortable_labels, direction="vertical", key="outline_block_sort")
-    sorted_ids = [label_to_id[label] for label in sorted_labels]
-    by_id = {block["id"]: block for block in blocks}
-    blocks = [by_id[block_id] for block_id in sorted_ids]
+    blocks = _sortable(blocks, "outline_parent_sort")
     st.session_state.outline_builder_blocks = blocks
 else:
-    st.info("No blocks yet. Add your first block below.")
+    st.info("No parent blocks yet. Add your first parent block below.")
 
-st.markdown("### Edit blocks")
-for index, block in enumerate(list(blocks), 1):
-    with st.expander(f"{index}. {block['name']} {'✓' if block['enabled'] else '— disabled'}"):
+st.markdown("### Parent blocks")
+for parent_index, block in enumerate(list(blocks), 1):
+    with st.expander(f"{parent_index}. {block['name']} {'✓' if block['enabled'] else '— disabled'}", expanded=False):
         block["name"] = st.text_input(
-            "Block name",
+            "Parent block name",
             value=block["name"],
-            key=f"outline_name_{block['id']}",
+            key=f"outline_parent_name_{block['id']}",
         )
         block["instruction"] = st.text_area(
-            "Instruction",
+            "Parent instruction",
             value=block["instruction"],
-            height=130,
-            key=f"outline_instruction_{block['id']}",
-            help="Free-form instruction. The future Outline Agent integration can interpret this text dynamically.",
+            height=110,
+            key=f"outline_parent_instruction_{block['id']}",
         )
         block["enabled"] = st.toggle(
-            "Enabled",
+            "Parent enabled",
             value=block["enabled"],
-            key=f"outline_enabled_{block['id']}",
+            key=f"outline_parent_enabled_{block['id']}",
         )
-        if st.button("Delete block", key=f"outline_delete_{block['id']}"):
-            st.session_state.outline_builder_blocks = [
-                item for item in blocks if item["id"] != block["id"]
-            ]
+
+        st.markdown("#### Child block order")
+        children = block.get("children", [])
+        if children:
+            children = _sortable(children, f"outline_child_sort_{block['id']}")
+            block["children"] = children
+        else:
+            st.caption("No child blocks in this parent yet.")
+
+        st.markdown("#### Edit child blocks")
+        for child_index, child in enumerate(list(children), 1):
+            with st.container(border=True):
+                st.markdown(f"**{child_index}. {child['name']}**")
+                child["name"] = st.text_input(
+                    "Child block name",
+                    value=child["name"],
+                    key=f"outline_child_name_{child['id']}",
+                )
+                child["instruction"] = st.text_area(
+                    "Child instruction",
+                    value=child["instruction"],
+                    height=90,
+                    key=f"outline_child_instruction_{child['id']}",
+                )
+                child["enabled"] = st.toggle(
+                    "Child enabled",
+                    value=child["enabled"],
+                    key=f"outline_child_enabled_{child['id']}",
+                )
+                if st.button("Delete child block", key=f"outline_child_delete_{child['id']}"):
+                    block["children"] = [item for item in children if item["id"] != child["id"]]
+                    st.rerun()
+
+        st.markdown("#### Add child block")
+        with st.form(f"outline_add_child_{block['id']}", clear_on_submit=True):
+            child_name = st.text_input("New child block name")
+            child_instruction = st.text_area("New child block instruction", height=90)
+            child_enabled = st.checkbox("Enabled", value=True)
+            add_child = st.form_submit_button("Add Child Block")
+            if add_child:
+                if not child_name.strip():
+                    st.error("Child block name is required.")
+                else:
+                    block.setdefault("children", []).append({
+                        "id": uuid.uuid4().hex,
+                        "name": child_name.strip(),
+                        "enabled": bool(child_enabled),
+                        "instruction": child_instruction.strip(),
+                    })
+                    st.rerun()
+
+        st.markdown("---")
+        if st.button("Delete parent block", key=f"outline_parent_delete_{block['id']}"):
+            st.session_state.outline_builder_blocks = [item for item in blocks if item["id"] != block["id"]]
             st.rerun()
 
-st.markdown("### Add block")
-with st.form("outline_add_block", clear_on_submit=True):
-    new_name = st.text_input("New block name")
-    new_instruction = st.text_area("New block instruction", height=120)
+st.markdown("### Add parent block")
+with st.form("outline_add_parent_block", clear_on_submit=True):
+    new_name = st.text_input("New parent block name")
+    new_instruction = st.text_area("New parent block instruction", height=100)
     new_enabled = st.checkbox("Enabled", value=True)
-    add_clicked = st.form_submit_button("Add Block")
+    add_clicked = st.form_submit_button("Add Parent Block")
     if add_clicked:
         if not new_name.strip():
-            st.error("Block name is required.")
+            st.error("Parent block name is required.")
         else:
             blocks.append({
                 "id": uuid.uuid4().hex,
                 "name": new_name.strip(),
                 "enabled": bool(new_enabled),
                 "instruction": new_instruction.strip(),
+                "children": [],
             })
             st.session_state.outline_builder_blocks = blocks
             st.rerun()
@@ -136,17 +232,9 @@ with st.form("outline_add_block", clear_on_submit=True):
 st.markdown("---")
 left, right = st.columns([1, 3])
 if left.button("Save JSON", type="primary", use_container_width=True):
-    final_blocks = []
-    for order, block in enumerate(st.session_state.outline_builder_blocks, 1):
-        final_blocks.append({
-            "id": block["id"],
-            "order": order,
-            "name": block["name"].strip() or f"Block {order}",
-            "enabled": bool(block["enabled"]),
-            "instruction": block["instruction"].strip(),
-        })
+    final_blocks = _serialized_blocks(st.session_state.outline_builder_blocks)
     saved = {
-        "version": 1,
+        "version": 2,
         "saved_at": datetime.now().isoformat(timespec="seconds"),
         "blocks": final_blocks,
     }
@@ -156,22 +244,12 @@ if left.button("Save JSON", type="primary", use_container_width=True):
         st.error(f"Could not save outline strategy: {exc}")
     else:
         st.session_state.outline_builder_blocks = _normalize_blocks(final_blocks)
-        st.success("Saved Templates/Dynamic/outline_strategy.json. Previous JSON was backed up with date and time.")
+        st.success("Saved nested outline_strategy.json. Previous JSON was backed up with date and time.")
 
 right.code(str(STRATEGY_PATH.relative_to(ROOT)), language=None)
 
 with st.expander("Current JSON preview"):
-    preview = {
-        "version": 1,
-        "blocks": [
-            {
-                "id": block["id"],
-                "order": index,
-                "name": block["name"],
-                "enabled": block["enabled"],
-                "instruction": block["instruction"],
-            }
-            for index, block in enumerate(st.session_state.outline_builder_blocks, 1)
-        ],
-    }
-    st.json(preview)
+    st.json({
+        "version": 2,
+        "blocks": _serialized_blocks(st.session_state.outline_builder_blocks),
+    })
