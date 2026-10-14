@@ -952,19 +952,22 @@ def render_new_project() -> None:
 
 
 def build_deep_research_package(project: Path) -> str:
-    """Build the manual Opus/Genspark deep-research handoff from Stage 1."""
+    """Build an independent manual Opus/Genspark deep-research handoff."""
     title = resolve_title_anchor(project) or ""
-    validation = safe_read_text(project / "01_topic_validation.md").strip()
     return f"""# Deep Research Handover Package
 
 ## Immutable Anchor / Outlier Title
 {title}
 
-## Stage 1 Approved Production Angle and Boundaries
-{validation}
+## Independent Research Boundary
+Treat the immutable title as the packaging question/hypothesis to investigate, not as an evidence verdict and not as proof that any implied answer, ranking, mechanism, benefit, or payoff is correct.
+
+Research independently from the evidence. Do not assume or inherit a recommended answer, production angle, working payoff, preferred candidate, selected evidence family, proposition verdict, or saturation conclusion from an earlier pipeline stage.
+
+The title wording remains immutable for packaging purposes, but the research conclusion is not predetermined. If the strongest available evidence narrows, complicates, contradicts, or fails to establish an implication of the title, report that clearly rather than searching toward a preferred answer.
 
 ## Assignment
-Conduct deep research for the immutable title above for a senior-health audience, primarily adults 60+. The goal is broad, evidence-disciplined discovery that can support a complete long-form educational video without padding. Do not rewrite, repair, replace, rank, or re-adjudicate the title. Stay inside the approved Stage 1 angle and boundaries.
+Conduct deep research for the immutable title above for a senior-health audience, primarily adults 60+. The goal is broad, evidence-disciplined discovery that can support a complete long-form educational video without padding. Do not rewrite, repair, replace, rank, or re-adjudicate the title. Independently determine what the evidence supports, does not support, and leaves uncertain.
 
 Be conservative about CLAIM STRENGTH, not about SEARCH BREADTH.
 
@@ -1011,7 +1014,7 @@ For NOT RECOMMENDED, explain the evidence limitation briefly. This is an advisor
 
 ## Final Report
 Return one complete research report suitable for direct paste into the Senior Health AI "Imported Deep Research" box. Include:
-- immutable title and Stage 1 boundary acknowledgment;
+- immutable title and independent-research boundary acknowledgment;
 - search/discovery summary and semantic-saturation note;
 - viewer-value module inventory;
 - proposition/evidence table with population, formulation/exposure, finding direction, limitations, and source;
