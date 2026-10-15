@@ -69,31 +69,23 @@ def _load_config() -> dict:
 
 
 def _dynamic_outline_prompt(project: Path) -> str:
-    """Build a short runtime prompt; Codex reads the potentially large strategy JSON from disk."""
+    """Build one Windows-safe command-line argument; large strategy content stays on disk."""
     strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
     project_relative = project.relative_to(ROOT).as_posix()
-    return f"""You are the Dynamic Outline Generator for the separate DW Flow.
-
-Read the authoritative Dynamic strategy directly from:
-{strategy_relative}
-
-Read factual grounding from relevant available files inside:
-{project_relative}
-
-Write ONLY this generated artifact inside that project directory:
-{DYNAMIC_OUTLINE_FILENAME}
-
-Interpret the JSON dynamically at runtime:
-- block names have no built-in meaning and may be arbitrary user-created names;
-- follow enabled parent blocks in saved order and enabled children in saved order;
-- follow each block's natural-language instruction;
-- ignore disabled blocks;
-- interpret enabled repeat metadata (mode, value, positions) as saved, including ai_natural;
-- do not impose Hook, Main Body, Conclusion, CTA, Evidence, Story, or any hidden standard structure unless the current JSON requests it;
-- JSON controls creative organization, while project evidence controls factual content; never invent evidence to satisfy a block.
-
-Do not modify the strategy JSON or any old-pipeline file. Do not create or overwrite 05_script_outline.md, opus_writer_package.md, or 06_final_script.md. Do not include process commentary in the generated outline.
-"""
+    # Keep this as ONE physical line. The configured Windows Codex command inserts
+    # {prompt} directly into cmd.exe; embedded newlines cause only the first line
+    # to reach `codex exec` as the user prompt.
+    return (
+        "Act as the Dynamic Outline Generator for DW Flow. "
+        f"Read the authoritative strategy JSON directly from {strategy_relative}. "
+        f"Read relevant factual grounding files inside {project_relative}. "
+        f"Create {project_relative}/{DYNAMIC_OUTLINE_FILENAME} and no other generated artifact. "
+        "Interpret all JSON block names semantically at runtime with no built-in section meanings; follow enabled parent blocks and enabled children in saved order, follow their natural-language instructions, ignore disabled blocks, and apply enabled repeat mode/value/positions including ai_natural. "
+        "Do not impose Hook, Main Body, Conclusion, CTA, Evidence, Story, or any hidden standard structure unless the current JSON requests it. "
+        "JSON is authoritative for creative organization and project evidence is authoritative for factual content; never invent evidence to satisfy a block. "
+        "Do not modify the strategy JSON or any old-pipeline file, and do not create or overwrite 05_script_outline.md, opus_writer_package.md, or 06_final_script.md. "
+        f"Write only the finished writer-facing Markdown outline to {project_relative}/{DYNAMIC_OUTLINE_FILENAME} with no process commentary."
+    )
 
 
 def _repeat_summary(repeat: dict) -> str:
