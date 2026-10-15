@@ -130,7 +130,12 @@ def _strategy_validation_status(validation_path: Path, outline_path: Path) -> tu
         text = validation_path.read_text(encoding="utf-8")
     except OSError as exc:
         return "ERROR", f"Could not read strategy validation: {exc}"
-    match = re.search(r"(?im)^\s*(?:\*\*)?(?:overall\s+)?verdict(?:\*\*)?\s*:\s*(?:\*\*)?\s*(PASS WITH WARNINGS|PASS|FAIL)\b", text)
+    verdict_pattern = re.compile(
+        r"(?im)^\s*(?:#{1,6}\s*)?(?:[-*>]\s*)?(?:\*\*|__)?\s*"
+        r"(?:overall\s+)?verdict\s*(?:\*\*|__)?\s*:\s*"
+        r"(?:\*\*|__)?\s*(PASS WITH WARNINGS|PASS|FAIL)\b",
+    )
+    match = verdict_pattern.search(text)
     if not match:
         return "UNKNOWN", "Could not determine the strategy-validation verdict. Re-run validation."
     verdict = match.group(1).upper()
