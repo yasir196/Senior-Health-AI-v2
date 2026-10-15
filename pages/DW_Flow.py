@@ -14,11 +14,14 @@ CONFIG_PATH = ROOT / "config.json"
 RUN_LOG_DIR = ROOT / "RunLogs"
 DYNAMIC_OUTLINE_FILENAME = "Dynamic_05_script_outline.md"
 DYNAMIC_WRITER_PROMPT_FILENAME = "Dynamic_05_writer_prompt.md"
+DYNAMIC_FINAL_SCRIPT_FILENAME = "Dynamic_06_final_script.md"
+DYNAMIC_NARRATIVE_QA_FILENAME = "Dynamic_14_narrative_qa.md"
 
 DYNAMIC_OUTPUTS = (
     ("Dynamic Outline", DYNAMIC_OUTLINE_FILENAME),
     ("Dynamic Writer Prompt", DYNAMIC_WRITER_PROMPT_FILENAME),
-    ("Dynamic Final Script", "Dynamic_06_final_script.md"),
+    ("Dynamic Final Script", DYNAMIC_FINAL_SCRIPT_FILENAME),
+    ("Dynamic Narrative QA", DYNAMIC_NARRATIVE_QA_FILENAME),
 )
 
 
@@ -106,6 +109,28 @@ def _dynamic_writer_prompt(project: Path) -> str:
     )
 
 
+def _dynamic_narrative_qa_prompt(project: Path) -> str:
+    """Audit only the Dynamic script against Dynamic authorities, never the old blueprint."""
+    project_relative = project.relative_to(ROOT).as_posix()
+    strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
+    return (
+        "Act as the Dynamic Narrative QA Agent for the separate DW Flow. "
+        f"Audit {project_relative}/{DYNAMIC_FINAL_SCRIPT_FILENAME} against the authoritative Dynamic outline {project_relative}/{DYNAMIC_OUTLINE_FILENAME} and the Dynamic writer instructions {project_relative}/{DYNAMIC_WRITER_PROMPT_FILENAME}. "
+        f"Use {strategy_relative} only as supporting evidence of the user's intended dynamic block order, enabled state, and repeat placement. "
+        f"Write the finished QA report only to {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME}. "
+        "This QA must judge the script that exists: narrative progression, hook effectiveness and payoff timing, retention, repetition, transition quality, emotional balance, viewer trust, natural spoken flow, engagement placement, conclusion strength, and whether the Dynamic outline's semantic plan was actually delivered. "
+        "For repetition, distinguish necessary safety reminders from redundant reteaching and identify only repetition with no meaningful new decision, evidence, mechanism, consequence, or action. "
+        "Check persona drift and flag any doctor, clinician, patient-care, diagnosis, prescribing, or personal-clinical-experience voice when the intended presenter is a health educator. "
+        "Estimate narration word count and runtime using the configured WPM from config.json; report runtime as advisory against the configured preferred range, not as a narrative failure by itself. If a hook can be shortened, do not recommend simply deleting useful value when that would unnecessarily reduce the intended total runtime; recommend redistribution into the appropriate later Dynamic section when useful. "
+        "Factual or medical concerns may be marked for later medical review, but Narrative QA must not invent medical corrections or fail the narrative solely because a source needs verification. "
+        "CRITICAL AUTHORITY RULE: never read, compare against, cite, enforce, or use 05_script_outline.md, the old Narrative QA output, old Opus Writer Prompt, old workflow gates, or any old blueprint as an authority. Never reorder Dynamic sections because an old outline differs. Never require an old checklist, CTA position, heading scheme, channel wording, or structure unless the Dynamic outline itself requires it. "
+        "Do not impose Hook/Main Content/Conclusion headings or any standard section template unless present in the Dynamic authority files. "
+        "Produce a useful Markdown QA report with an overall verdict, scorecard, concise executive summary, semantic progression/repetition findings, Dynamic-outline fidelity audit, persona/tone audit, runtime advisory, issue list ranked by severity, and precise revision patches only for genuine Dynamic narrative defects. Each revision reason must state the narrative defect itself rather than old-pipeline compliance. "
+        "PASS is allowed when there are no material narrative defects; PASS WITH REVISIONS is appropriate when useful corrections are needed. Do not modify the script, outline, writer prompt, strategy JSON, or any old-pipeline file. "
+        f"Create only {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME} and no other generated artifact, with no process commentary outside the report."
+    )
+
+
 def _repeat_summary(repeat: dict) -> str:
     mode = str(repeat.get("mode") or "seconds")
     if mode == "specific_positions":
@@ -120,7 +145,7 @@ def _repeat_summary(repeat: dict) -> str:
 st.set_page_config(page_title="DW Flow", page_icon="🧩", layout="wide")
 st.title("DW Flow")
 st.caption(
-    "Separate Dynamic workflow. The existing Workflow, Outline, Opus Writer Prompt, and old outputs are not used or modified by this page."
+    "Separate Dynamic workflow. The existing Workflow, Outline, Opus Writer Prompt, Narrative QA, and old outputs are not used or modified by this page."
 )
 
 strategy, strategy_message = _load_strategy()
@@ -260,7 +285,47 @@ if strategy is not None:
             except OSError as exc:
                 st.error(f"Could not read Dynamic Writer Prompt: {exc}")
 
+    final_script_path = project / DYNAMIC_FINAL_SCRIPT_FILENAME
+    if final_script_path.is_file() and final_script_path.stat().st_size > 0:
+        with st.expander("Current Dynamic Final Script", expanded=False):
+            try:
+                st.markdown(final_script_path.read_text(encoding="utf-8"))
+            except OSError as exc:
+                st.error(f"Could not read Dynamic Final Script: {exc}")
+
+        st.markdown("### Run Dynamic Narrative QA")
+        st.caption(
+            "Audits the Dynamic Final Script only against Dynamic authorities. The old Narrative QA and old 05_script_outline.md are not used."
+        )
+        if st.button(
+            "Run Dynamic Narrative QA",
+            type="primary",
+            disabled=not bool(codex_template),
+            key="dw_run_dynamic_narrative_qa",
+        ):
+            prompt = _dynamic_narrative_qa_prompt(project)
+            with st.spinner("Running isolated Dynamic Narrative QA..."):
+                result = run_codex(codex_template, prompt, project, ROOT, RUN_LOG_DIR)
+            qa_path = project / DYNAMIC_NARRATIVE_QA_FILENAME
+            if result.returncode == 0 and qa_path.is_file() and qa_path.stat().st_size > 0:
+                st.success(f"Generated {DYNAMIC_NARRATIVE_QA_FILENAME} from Dynamic authorities only.")
+                st.rerun()
+            elif result.returncode == 0:
+                st.error(f"QA finished but {DYNAMIC_NARRATIVE_QA_FILENAME} was not created.")
+                st.code(result.output or "No QA output returned.", language=None)
+            else:
+                st.error(f"Dynamic Narrative QA failed with exit code {result.returncode}.")
+                st.code(result.output or "No QA output returned.", language=None)
+
+    qa_path = project / DYNAMIC_NARRATIVE_QA_FILENAME
+    if qa_path.is_file() and qa_path.stat().st_size > 0:
+        with st.expander("Current Dynamic Narrative QA", expanded=False):
+            try:
+                st.markdown(qa_path.read_text(encoding="utf-8"))
+            except OSError as exc:
+                st.error(f"Could not read Dynamic Narrative QA: {exc}")
+
 st.info(
-    "Dynamic Outline and Dynamic Writer Prompt generation are isolated to DW Flow and Dynamic_ outputs. "
-    "Final Script, old Workflow, old Outline, and old Opus Writer logic are not connected or modified here."
+    "Dynamic Outline, Dynamic Writer Prompt, and Dynamic Narrative QA are isolated to DW Flow and Dynamic_ outputs. "
+    "Old Workflow, old Outline, old Opus Writer, and old Narrative QA logic are not connected or modified here."
 )
