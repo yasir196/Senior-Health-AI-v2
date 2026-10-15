@@ -130,13 +130,28 @@ def _report_verdict(path: Path) -> str:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return "ERROR"
-    pattern = re.compile(
+    inline_pattern = re.compile(
         r"(?im)^\s*(?:#{1,6}\s*)?(?:[-*>]\s*)?(?:\*\*|__)?\s*"
         r"(?:overall\s+)?verdict\s*(?:\*\*|__)?\s*:\s*"
         r"(?:\*\*|__)?\s*(PASS WITH REVISIONS|PASS WITH WARNINGS|PASS|FAIL)\b",
     )
-    match = pattern.search(text)
-    return match.group(1).upper() if match else "UNKNOWN"
+    match = inline_pattern.search(text)
+    if match:
+        return match.group(1).upper()
+    heading_pattern = re.compile(
+        r"(?im)^\s*#{1,6}\s+(?:overall\s+)?verdict\s*$",
+    )
+    heading = heading_pattern.search(text)
+    if heading:
+        following = text[heading.end():]
+        next_verdict = re.search(
+            r"(?im)^\s*(?:[-*>]\s*)?(?:\*\*|__)?\s*"
+            r"(PASS WITH REVISIONS|PASS WITH WARNINGS|PASS|FAIL)\b",
+            following,
+        )
+        if next_verdict:
+            return next_verdict.group(1).upper()
+    return "UNKNOWN"
 
 
 def _strategy_validation_status(validation_path: Path, outline_path: Path) -> tuple[str, str]:
@@ -217,15 +232,15 @@ def _dynamic_speech_optimizer_prompt(project: Path) -> str:
     project_relative = project.relative_to(ROOT).as_posix()
     return (
         "Act as the isolated Dynamic Speech Optimizer for DW Flow. "
-        f"Read only the approved narration from {project_relative}/{DYNAMIC_FINAL_SCRIPT_FILENAME} as the canonical spoken-text source. "
-        f"Read {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME} and {project_relative}/{DYNAMIC_MEDICAL_GATE_2_FILENAME} only to confirm both reports have final verdict PASS; do not reinterpret or repair their findings. "
-        f"Create exactly {project_relative}/{VOICE_SCRIPT_FILENAME} and {project_relative}/{VOICE_CHECKLIST_FILENAME}. These filenames intentionally have no Dynamic_ prefix because they are the handoff contract consumed by the existing Production pipeline. "
-        "The voice script must preserve the approved narration's meaning, claims, qualifiers, negation, numbers, units, technical names, safety cautions, CTA meaning, paragraph order, and approved wording. Do not add, delete, summarize, expand, fact-check, medically revise, or creatively rewrite content. "
-        "Perform speech-safe delivery cleanup only: remove non-spoken Markdown headings and formatting markers; normalize smart quotes, em/en dashes, ellipses, decorative Unicode punctuation, repeated punctuation, and non-spoken symbols conservatively; expand ordinary contractions only when needed for synthesis safety; retain simple ASCII sentence punctuation and necessary intra-word hyphens for natural pacing and pronunciation. "
-        "PUNCTUATION SPACING HARD GATE: attach punctuation directly to the preceding word with no whitespace before sentence punctuation; use one normal space after punctuation before the next word; never leave doubled spacing around punctuation. Any dash or ellipsis replacement must form a grammatical comma or sentence boundary, never a detached punctuation mark. "
-        "Run a final punctuation-spacing audit before saving. The voice checklist must document Speech QA, Paragraph Statistics, Pronunciation Review, Chapter Plan, and Upload Checklist, and explicitly confirm semantic preservation from the Dynamic final script. "
-        "Do not read, invoke, modify, or depend on the old Speech Optimizer implementation, old 06_final_script.md, old Narrative QA, old Medical Gate 2, or old workflow gates. Do not modify the Dynamic final script or any old-pipeline source file. "
-        f"Write only {project_relative}/{VOICE_SCRIPT_FILENAME} and {project_relative}/{VOICE_CHECKLIST_FILENAME}; create no other artifact and output no process commentary."
+        f"Use {project_relative}/{DYNAMIC_FINAL_SCRIPT_FILENAME} as the sole canonical narration input. "
+        f"Read {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME} and {project_relative}/{DYNAMIC_MEDICAL_GATE_2_FILENAME} only to confirm both final gate verdicts are exactly PASS; do not reinterpret, bypass, or weaken those gates. "
+        f"Create exactly two Production-compatible handoff files: {project_relative}/{VOICE_SCRIPT_FILENAME} and {project_relative}/{VOICE_CHECKLIST_FILENAME}. "
+        f"In {VOICE_SCRIPT_FILENAME}, preserve every medical meaning, qualifier, negation, number, age, guideline attribution, safety distinction, CTA meaning, and approved wording from {DYNAMIC_FINAL_SCRIPT_FILENAME}. Do not add, remove, reorder, summarize, fact-check, strengthen, soften, or creatively rewrite claims. "
+        "Perform delivery-only optimization for natural TTS/voice synthesis: remove non-spoken Markdown organizational headings and other non-spoken formatting, normalize smart quotes/dashes/ellipses/decorative Unicode conservatively, normalize repeated punctuation, use simple sentence punctuation where safe, expand only ordinary contractions when needed for synthesis clarity, and retain simple ASCII punctuation plus necessary intra-word hyphens for natural pacing/pronunciation. "
+        "Attach pronunciation guidance only when needed and without changing the spoken wording or medical meaning. Never alter a technical term merely to make pronunciation easier. "
+        f"In {VOICE_CHECKLIST_FILENAME}, document Speech QA, paragraph statistics, pronunciation review, chapter plan, upload checklist, and confirm that the source was {DYNAMIC_FINAL_SCRIPT_FILENAME} with Dynamic Narrative QA PASS and Dynamic Medical Gate 2 PASS. "
+        "Do not read or modify the old Speech Optimizer implementation, its prompts, old final script, old Narrative QA, old Medical Gate 2, or any old workflow authority. Do not modify the Dynamic final script or any Dynamic gate report. "
+        f"Write only {project_relative}/{VOICE_SCRIPT_FILENAME} and {project_relative}/{VOICE_CHECKLIST_FILENAME}; create no other artifact and no process commentary."
     )
 
 
@@ -233,18 +248,18 @@ def _dynamic_speech_gate_status(final_script_path: Path, qa_path: Path, mg2_path
     if not final_script_path.is_file() or final_script_path.stat().st_size <= 0:
         return False, f"{DYNAMIC_FINAL_SCRIPT_FILENAME} is missing or empty."
     if not qa_path.is_file() or qa_path.stat().st_size <= 0:
-        return False, "Run Dynamic Narrative QA first."
-    if not mg2_path.is_file() or mg2_path.stat().st_size <= 0:
-        return False, "Run Dynamic Medical Gate 2 first."
+        return False, "Run Dynamic Narrative QA before the Dynamic Speech Optimizer."
     if qa_path.stat().st_mtime < final_script_path.stat().st_mtime:
         return False, "Dynamic Narrative QA is stale because the final script changed. Re-run Narrative QA."
+    if not mg2_path.is_file() or mg2_path.stat().st_size <= 0:
+        return False, "Run Dynamic Medical Gate 2 before the Dynamic Speech Optimizer."
     if mg2_path.stat().st_mtime < final_script_path.stat().st_mtime:
         return False, "Dynamic Medical Gate 2 is stale because the final script changed. Re-run Medical Gate 2."
     qa_verdict = _report_verdict(qa_path)
     mg2_verdict = _report_verdict(mg2_path)
     if qa_verdict != "PASS" or mg2_verdict != "PASS":
         return False, f"Dynamic Speech Optimizer requires exact PASS from both gates. Narrative QA: {qa_verdict}. Medical Gate 2: {mg2_verdict}."
-    return True, "Dynamic Narrative QA and Dynamic Medical Gate 2 both report PASS. Production handoff is unlocked."
+    return True, "Dynamic Narrative QA: PASS · Dynamic Medical Gate 2: PASS · Production handoff is unlocked."
 
 
 def _repeat_summary(repeat: dict) -> str:
@@ -285,7 +300,7 @@ def _run_generation(button_label: str, key: str, spinner: str, prompt: str, outp
 
 st.set_page_config(page_title="DW Flow", page_icon="🧩", layout="wide")
 st.title("DW Flow")
-st.caption("Separate Dynamic workflow. Existing old Workflow, Outline, Opus Writer, Narrative QA, Medical Gate 2, and old Speech Optimizer are not used or modified by this page.")
+st.caption("Separate Dynamic workflow. Existing old Workflow, Outline, Opus Writer, Narrative QA, Medical Gate 2, and old outputs are not used or modified by this page.")
 
 strategy, strategy_message = _load_strategy()
 if strategy is not None:
@@ -414,10 +429,14 @@ if strategy is not None:
     voice_script_path = project / VOICE_SCRIPT_FILENAME
     voice_checklist_path = project / VOICE_CHECKLIST_FILENAME
     if st.button("Run Dynamic Speech Optimizer", type="primary", disabled=not (speech_ready and bool(codex_template)), key="dw_run_dynamic_speech_optimizer"):
-        with st.spinner("Optimizing approved Dynamic narration for speech and Production handoff..."):
+        with st.spinner("Optimizing Dynamic narration for speech and creating Production-compatible handoff files..."):
             result = run_codex(codex_template, _dynamic_speech_optimizer_prompt(project), project, ROOT, RUN_LOG_DIR)
-        if result.returncode == 0 and voice_script_path.is_file() and voice_script_path.stat().st_size > 0 and voice_checklist_path.is_file() and voice_checklist_path.stat().st_size > 0:
-            st.success(f"Created {VOICE_SCRIPT_FILENAME} and {VOICE_CHECKLIST_FILENAME}. Existing Production can use these files directly.")
+        outputs_ready = (
+            voice_script_path.is_file() and voice_script_path.stat().st_size > 0
+            and voice_checklist_path.is_file() and voice_checklist_path.stat().st_size > 0
+        )
+        if result.returncode == 0 and outputs_ready:
+            st.success(f"Created {VOICE_SCRIPT_FILENAME} and {VOICE_CHECKLIST_FILENAME}. Existing Production can now use the standard handoff filenames.")
             st.rerun()
         elif result.returncode == 0:
             st.error(f"Dynamic Speech Optimizer finished but both {VOICE_SCRIPT_FILENAME} and {VOICE_CHECKLIST_FILENAME} were not created.")
