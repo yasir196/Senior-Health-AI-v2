@@ -68,48 +68,43 @@ def _load_config() -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
-def _dynamic_outline_prompt(project: Path, strategy: dict) -> str:
-    """Build a generic runtime prompt; creative structure comes only from current JSON."""
-    strategy_json = json.dumps(strategy, indent=2, ensure_ascii=False)
+def _dynamic_outline_prompt(project: Path) -> str:
+    """Build a short runtime prompt; Codex reads the potentially large strategy JSON from disk."""
+    strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
+    project_relative = project.relative_to(ROOT).as_posix()
     return f"""You are the Dynamic Outline Generator for the separate DW Flow.
 
-PROJECT DIRECTORY:
-{project}
+Read the authoritative Dynamic strategy directly from:
+{strategy_relative}
 
-OUTPUT FILE:
+Read factual grounding from relevant available files inside:
+{project_relative}
+
+Write ONLY this generated artifact inside that project directory:
 {DYNAMIC_OUTLINE_FILENAME}
 
-DYNAMIC STRATEGY — AUTHORITATIVE USER CONTROL PLANE:
-{strategy_json}
+Interpret the JSON dynamically at runtime:
+- block names have no built-in meaning and may be arbitrary user-created names;
+- follow enabled parent blocks in saved order and enabled children in saved order;
+- follow each block's natural-language instruction;
+- ignore disabled blocks;
+- interpret enabled repeat metadata (mode, value, positions) as saved, including ai_natural;
+- do not impose Hook, Main Body, Conclusion, CTA, Evidence, Story, or any hidden standard structure unless the current JSON requests it;
+- JSON controls creative organization, while project evidence controls factual content; never invent evidence to satisfy a block.
 
-TASK:
-Create the project's Dynamic script outline and write ONLY the finished outline to {DYNAMIC_OUTLINE_FILENAME} inside the project directory.
-
-DYNAMIC INTERPRETATION RULES:
-- Treat the supplied JSON as the authoritative creative structure for this run.
-- Interpret block names semantically at runtime. No block name has a built-in meaning.
-- Do not assume or require Hook, Main Body, Conclusion, CTA, Evidence, Story, or any other named section unless the current JSON requests it.
-- Follow enabled parent blocks in their saved JSON order.
-- Within each enabled parent, follow enabled child blocks in their saved JSON order.
-- Follow each block's natural-language instruction as written.
-- Disabled blocks are not part of the active outline.
-- If repeat.enabled is true, interpret its mode/value/positions dynamically. For ai_natural, choose natural placements using the block instruction and project evidence rather than inventing a fixed cadence.
-- A block may have any user-created name. Never replace an unfamiliar block with a hardcoded template section.
-- Do not add a hidden standard outline structure around the JSON structure.
-- JSON controls creative organization; project evidence controls factual content. Never invent evidence to satisfy a block.
-
-PROJECT EVIDENCE:
-Use the current project's available research/medical/source artifacts as factual grounding. Read relevant project files directly from the project directory. If a requested block cannot be supported by available project evidence, make that limitation explicit in the outline rather than fabricating support.
-
-ISOLATION:
-- Do not modify old-pipeline files.
-- Do not create or overwrite 05_script_outline.md, opus_writer_package.md, or 06_final_script.md.
-- Do not modify Templates/Dynamic/outline_strategy.json.
-- The only requested generated artifact is {DYNAMIC_OUTLINE_FILENAME}.
-
-OUTPUT:
-Write a useful writer-facing Markdown outline. Preserve the current JSON's semantic hierarchy and order. Do not include process commentary before or after the outline.
+Do not modify the strategy JSON or any old-pipeline file. Do not create or overwrite 05_script_outline.md, opus_writer_package.md, or 06_final_script.md. Do not include process commentary in the generated outline.
 """
+
+
+def _repeat_summary(repeat: dict) -> str:
+    mode = str(repeat.get("mode") or "seconds")
+    if mode == "specific_positions":
+        detail = str(repeat.get("positions") or "").strip() or "positions not specified"
+    elif mode == "ai_natural":
+        detail = "AI decides naturally"
+    else:
+        detail = str(repeat.get("value") or "").strip() or "value not specified"
+    return f"Repeat: {mode} · {detail}"
 
 
 st.set_page_config(page_title="DW Flow", page_icon="🧩", layout="wide")
@@ -171,7 +166,7 @@ if strategy is not None:
                     st.write(instruction)
                 repeat = parent.get("repeat") if isinstance(parent.get("repeat"), dict) else {}
                 if repeat.get("enabled"):
-                    st.caption(f"Repeat: {repeat.get('mode', 'seconds')} · {repeat.get('value', '') or repeat.get('positions', '')}")
+                    st.caption(_repeat_summary(repeat))
                 children = item["children"]
                 if children:
                     for child_number, child in enumerate(children, 1):
@@ -182,16 +177,13 @@ if strategy is not None:
                             st.write(child_instruction)
                         child_repeat = child.get("repeat") if isinstance(child.get("repeat"), dict) else {}
                         if child_repeat.get("enabled"):
-                            st.caption(
-                                f"Repeat: {child_repeat.get('mode', 'seconds')} · "
-                                f"{child_repeat.get('value', '') or child_repeat.get('positions', '')}"
-                            )
+                            st.caption(_repeat_summary(child_repeat))
                 else:
                     st.caption("No enabled child blocks.")
 
     st.markdown("### Generate Dynamic Outline")
     st.caption(
-        "The generator reads the current JSON at run time. Creative block names and section structure are not hardcoded in DW Flow."
+        "The generator reads the current JSON file directly at run time. Creative block names and section structure are not hardcoded in DW Flow."
     )
     config = _load_config()
     codex_template = detect_codex_template(config)
@@ -204,7 +196,7 @@ if strategy is not None:
         disabled=not can_generate,
         key="dw_generate_dynamic_outline",
     ):
-        prompt = _dynamic_outline_prompt(project, strategy)
+        prompt = _dynamic_outline_prompt(project)
         with st.spinner("Generating Dynamic Outline from current JSON strategy..."):
             result = run_codex(codex_template, prompt, project, ROOT, RUN_LOG_DIR)
         output_path = project / DYNAMIC_OUTLINE_FILENAME
