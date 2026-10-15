@@ -13,10 +13,11 @@ DYNAMIC_STRATEGY_PATH = ROOT / "Templates" / "Dynamic" / "outline_strategy.json"
 CONFIG_PATH = ROOT / "config.json"
 RUN_LOG_DIR = ROOT / "RunLogs"
 DYNAMIC_OUTLINE_FILENAME = "Dynamic_05_script_outline.md"
+DYNAMIC_WRITER_PROMPT_FILENAME = "Dynamic_05_writer_prompt.md"
 
 DYNAMIC_OUTPUTS = (
     ("Dynamic Outline", DYNAMIC_OUTLINE_FILENAME),
-    ("Dynamic Writer Prompt", "Dynamic_05_writer_prompt.md"),
+    ("Dynamic Writer Prompt", DYNAMIC_WRITER_PROMPT_FILENAME),
     ("Dynamic Final Script", "Dynamic_06_final_script.md"),
 )
 
@@ -72,9 +73,6 @@ def _dynamic_outline_prompt(project: Path) -> str:
     """Build one Windows-safe command-line argument; large strategy content stays on disk."""
     strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
     project_relative = project.relative_to(ROOT).as_posix()
-    # Keep this as ONE physical line. The configured Windows Codex command inserts
-    # {prompt} directly into cmd.exe; embedded newlines cause only the first line
-    # to reach `codex exec` as the user prompt.
     return (
         "Act as the Dynamic Outline Generator for DW Flow. "
         f"Read the authoritative strategy JSON directly from {strategy_relative}. "
@@ -85,6 +83,26 @@ def _dynamic_outline_prompt(project: Path) -> str:
         "JSON is authoritative for creative organization and project evidence is authoritative for factual content; never invent evidence to satisfy a block. "
         "Do not modify the strategy JSON or any old-pipeline file, and do not create or overwrite 05_script_outline.md, opus_writer_package.md, or 06_final_script.md. "
         f"Write only the finished writer-facing Markdown outline to {project_relative}/{DYNAMIC_OUTLINE_FILENAME} with no process commentary."
+    )
+
+
+def _dynamic_writer_prompt(project: Path) -> str:
+    """Create the separate Dynamic writer prompt from the generated Dynamic outline."""
+    project_relative = project.relative_to(ROOT).as_posix()
+    strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
+    return (
+        "Act as the Dynamic Writer Prompt Builder for the separate DW Flow. "
+        f"Read the authoritative generated Dynamic outline from {project_relative}/{DYNAMIC_OUTLINE_FILENAME}. "
+        f"Also read {strategy_relative} only to preserve the user's dynamic structural intent, and read relevant factual source, research, and medical files inside {project_relative} when needed to understand evidence boundaries. "
+        f"Create {project_relative}/{DYNAMIC_WRITER_PROMPT_FILENAME} and no other generated artifact. "
+        "Build a complete self-contained writer prompt that instructs the future script writer to turn the Dynamic outline into a natural, engaging, evidence-grounded narration. "
+        "Treat the Dynamic outline as the authoritative creative plan for this run and preserve its semantic order, topic-specific reasoning, evidence limits, safety distinctions, and repeat or engagement intent. "
+        "Do not impose any hidden standard script template, fixed Hook/Main Body/Conclusion headings, fixed section count, fixed hook formula, fixed CTA placement, or old Opus Writer structure unless the Dynamic outline itself requests it. "
+        "Do not force the narration to say packaging-meta phrases such as the title promised, the thumbnail says, or similar references unless the Dynamic outline explicitly requires them. "
+        "Do not invent facts, citations, statistics, medical claims, or source conclusions; project evidence remains factual authority. "
+        "The prompt must tell the future writer to write narration rather than process commentary, to follow the outline intelligently rather than mechanically echoing outline bullets, and to preserve uncertainty and applicability limits. "
+        "Keep this Dynamic path isolated: do not read instructions from or modify the old Opus Writer Prompt/template merely to construct this prompt; do not modify old Workflow, old Outline, old writer outputs, the Dynamic outline, or the strategy JSON. "
+        f"Write only the finished reusable writer prompt to {project_relative}/{DYNAMIC_WRITER_PROMPT_FILENAME} with no commentary before or after it."
     )
 
 
@@ -134,7 +152,7 @@ for index, (label, filename) in enumerate(DYNAMIC_OUTPUTS, 1):
             else:
                 right.success("JSON CONNECTED")
             left.caption("Structure source: Templates/Dynamic/outline_strategy.json")
-        elif path.is_file():
+        elif path.is_file() and path.stat().st_size > 0:
             right.success("READY")
         else:
             right.info("PENDING")
@@ -181,7 +199,7 @@ if strategy is not None:
     codex_template = detect_codex_template(config)
     can_generate = bool(structure) and bool(codex_template)
     if not codex_template:
-        st.warning("Direct Codex command is not configured/available, so Dynamic Outline generation cannot run yet.")
+        st.warning("Direct Codex command is not configured/available, so Dynamic generation cannot run yet.")
     if st.button(
         "Generate Dynamic Outline",
         type="primary",
@@ -202,15 +220,47 @@ if strategy is not None:
             st.error(f"Dynamic Outline generator failed with exit code {result.returncode}.")
             st.code(result.output or "No generator output returned.", language=None)
 
-    output_path = project / DYNAMIC_OUTLINE_FILENAME
-    if output_path.is_file() and output_path.stat().st_size > 0:
+    outline_path = project / DYNAMIC_OUTLINE_FILENAME
+    if outline_path.is_file() and outline_path.stat().st_size > 0:
         with st.expander("Current Dynamic Outline", expanded=False):
             try:
-                st.markdown(output_path.read_text(encoding="utf-8"))
+                st.markdown(outline_path.read_text(encoding="utf-8"))
             except OSError as exc:
                 st.error(f"Could not read Dynamic Outline: {exc}")
 
+        st.markdown("### Generate Dynamic Writer Prompt")
+        st.caption(
+            "Builds a separate writer prompt from the current Dynamic Outline. It does not use or modify the old Opus Writer Prompt."
+        )
+        if st.button(
+            "Generate Dynamic Writer Prompt",
+            type="primary",
+            disabled=not bool(codex_template),
+            key="dw_generate_dynamic_writer_prompt",
+        ):
+            prompt = _dynamic_writer_prompt(project)
+            with st.spinner("Generating Dynamic Writer Prompt from the current Dynamic Outline..."):
+                result = run_codex(codex_template, prompt, project, ROOT, RUN_LOG_DIR)
+            writer_prompt_path = project / DYNAMIC_WRITER_PROMPT_FILENAME
+            if result.returncode == 0 and writer_prompt_path.is_file() and writer_prompt_path.stat().st_size > 0:
+                st.success(f"Generated {DYNAMIC_WRITER_PROMPT_FILENAME} from the current Dynamic Outline.")
+                st.rerun()
+            elif result.returncode == 0:
+                st.error(f"Generator finished but {DYNAMIC_WRITER_PROMPT_FILENAME} was not created.")
+                st.code(result.output or "No generator output returned.", language=None)
+            else:
+                st.error(f"Dynamic Writer Prompt generator failed with exit code {result.returncode}.")
+                st.code(result.output or "No generator output returned.", language=None)
+
+    writer_prompt_path = project / DYNAMIC_WRITER_PROMPT_FILENAME
+    if writer_prompt_path.is_file() and writer_prompt_path.stat().st_size > 0:
+        with st.expander("Current Dynamic Writer Prompt", expanded=False):
+            try:
+                st.markdown(writer_prompt_path.read_text(encoding="utf-8"))
+            except OSError as exc:
+                st.error(f"Could not read Dynamic Writer Prompt: {exc}")
+
 st.info(
-    "Dynamic Outline generation is isolated to DW Flow and its Dynamic_ output. "
-    "Writer, Final Script, old Workflow, old Outline, and Opus Writer logic are not connected or modified here."
+    "Dynamic Outline and Dynamic Writer Prompt generation are isolated to DW Flow and Dynamic_ outputs. "
+    "Final Script, old Workflow, old Outline, and old Opus Writer logic are not connected or modified here."
 )
