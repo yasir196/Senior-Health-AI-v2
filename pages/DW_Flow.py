@@ -12,30 +12,29 @@ PROJECTS_DIR = ROOT / "Projects"
 DYNAMIC_STRATEGY_PATH = ROOT / "Templates" / "Dynamic" / "outline_strategy.json"
 CONFIG_PATH = ROOT / "config.json"
 RUN_LOG_DIR = ROOT / "RunLogs"
+
 DYNAMIC_OUTLINE_FILENAME = "Dynamic_05_script_outline.md"
 DYNAMIC_WRITER_PROMPT_FILENAME = "Dynamic_05_writer_prompt.md"
 DYNAMIC_FINAL_SCRIPT_FILENAME = "Dynamic_06_final_script.md"
 DYNAMIC_NARRATIVE_QA_FILENAME = "Dynamic_14_narrative_qa.md"
+DYNAMIC_MEDICAL_GATE_2_FILENAME = "Dynamic_15_medical_gate_2.md"
 
 DYNAMIC_OUTPUTS = (
     ("Dynamic Outline", DYNAMIC_OUTLINE_FILENAME),
     ("Dynamic Writer Prompt", DYNAMIC_WRITER_PROMPT_FILENAME),
     ("Dynamic Final Script", DYNAMIC_FINAL_SCRIPT_FILENAME),
     ("Dynamic Narrative QA", DYNAMIC_NARRATIVE_QA_FILENAME),
+    ("Dynamic Medical Gate 2", DYNAMIC_MEDICAL_GATE_2_FILENAME),
 )
 
 
 def _project_names() -> list[str]:
     if not PROJECTS_DIR.is_dir():
         return []
-    return sorted(
-        [item.name for item in PROJECTS_DIR.iterdir() if item.is_dir()],
-        key=str.casefold,
-    )
+    return sorted([p.name for p in PROJECTS_DIR.iterdir() if p.is_dir()], key=str.casefold)
 
 
 def _load_strategy() -> tuple[dict | None, str]:
-    """Load the Outline Builder JSON used by the DW Flow Dynamic Outline."""
     if not DYNAMIC_STRATEGY_PATH.is_file():
         return None, "Dynamic outline strategy JSON is missing."
     try:
@@ -50,16 +49,11 @@ def _load_strategy() -> tuple[dict | None, str]:
 
 
 def _enabled_structure(payload: dict) -> list[dict]:
-    """Return the authoritative enabled parent/child order without changing the saved JSON."""
     structure: list[dict] = []
     for parent in payload.get("blocks", []):
         if not isinstance(parent, dict) or not parent.get("enabled", True):
             continue
-        children = [
-            child
-            for child in parent.get("children", [])
-            if isinstance(child, dict) and child.get("enabled", True)
-        ]
+        children = [c for c in parent.get("children", []) if isinstance(c, dict) and c.get("enabled", True)]
         structure.append({"parent": parent, "children": children})
     return structure
 
@@ -73,7 +67,6 @@ def _load_config() -> dict:
 
 
 def _dynamic_outline_prompt(project: Path) -> str:
-    """Build one Windows-safe command-line argument; large strategy content stays on disk."""
     strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
     project_relative = project.relative_to(ROOT).as_posix()
     return (
@@ -90,7 +83,6 @@ def _dynamic_outline_prompt(project: Path) -> str:
 
 
 def _dynamic_writer_prompt(project: Path) -> str:
-    """Create the separate Dynamic writer prompt from the generated Dynamic outline."""
     project_relative = project.relative_to(ROOT).as_posix()
     strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
     return (
@@ -98,36 +90,53 @@ def _dynamic_writer_prompt(project: Path) -> str:
         f"Read the authoritative generated Dynamic outline from {project_relative}/{DYNAMIC_OUTLINE_FILENAME}. "
         f"Also read {strategy_relative} only to preserve the user's dynamic structural intent, and read relevant factual source, research, and medical files inside {project_relative} when needed to understand evidence boundaries. "
         f"Create {project_relative}/{DYNAMIC_WRITER_PROMPT_FILENAME} and no other generated artifact. "
-        "Build a complete self-contained writer prompt that instructs the future script writer to turn the Dynamic outline into a natural, engaging, evidence-grounded narration. "
-        "Treat the Dynamic outline as the authoritative creative plan for this run and preserve its semantic order, topic-specific reasoning, evidence limits, safety distinctions, and repeat or engagement intent. "
-        "Do not impose any hidden standard script template, fixed Hook/Main Body/Conclusion headings, fixed section count, fixed hook formula, fixed CTA placement, or old Opus Writer structure unless the Dynamic outline itself requests it. "
-        "Do not force the narration to say packaging-meta phrases such as the title promised, the thumbnail says, or similar references unless the Dynamic outline explicitly requires them. "
-        "Do not invent facts, citations, statistics, medical claims, or source conclusions; project evidence remains factual authority. "
-        "The prompt must tell the future writer to write narration rather than process commentary, to follow the outline intelligently rather than mechanically echoing outline bullets, and to preserve uncertainty and applicability limits. "
-        "Keep this Dynamic path isolated: do not read instructions from or modify the old Opus Writer Prompt/template merely to construct this prompt; do not modify old Workflow, old Outline, old writer outputs, the Dynamic outline, or the strategy JSON. "
+        "Build a complete self-contained writer prompt that instructs the future script writer to turn the Dynamic outline into natural, engaging, evidence-grounded narration. "
+        "Treat the Dynamic outline as the authoritative creative plan and preserve its semantic order, reasoning, evidence limits, safety distinctions, and repeat or engagement intent. "
+        "Do not impose a hidden standard template, fixed Hook/Main Body/Conclusion headings, fixed section count, hook formula, CTA placement, or old Opus Writer structure unless the Dynamic outline requests it. "
+        "Do not force packaging-meta phrases such as the title promised or the thumbnail says unless explicitly required. Do not invent facts, citations, statistics, medical claims, or source conclusions. "
+        "Tell the future writer to write narration rather than process commentary, follow the outline intelligently rather than mechanically echoing bullets, and preserve uncertainty and applicability limits. "
+        "Keep this Dynamic path isolated: do not read instructions from or modify the old Opus Writer Prompt/template merely to construct this prompt; do not modify old Workflow, old Outline, old writer outputs, the Dynamic outline, or strategy JSON. "
         f"Write only the finished reusable writer prompt to {project_relative}/{DYNAMIC_WRITER_PROMPT_FILENAME} with no commentary before or after it."
     )
 
 
 def _dynamic_narrative_qa_prompt(project: Path) -> str:
-    """Audit only the Dynamic script against Dynamic authorities, never the old blueprint."""
     project_relative = project.relative_to(ROOT).as_posix()
     strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
     return (
         "Act as the Dynamic Narrative QA Agent for the separate DW Flow. "
-        f"Audit {project_relative}/{DYNAMIC_FINAL_SCRIPT_FILENAME} against the authoritative Dynamic outline {project_relative}/{DYNAMIC_OUTLINE_FILENAME} and the Dynamic writer instructions {project_relative}/{DYNAMIC_WRITER_PROMPT_FILENAME}. "
-        f"Use {strategy_relative} only as supporting evidence of the user's intended dynamic block order, enabled state, and repeat placement. "
+        f"Audit {project_relative}/{DYNAMIC_FINAL_SCRIPT_FILENAME} against {project_relative}/{DYNAMIC_OUTLINE_FILENAME} and {project_relative}/{DYNAMIC_WRITER_PROMPT_FILENAME}. "
+        f"Use {strategy_relative} only as supporting evidence of intended dynamic block order, enabled state, and repeat placement. "
         f"Write the finished QA report only to {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME}. "
-        "This QA must judge the script that exists: narrative progression, hook effectiveness and payoff timing, retention, repetition, transition quality, emotional balance, viewer trust, natural spoken flow, engagement placement, conclusion strength, and whether the Dynamic outline's semantic plan was actually delivered. "
-        "For repetition, distinguish necessary safety reminders from redundant reteaching and identify only repetition with no meaningful new decision, evidence, mechanism, consequence, or action. "
-        "Check persona drift and flag any doctor, clinician, patient-care, diagnosis, prescribing, or personal-clinical-experience voice when the intended presenter is a health educator. "
-        "Estimate narration word count and runtime using the configured WPM from config.json; report runtime as advisory against the configured preferred range, not as a narrative failure by itself. If a hook can be shortened, do not recommend simply deleting useful value when that would unnecessarily reduce the intended total runtime; recommend redistribution into the appropriate later Dynamic section when useful. "
-        "Factual or medical concerns may be marked for later medical review, but Narrative QA must not invent medical corrections or fail the narrative solely because a source needs verification. "
-        "CRITICAL AUTHORITY RULE: never read, compare against, cite, enforce, or use 05_script_outline.md, the old Narrative QA output, old Opus Writer Prompt, old workflow gates, or any old blueprint as an authority. Never reorder Dynamic sections because an old outline differs. Never require an old checklist, CTA position, heading scheme, channel wording, or structure unless the Dynamic outline itself requires it. "
-        "Do not impose Hook/Main Content/Conclusion headings or any standard section template unless present in the Dynamic authority files. "
-        "Produce a useful Markdown QA report with an overall verdict, scorecard, concise executive summary, semantic progression/repetition findings, Dynamic-outline fidelity audit, persona/tone audit, runtime advisory, issue list ranked by severity, and precise revision patches only for genuine Dynamic narrative defects. Each revision reason must state the narrative defect itself rather than old-pipeline compliance. "
-        "PASS is allowed when there are no material narrative defects; PASS WITH REVISIONS is appropriate when useful corrections are needed. Do not modify the script, outline, writer prompt, strategy JSON, or any old-pipeline file. "
-        f"Create only {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME} and no other generated artifact, with no process commentary outside the report."
+        "Judge narrative progression, hook effectiveness and payoff timing, retention, repetition, transitions, emotional balance, viewer trust, natural spoken flow, engagement placement, conclusion strength, and Dynamic semantic delivery. "
+        "Distinguish necessary safety reminders from redundant reteaching. Check persona drift and flag doctor, clinician, patient-care, diagnosis, prescribing, or personal-clinical-experience voice when the presenter is a health educator. "
+        "Estimate word count and runtime using configured WPM; runtime is advisory against the configured preferred range. If a hook can be shortened, do not simply delete useful value when redistribution later would preserve useful runtime. "
+        "Factual or medical concerns may be marked for later medical review, but Narrative QA must not invent medical corrections or fail solely because a source needs verification. "
+        "CRITICAL AUTHORITY RULE: never read, compare against, cite, enforce, or use 05_script_outline.md, old Narrative QA, old Opus Writer Prompt, old workflow gates, or any old blueprint as authority. Never reorder Dynamic sections because an old outline differs or require an old checklist, CTA position, heading scheme, channel wording, or structure. "
+        "Do not impose Hook/Main Content/Conclusion headings unless present in Dynamic authority files. "
+        "Produce Markdown with verdict, scorecard, executive summary, semantic progression/repetition findings, Dynamic-outline fidelity audit, persona/tone audit, runtime advisory, issues ranked by severity, and precise revision patches only for genuine Dynamic narrative defects. "
+        "PASS is allowed when there are no material narrative defects. Do not modify any source file. "
+        f"Create only {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME} and no other generated artifact."
+    )
+
+
+def _dynamic_medical_gate_2_prompt(project: Path) -> str:
+    project_relative = project.relative_to(ROOT).as_posix()
+    return (
+        "Act as Dynamic Medical Gate 2 for the separate DW Flow. "
+        f"Review the actual narration in {project_relative}/{DYNAMIC_FINAL_SCRIPT_FILENAME}. "
+        f"Read {project_relative}/{DYNAMIC_NARRATIVE_QA_FILENAME} only for context about narrative handoff, never as medical evidence. "
+        f"Use the project's factual evidence files inside {project_relative} as the medical authority, prioritizing source-grounded research and claim records such as 02_research_claims.json, 02_research_sheet.md, 02_external_deep_research.md, 13_fact_check_log.md, and 13_gate1_disposition.json when they exist. Read other project evidence files when needed to trace a claim. "
+        f"Write the finished gate report only to {project_relative}/{DYNAMIC_MEDICAL_GATE_2_FILENAME}. "
+        "Audit every material medical or health claim in the final narration for source support, faithful wording, population and age applicability, screening-versus-diagnostic context, eligibility and stopping criteria, contraindications or exceptions, numerical accuracy, guideline attribution, uncertainty, evidence strength, causal overstatement, benefit/harm framing, and whether a population-level finding is improperly personalized. "
+        "For each material claim classify it as SUPPORTED, SUPPORTED WITH LIMITS, NEEDS REVISION, or UNSUPPORTED. Trace supported claims to the actual project evidence identifier/file where possible. Never treat the Dynamic outline, Dynamic writer prompt, Narrative QA, title, thumbnail, or packaging language as factual authority. "
+        "Do not use general model memory to silently fill evidence gaps. If the project evidence does not support a claim, say so and require narrowing, removal, or source verification rather than inventing support. Do not add new medical claims merely to improve the script. "
+        "Preserve the health-educator boundary: flag language that becomes individualized diagnosis, treatment, prescribing, guaranteed outcome, clinician impersonation, or unsafe advice. Also check that safety caveats are proportionate and that routine-screening guidance is not applied to symptoms, abnormal-result follow-up, surveillance, or other clinically different pathways. "
+        "CRITICAL ISOLATION RULE: do not read, cite, enforce, modify, or use old Medical Gate 2 outputs, old 05_script_outline.md, old Narrative QA, old Opus Writer Prompt, or old workflow gates as authority. The final Dynamic script is the claim surface; project research/evidence is factual authority. "
+        "Return PASS only when no material medical claim requires correction. Return PASS WITH REVISIONS when bounded wording fixes can resolve issues, and FAIL when a material claim is unsupported, materially misleading, unsafe, or cannot be repaired without new evidence. "
+        "Produce a concise Markdown report containing overall verdict, medical safety summary, claim audit table with script claim/assessment/evidence trace/reason, population-and-applicability audit, guideline-and-number audit, educator-boundary audit, unresolved evidence flags, and exact minimal revision patches for claims that need changes. Do not rewrite sound narrative for style. "
+        "Do not modify the Dynamic script, research, outline, writer prompt, Narrative QA, strategy JSON, or any old-pipeline file. "
+        f"Create only {project_relative}/{DYNAMIC_MEDICAL_GATE_2_FILENAME} and no other generated artifact, with no process commentary outside the report."
     )
 
 
@@ -142,11 +151,34 @@ def _repeat_summary(repeat: dict) -> str:
     return f"Repeat: {mode} · {detail}"
 
 
+def _show_markdown(path: Path, label: str) -> None:
+    if not path.is_file() or path.stat().st_size <= 0:
+        return
+    with st.expander(label, expanded=False):
+        try:
+            st.markdown(path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            st.error(f"Could not read {path.name}: {exc}")
+
+
+def _run_generation(button_label: str, key: str, spinner: str, prompt: str, output_path: Path, success: str, codex_template: str) -> None:
+    if st.button(button_label, type="primary", disabled=not bool(codex_template), key=key):
+        with st.spinner(spinner):
+            result = run_codex(codex_template, prompt, project, ROOT, RUN_LOG_DIR)
+        if result.returncode == 0 and output_path.is_file() and output_path.stat().st_size > 0:
+            st.success(success)
+            st.rerun()
+        elif result.returncode == 0:
+            st.error(f"Generator finished but {output_path.name} was not created.")
+            st.code(result.output or "No generator output returned.", language=None)
+        else:
+            st.error(f"Generator failed with exit code {result.returncode}.")
+            st.code(result.output or "No generator output returned.", language=None)
+
+
 st.set_page_config(page_title="DW Flow", page_icon="🧩", layout="wide")
 st.title("DW Flow")
-st.caption(
-    "Separate Dynamic workflow. The existing Workflow, Outline, Opus Writer Prompt, Narrative QA, and old outputs are not used or modified by this page."
-)
+st.caption("Separate Dynamic workflow. Existing old Workflow, Outline, Opus Writer, Narrative QA, Medical Gate 2, and old outputs are not used or modified by this page.")
 
 strategy, strategy_message = _load_strategy()
 if strategy is not None:
@@ -161,6 +193,8 @@ if not projects:
 
 project_name = st.selectbox("Project", projects, key="dw_flow_project")
 project = PROJECTS_DIR / project_name
+config = _load_config()
+codex_template = detect_codex_template(config)
 
 st.markdown("### Dynamic workflow")
 for index, (label, filename) in enumerate(DYNAMIC_OUTPUTS, 1):
@@ -184,10 +218,7 @@ for index, (label, filename) in enumerate(DYNAMIC_OUTPUTS, 1):
 
 if strategy is not None:
     st.markdown("### Dynamic Outline · connected structure")
-    st.caption(
-        "This is the exact enabled parent/child order currently supplied by Outline Builder JSON to the DW Flow Dynamic Outline. "
-        "Disabled blocks stay saved in JSON but are not part of the active outline structure."
-    )
+    st.caption("Exact enabled parent/child order currently supplied by Outline Builder JSON. Disabled blocks stay saved but are not active.")
     structure = _enabled_structure(strategy)
     if not structure:
         st.info("The JSON is connected, but there are no enabled parent blocks yet.")
@@ -202,130 +233,47 @@ if strategy is not None:
                 repeat = parent.get("repeat") if isinstance(parent.get("repeat"), dict) else {}
                 if repeat.get("enabled"):
                     st.caption(_repeat_summary(repeat))
-                children = item["children"]
-                if children:
-                    for child_number, child in enumerate(children, 1):
-                        child_name = str(child.get("name") or f"Child {child_number}").strip()
-                        child_instruction = str(child.get("instruction") or "").strip()
-                        st.markdown(f"**{number}.{child_number} {child_name}**")
-                        if child_instruction:
-                            st.write(child_instruction)
-                        child_repeat = child.get("repeat") if isinstance(child.get("repeat"), dict) else {}
-                        if child_repeat.get("enabled"):
-                            st.caption(_repeat_summary(child_repeat))
-                else:
-                    st.caption("No enabled child blocks.")
+                for child_number, child in enumerate(item["children"], 1):
+                    child_name = str(child.get("name") or f"Child {child_number}").strip()
+                    st.markdown(f"**{number}.{child_number} {child_name}**")
+                    child_instruction = str(child.get("instruction") or "").strip()
+                    if child_instruction:
+                        st.write(child_instruction)
+                    child_repeat = child.get("repeat") if isinstance(child.get("repeat"), dict) else {}
+                    if child_repeat.get("enabled"):
+                        st.caption(_repeat_summary(child_repeat))
 
-    st.markdown("### Generate Dynamic Outline")
-    st.caption(
-        "The generator reads the current JSON file directly at run time. Creative block names and section structure are not hardcoded in DW Flow."
-    )
-    config = _load_config()
-    codex_template = detect_codex_template(config)
-    can_generate = bool(structure) and bool(codex_template)
     if not codex_template:
         st.warning("Direct Codex command is not configured/available, so Dynamic generation cannot run yet.")
-    if st.button(
-        "Generate Dynamic Outline",
-        type="primary",
-        disabled=not can_generate,
-        key="dw_generate_dynamic_outline",
-    ):
-        prompt = _dynamic_outline_prompt(project)
-        with st.spinner("Generating Dynamic Outline from current JSON strategy..."):
-            result = run_codex(codex_template, prompt, project, ROOT, RUN_LOG_DIR)
-        output_path = project / DYNAMIC_OUTLINE_FILENAME
-        if result.returncode == 0 and output_path.is_file() and output_path.stat().st_size > 0:
-            st.success(f"Generated {DYNAMIC_OUTLINE_FILENAME} from the current Dynamic JSON strategy.")
-            st.rerun()
-        elif result.returncode == 0:
-            st.error(f"Generator finished but {DYNAMIC_OUTLINE_FILENAME} was not created.")
-            st.code(result.output or "No generator output returned.", language=None)
-        else:
-            st.error(f"Dynamic Outline generator failed with exit code {result.returncode}.")
-            st.code(result.output or "No generator output returned.", language=None)
 
+    st.markdown("### Generate Dynamic Outline")
+    st.caption("Reads the current JSON directly at run time; creative block names and section structure are not hardcoded.")
     outline_path = project / DYNAMIC_OUTLINE_FILENAME
-    if outline_path.is_file() and outline_path.stat().st_size > 0:
-        with st.expander("Current Dynamic Outline", expanded=False):
-            try:
-                st.markdown(outline_path.read_text(encoding="utf-8"))
-            except OSError as exc:
-                st.error(f"Could not read Dynamic Outline: {exc}")
-
-        st.markdown("### Generate Dynamic Writer Prompt")
-        st.caption(
-            "Builds a separate writer prompt from the current Dynamic Outline. It does not use or modify the old Opus Writer Prompt."
-        )
-        if st.button(
-            "Generate Dynamic Writer Prompt",
-            type="primary",
-            disabled=not bool(codex_template),
-            key="dw_generate_dynamic_writer_prompt",
-        ):
-            prompt = _dynamic_writer_prompt(project)
-            with st.spinner("Generating Dynamic Writer Prompt from the current Dynamic Outline..."):
-                result = run_codex(codex_template, prompt, project, ROOT, RUN_LOG_DIR)
-            writer_prompt_path = project / DYNAMIC_WRITER_PROMPT_FILENAME
-            if result.returncode == 0 and writer_prompt_path.is_file() and writer_prompt_path.stat().st_size > 0:
-                st.success(f"Generated {DYNAMIC_WRITER_PROMPT_FILENAME} from the current Dynamic Outline.")
-                st.rerun()
-            elif result.returncode == 0:
-                st.error(f"Generator finished but {DYNAMIC_WRITER_PROMPT_FILENAME} was not created.")
-                st.code(result.output or "No generator output returned.", language=None)
-            else:
-                st.error(f"Dynamic Writer Prompt generator failed with exit code {result.returncode}.")
-                st.code(result.output or "No generator output returned.", language=None)
+    _run_generation("Generate Dynamic Outline", "dw_generate_dynamic_outline", "Generating Dynamic Outline from current JSON strategy...", _dynamic_outline_prompt(project), outline_path, f"Generated {DYNAMIC_OUTLINE_FILENAME} from the current Dynamic JSON strategy.", codex_template if structure else "")
+    _show_markdown(outline_path, "Current Dynamic Outline")
 
     writer_prompt_path = project / DYNAMIC_WRITER_PROMPT_FILENAME
-    if writer_prompt_path.is_file() and writer_prompt_path.stat().st_size > 0:
-        with st.expander("Current Dynamic Writer Prompt", expanded=False):
-            try:
-                st.markdown(writer_prompt_path.read_text(encoding="utf-8"))
-            except OSError as exc:
-                st.error(f"Could not read Dynamic Writer Prompt: {exc}")
+    if outline_path.is_file() and outline_path.stat().st_size > 0:
+        st.markdown("### Generate Dynamic Writer Prompt")
+        st.caption("Builds a separate writer prompt from the current Dynamic Outline. It does not use or modify the old Opus Writer Prompt.")
+        _run_generation("Generate Dynamic Writer Prompt", "dw_generate_dynamic_writer_prompt", "Generating Dynamic Writer Prompt from the current Dynamic Outline...", _dynamic_writer_prompt(project), writer_prompt_path, f"Generated {DYNAMIC_WRITER_PROMPT_FILENAME} from the current Dynamic Outline.", codex_template)
+    _show_markdown(writer_prompt_path, "Current Dynamic Writer Prompt")
 
     final_script_path = project / DYNAMIC_FINAL_SCRIPT_FILENAME
-    if final_script_path.is_file() and final_script_path.stat().st_size > 0:
-        with st.expander("Current Dynamic Final Script", expanded=False):
-            try:
-                st.markdown(final_script_path.read_text(encoding="utf-8"))
-            except OSError as exc:
-                st.error(f"Could not read Dynamic Final Script: {exc}")
-
-        st.markdown("### Run Dynamic Narrative QA")
-        st.caption(
-            "Audits the Dynamic Final Script only against Dynamic authorities. The old Narrative QA and old 05_script_outline.md are not used."
-        )
-        if st.button(
-            "Run Dynamic Narrative QA",
-            type="primary",
-            disabled=not bool(codex_template),
-            key="dw_run_dynamic_narrative_qa",
-        ):
-            prompt = _dynamic_narrative_qa_prompt(project)
-            with st.spinner("Running isolated Dynamic Narrative QA..."):
-                result = run_codex(codex_template, prompt, project, ROOT, RUN_LOG_DIR)
-            qa_path = project / DYNAMIC_NARRATIVE_QA_FILENAME
-            if result.returncode == 0 and qa_path.is_file() and qa_path.stat().st_size > 0:
-                st.success(f"Generated {DYNAMIC_NARRATIVE_QA_FILENAME} from Dynamic authorities only.")
-                st.rerun()
-            elif result.returncode == 0:
-                st.error(f"QA finished but {DYNAMIC_NARRATIVE_QA_FILENAME} was not created.")
-                st.code(result.output or "No QA output returned.", language=None)
-            else:
-                st.error(f"Dynamic Narrative QA failed with exit code {result.returncode}.")
-                st.code(result.output or "No QA output returned.", language=None)
+    _show_markdown(final_script_path, "Current Dynamic Final Script")
 
     qa_path = project / DYNAMIC_NARRATIVE_QA_FILENAME
-    if qa_path.is_file() and qa_path.stat().st_size > 0:
-        with st.expander("Current Dynamic Narrative QA", expanded=False):
-            try:
-                st.markdown(qa_path.read_text(encoding="utf-8"))
-            except OSError as exc:
-                st.error(f"Could not read Dynamic Narrative QA: {exc}")
+    if final_script_path.is_file() and final_script_path.stat().st_size > 0:
+        st.markdown("### Run Dynamic Narrative QA")
+        st.caption("Audits the Dynamic Final Script only against Dynamic authorities. Old Narrative QA and old 05_script_outline.md are not used.")
+        _run_generation("Run Dynamic Narrative QA", "dw_run_dynamic_narrative_qa", "Running isolated Dynamic Narrative QA...", _dynamic_narrative_qa_prompt(project), qa_path, f"Generated {DYNAMIC_NARRATIVE_QA_FILENAME} from Dynamic authorities only.", codex_template)
+    _show_markdown(qa_path, "Current Dynamic Narrative QA")
 
-st.info(
-    "Dynamic Outline, Dynamic Writer Prompt, and Dynamic Narrative QA are isolated to DW Flow and Dynamic_ outputs. "
-    "Old Workflow, old Outline, old Opus Writer, and old Narrative QA logic are not connected or modified here."
-)
+    mg2_path = project / DYNAMIC_MEDICAL_GATE_2_FILENAME
+    if final_script_path.is_file() and final_script_path.stat().st_size > 0 and qa_path.is_file() and qa_path.stat().st_size > 0:
+        st.markdown("### Run Dynamic Medical Gate 2")
+        st.caption("Checks the Dynamic Final Script against project research/evidence. Dynamic Narrative QA is context only; old Medical Gate 2 and old pipeline authorities are not used.")
+        _run_generation("Run Dynamic Medical Gate 2", "dw_run_dynamic_medical_gate_2", "Running isolated Dynamic Medical Gate 2...", _dynamic_medical_gate_2_prompt(project), mg2_path, f"Generated {DYNAMIC_MEDICAL_GATE_2_FILENAME} from project evidence and the Dynamic Final Script.", codex_template)
+    _show_markdown(mg2_path, "Current Dynamic Medical Gate 2")
+
+st.info("Dynamic Outline, Writer Prompt, Narrative QA, and Medical Gate 2 are isolated to DW Flow and Dynamic_ outputs. Old Workflow, Outline, Opus Writer, Narrative QA, and Medical Gate 2 logic are not connected or modified here.")
