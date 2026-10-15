@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import streamlit as st
@@ -102,6 +103,40 @@ def _dynamic_strategy_validation_prompt(project: Path) -> str:
         "Do not modify the JSON, Dynamic Outline, or any old-pipeline file. "
         f"Create only {project_relative}/{DYNAMIC_STRATEGY_VALIDATION_FILENAME} and no other generated artifact, with no process commentary outside the report."
     )
+
+
+def _dynamic_outline_fix_prompt(project: Path) -> str:
+    strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
+    project_relative = project.relative_to(ROOT).as_posix()
+    return (
+        "Act as the Dynamic Outline Revision Agent for the separate DW Flow. "
+        f"Read the authoritative strategy JSON at {strategy_relative}, the current outline at {project_relative}/{DYNAMIC_OUTLINE_FILENAME}, and the latest strategy validation report at {project_relative}/{DYNAMIC_STRATEGY_VALIDATION_FILENAME}. "
+        "Revise the existing Dynamic Outline only to correct genuine strategy-validation defects and warnings that require an outline change. Preserve all already-correct content, ordering, evidence limits, factual grounding, and successful JSON implementations. "
+        "The JSON remains the sole creative-strategy authority; the validation report diagnoses translation defects but cannot override or invent JSON requirements. Project evidence remains factual authority. "
+        "Do not add unsupported facts or medical claims. Do not solve timing-only warnings by inventing timestamps or fake timing evidence. Do not force changes for conditional warnings when the project evidence does not establish that the condition applies. "
+        "Do not modify the strategy JSON, validation report, writer prompt, final script, QA, medical gate, or any old-pipeline file. Never read or use old 05_script_outline.md, old Opus Writer Prompt, old Narrative QA, old Medical Gate 2, or old workflow gates as authority. "
+        f"Overwrite only {project_relative}/{DYNAMIC_OUTLINE_FILENAME} with the corrected complete writer-facing outline. Create no other artifact and output no process commentary."
+    )
+
+
+def _strategy_validation_status(validation_path: Path, outline_path: Path) -> tuple[str, str]:
+    if not validation_path.is_file() or validation_path.stat().st_size <= 0:
+        return "MISSING", "Run Dynamic Strategy Validation before generating the Writer Prompt."
+    if not outline_path.is_file() or outline_path.stat().st_size <= 0:
+        return "MISSING", "Dynamic Outline is missing."
+    if validation_path.stat().st_mtime < outline_path.stat().st_mtime:
+        return "STALE", "The outline changed after the last validation. Run Dynamic Strategy Validation again."
+    try:
+        text = validation_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return "ERROR", f"Could not read strategy validation: {exc}"
+    match = re.search(r"(?im)^\s*(?:\*\*)?(?:overall\s+)?verdict(?:\*\*)?\s*:\s*(?:\*\*)?\s*(PASS WITH WARNINGS|PASS|FAIL)\b", text)
+    if not match:
+        return "UNKNOWN", "Could not determine the strategy-validation verdict. Re-run validation."
+    verdict = match.group(1).upper()
+    if verdict == "FAIL":
+        return verdict, "Strategy validation failed. Fix the Dynamic Outline, then validate again before writing."
+    return verdict, f"Strategy validation cleared: {verdict}."
 
 
 def _dynamic_writer_prompt(project: Path) -> str:
@@ -281,11 +316,25 @@ if strategy is not None:
         _run_generation("Validate Dynamic Strategy", "dw_validate_dynamic_strategy", "Validating Dynamic Outline against the current JSON strategy...", _dynamic_strategy_validation_prompt(project), strategy_validation_path, f"Generated {DYNAMIC_STRATEGY_VALIDATION_FILENAME} from JSON → Outline validation.", codex_template)
     _show_markdown(strategy_validation_path, "Current Dynamic Strategy Validation")
 
+    validation_status, validation_message = _strategy_validation_status(strategy_validation_path, outline_path)
+    if validation_status == "FAIL":
+        st.error(validation_message)
+        st.caption("Use the validation report to repair only the Dynamic Outline. The Writer Prompt remains locked until the repaired outline is validated again.")
+        _run_generation("Fix Dynamic Outline from Validation", "dw_fix_dynamic_outline", "Applying strategy-validation corrections to the Dynamic Outline...", _dynamic_outline_fix_prompt(project), outline_path, f"Updated {DYNAMIC_OUTLINE_FILENAME}. Run Dynamic Strategy Validation again before writing.", codex_template)
+    elif validation_status in {"PASS", "PASS WITH WARNINGS"}:
+        st.success(validation_message)
+    else:
+        st.warning(validation_message)
+
     writer_prompt_path = project / DYNAMIC_WRITER_PROMPT_FILENAME
+    writer_unlocked = validation_status in {"PASS", "PASS WITH WARNINGS"}
     if outline_path.is_file() and outline_path.stat().st_size > 0:
         st.markdown("### Generate Dynamic Writer Prompt")
-        st.caption("Builds a separate writer prompt from the current Dynamic Outline. It does not use or modify the old Opus Writer Prompt.")
-        _run_generation("Generate Dynamic Writer Prompt", "dw_generate_dynamic_writer_prompt", "Generating Dynamic Writer Prompt from the current Dynamic Outline...", _dynamic_writer_prompt(project), writer_prompt_path, f"Generated {DYNAMIC_WRITER_PROMPT_FILENAME} from the current Dynamic Outline.", codex_template)
+        if writer_unlocked:
+            st.caption("Strategy gate cleared. Builds a separate writer prompt from the validated Dynamic Outline; old Opus Writer Prompt is not used or modified.")
+        else:
+            st.caption("LOCKED: validate the current Dynamic Outline successfully before generating the Writer Prompt.")
+        _run_generation("Generate Dynamic Writer Prompt", "dw_generate_dynamic_writer_prompt", "Generating Dynamic Writer Prompt from the validated Dynamic Outline...", _dynamic_writer_prompt(project), writer_prompt_path, f"Generated {DYNAMIC_WRITER_PROMPT_FILENAME} from the validated Dynamic Outline.", codex_template if writer_unlocked else "")
     _show_markdown(writer_prompt_path, "Current Dynamic Writer Prompt")
 
     final_script_path = project / DYNAMIC_FINAL_SCRIPT_FILENAME
