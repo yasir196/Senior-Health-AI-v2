@@ -14,6 +14,7 @@ CONFIG_PATH = ROOT / "config.json"
 RUN_LOG_DIR = ROOT / "RunLogs"
 
 DYNAMIC_OUTLINE_FILENAME = "Dynamic_05_script_outline.md"
+DYNAMIC_STRATEGY_VALIDATION_FILENAME = "Dynamic_05_strategy_validation.md"
 DYNAMIC_WRITER_PROMPT_FILENAME = "Dynamic_05_writer_prompt.md"
 DYNAMIC_FINAL_SCRIPT_FILENAME = "Dynamic_06_final_script.md"
 DYNAMIC_NARRATIVE_QA_FILENAME = "Dynamic_14_narrative_qa.md"
@@ -21,6 +22,7 @@ DYNAMIC_MEDICAL_GATE_2_FILENAME = "Dynamic_15_medical_gate_2.md"
 
 DYNAMIC_OUTPUTS = (
     ("Dynamic Outline", DYNAMIC_OUTLINE_FILENAME),
+    ("Dynamic Strategy Validation", DYNAMIC_STRATEGY_VALIDATION_FILENAME),
     ("Dynamic Writer Prompt", DYNAMIC_WRITER_PROMPT_FILENAME),
     ("Dynamic Final Script", DYNAMIC_FINAL_SCRIPT_FILENAME),
     ("Dynamic Narrative QA", DYNAMIC_NARRATIVE_QA_FILENAME),
@@ -79,6 +81,26 @@ def _dynamic_outline_prompt(project: Path) -> str:
         "JSON is authoritative for creative organization and project evidence is authoritative for factual content; never invent evidence to satisfy a block. "
         "Do not modify the strategy JSON or any old-pipeline file, and do not create or overwrite 05_script_outline.md, opus_writer_package.md, or 06_final_script.md. "
         f"Write only the finished writer-facing Markdown outline to {project_relative}/{DYNAMIC_OUTLINE_FILENAME} with no process commentary."
+    )
+
+
+def _dynamic_strategy_validation_prompt(project: Path) -> str:
+    strategy_relative = DYNAMIC_STRATEGY_PATH.relative_to(ROOT).as_posix()
+    project_relative = project.relative_to(ROOT).as_posix()
+    return (
+        "Act as the Dynamic Strategy Validation Gate for the separate DW Flow. "
+        f"Treat {strategy_relative} as the sole authority for creative strategy and audit {project_relative}/{DYNAMIC_OUTLINE_FILENAME} against it. "
+        f"Write the finished validation report only to {project_relative}/{DYNAMIC_STRATEGY_VALIDATION_FILENAME}. "
+        "Validate every parent and child block, including enabled and disabled state, saved parent order, saved child order, natural-language instruction intent, and every enabled repeat rule. "
+        "For enabled blocks, verify the outline contains a semantically faithful implementation rather than merely matching a label. For disabled blocks, verify their unique instructed material was not injected as a required strategy element. "
+        "For repeat modes seconds, minutes, blocks, specific_positions, and ai_natural, judge whether the outline faithfully expresses the requested recurrence or placement at the level the outline can reasonably specify. Do not invent exact timing evidence when the outline does not contain timing. Mark genuinely unverifiable repeat details as WARNING rather than pretending they passed. "
+        "Check that the outline did not silently omit, materially weaken, contradict, reorder, or replace a JSON instruction, and that it did not inject a hidden fixed Hook/Main Body/Conclusion, CTA, evidence, story, or other standard structure not requested by the active JSON. "
+        "Do not judge medical truth, research quality, prose quality, retention quality, or final-script execution in this gate. This gate answers only whether JSON strategy was faithfully translated into the Dynamic Outline. "
+        "CRITICAL ISOLATION RULE: never read, compare against, cite, enforce, or use 05_script_outline.md, old Outline logic, old Opus Writer Prompt, old Narrative QA, old Medical Gate 2, old workflow gates, or any old blueprint as authority. "
+        "Verdict semantics are strict: PASS only when all enabled strategy requirements are faithfully represented, disabled strategy is excluded, order is correct, and no material JSON instruction is missing or contradicted. PASS WITH WARNINGS only when there is no known strategy violation but one or more instructions or repeat placements are genuinely ambiguous or unverifiable from the outline. FAIL when any enabled parent/child is missing, materially misinterpreted, out of required order, any disabled strategy is materially injected, any required repeat/placement is violated, or hidden structure overrides the JSON. "
+        "Produce concise Markdown with overall verdict, parent-by-parent audit, child-by-child audit, order audit, disabled-block audit, repeat/placement audit, hidden-structure audit, issues ranked by severity, and exact correction instructions for the Dynamic Outline generator when needed. Do not rewrite the outline yourself. "
+        "Do not modify the JSON, Dynamic Outline, or any old-pipeline file. "
+        f"Create only {project_relative}/{DYNAMIC_STRATEGY_VALIDATION_FILENAME} and no other generated artifact, with no process commentary outside the report."
     )
 
 
@@ -252,6 +274,13 @@ if strategy is not None:
     _run_generation("Generate Dynamic Outline", "dw_generate_dynamic_outline", "Generating Dynamic Outline from current JSON strategy...", _dynamic_outline_prompt(project), outline_path, f"Generated {DYNAMIC_OUTLINE_FILENAME} from the current Dynamic JSON strategy.", codex_template if structure else "")
     _show_markdown(outline_path, "Current Dynamic Outline")
 
+    strategy_validation_path = project / DYNAMIC_STRATEGY_VALIDATION_FILENAME
+    if outline_path.is_file() and outline_path.stat().st_size > 0:
+        st.markdown("### Validate Dynamic Strategy")
+        st.caption("Dedicated JSON → Outline gate. Checks enabled/disabled blocks, parent/child order, instruction intent, repeat placement, and hidden-structure injection before writing begins.")
+        _run_generation("Validate Dynamic Strategy", "dw_validate_dynamic_strategy", "Validating Dynamic Outline against the current JSON strategy...", _dynamic_strategy_validation_prompt(project), strategy_validation_path, f"Generated {DYNAMIC_STRATEGY_VALIDATION_FILENAME} from JSON → Outline validation.", codex_template)
+    _show_markdown(strategy_validation_path, "Current Dynamic Strategy Validation")
+
     writer_prompt_path = project / DYNAMIC_WRITER_PROMPT_FILENAME
     if outline_path.is_file() and outline_path.stat().st_size > 0:
         st.markdown("### Generate Dynamic Writer Prompt")
@@ -276,4 +305,4 @@ if strategy is not None:
         _run_generation("Run Dynamic Medical Gate 2", "dw_run_dynamic_medical_gate_2", "Running isolated Dynamic Medical Gate 2...", _dynamic_medical_gate_2_prompt(project), mg2_path, f"Generated {DYNAMIC_MEDICAL_GATE_2_FILENAME} from project evidence and the Dynamic Final Script.", codex_template)
     _show_markdown(mg2_path, "Current Dynamic Medical Gate 2")
 
-st.info("Dynamic Outline, Writer Prompt, Narrative QA, and Medical Gate 2 are isolated to DW Flow and Dynamic_ outputs. Old Workflow, Outline, Opus Writer, Narrative QA, and Medical Gate 2 logic are not connected or modified here.")
+st.info("Dynamic Outline, Strategy Validation, Writer Prompt, Narrative QA, and Medical Gate 2 are isolated to DW Flow and Dynamic_ outputs. Old Workflow, Outline, Opus Writer, Narrative QA, and Medical Gate 2 logic are not connected or modified here.")
