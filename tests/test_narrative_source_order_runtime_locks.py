@@ -39,4 +39,3 @@ def test_direct_runtime_prompt_mirrors_three_locks():
     assert "Approved source trace" in s
     assert "Approved Blueprint Order Audit" in s
     assert "RUNTIME ADVISORY-ONLY LOCK" in s
-    assert "retention_structure_analysis.md when present" in s

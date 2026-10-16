@@ -19,6 +19,11 @@ import streamlit as st
 
 from csv_safety import read_csv_rows_with_legacy_encoding_fallback, sanitize_csv_file
 from production_sheet_contract import normalize_production_sheet, PRODUCTION_SHEET_COLUMNS, validate_asset_distribution, validate_asset_sequence_naturalness, validate_scene_segmentation, validate_host_introduction_avatar
+from production_rules import load_rules, save_rules, validate_rules
+from production_timing_controller import build_production_slots
+from production_ratio_controller import allocate_ratio_targets
+from timeline_qa import audit_timeline
+from production_plan_contract import validate_ai_timing_lock
 from scene_segmentation import SceneSegmentationError, load_scene_ledger, validate_ledger_freshness, validate_ledger_reconstruction, validate_production_against_ledger, write_scene_ledger
 from v31_core import (
     RUNTIME_ROUTING_CAUSES,
@@ -34,11 +39,11 @@ from v31_core import (
 )
 
 from avatar_timing import (
-    avatar_sync_blockers, build_actual_timeline, chunk_sequence_info, discover_avatar_chunks,
+    avatar_sync_blockers, build_actual_timeline, build_master_narration_timeline, chunk_sequence_info, discover_avatar_chunks,
     AvatarTranscriptionError, load_production_scenes, preflight_avatar_chunks, transcribe_avatar_chunks, transcription_settings, transcript_cache_is_current,
     transcript_inventory,
 )
-from timeline_builder import TimelineBuildError, build_timeline_manifest
+from timeline_builder import TimelineBuildError, build_timeline_manifest, parse_timeline_time
 from capcut_export import CapCutExportError, export_capcut_project
 from semantic_coherence import enforce_final_semantic_report
 from image_generation import (
@@ -272,17 +277,23 @@ def command_for_stage(project: Path, stage: str, anchor_outlier_pattern: str | N
         ),
         "Thumbnail": f"For {ref}, run Thumbnail_Agent only using approved upstream files. Use project.json.anchor_title EXACTLY as the winning title; do not generate, rank, rewrite, repair, or replace the title. BEFORE generating concepts, read Analytics/active_channel_packaging_rules.md when present and apply every ACTIVE packaging rule that is contextually applicable to this project. When that artifact contains matching historical channel examples, derive thumbnail text structure/hierarchy AND visual/color packaging from those real channel patterns BEFORE inventing generic concepts; adapt the pattern to this topic and never copy old wording verbatim. In 04_thumbnail_concepts.md, include a mandatory `Historical Channel Examples Used` audit section listing 3-5 actual consumed examples per applicable ACTIVE rule (or all if fewer), with exact historical thumbnail text, source video/title, CTR, impressions, relevant text structure/hierarchy, relevant visual/color traits, and what was adapted. If no examples exist, state `NO MATCHING HISTORICAL EXAMPLES AVAILABLE` and do not claim an example-derived historical pattern. Treat learned packaging rules as impression-aware historical associations, never causal guarantees. They may guide thumbnail text/visual packaging only and must never override the immutable title promise, approved research/evidence, Medical Gate requirements, medical safety, or project-specific creative fit. Ignore CANDIDATE, REJECTED, and RETIRED rules; only the ACTIVE rules artifact may be injected. If an ACTIVE rule is not applicable to the current hero/category/context, mark it N/A rather than forcing it. For any digestion/anatomy visual, preserve one physiologically coherent continuous route; never render multiple colored internal pathways, branching arrows through organs, glowing nutrient streams, or magic-path effects unless explicitly supported by approved evidence. Create only 04_thumbnail_concepts.md and 11_thumbnail_prompt.md.",
         "Script Outline": f"For {ref}, run Script_Agent in outline_to_script mode. Use project.json.anchor_title EXACTLY as the immutable winning title and align the complete outline to its promise; do not generate or substitute another title. Create only 05_script_outline.md. Do not create 06_final_script.md.",
-        "Prepare Opus Package": f"For {ref}, prepare a fresh per-project opus_writer_package.md from the current writing templates and 05_script_outline.md. Read Templates/Writing/opus_writer_prompt.md in full. HARD PRESERVATION RULE: copy the complete `## Full Evidence Development Lock`, `## Semantic Progression Lock`, and `## Execution / No-Negotiation Lock` sections from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md without summarizing, weakening, paraphrasing, or omitting their rules. Also preserve the Execution / No-Negotiation rule that the writer must draft first without pre-negotiating research sufficiency, predicted word capacity, target feasibility, or asking for more research merely to reach runtime. RUNTIME PACKAGE LOCK: do not place any automatic runtime target, runtime range, WPM target, word-count target/range, minimum, maximum, floor, validation boundary, required word adjustment, or numeric drafting target in opus_writer_package.md. Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. The writer must fully develop every materially useful approved evidence module at legitimate explanatory depth rather than summarize or compress it for brevity, while never reviving unapproved material from research or the outline. First correct coverage of a claim plus its boundary is the minimum for inclusion, NOT the completion criterion. Before a module is complete, the writer must silently test all applicable source-supported explanatory dimensions preserved by the Full Evidence Development Lock—study/population/formulation context, permitted mechanism or task distinction, interpretation, null/mixed/uncertain-result meaning, limitation/non-transfer boundary, 60+ relevance, scope-clarifying comparison, and practical consequence—and develop each materially useful dimension that adds genuinely new viewer understanding. `One main idea per paragraph`, concise delivery, anti-repetition, and the material-delta test remove redundant wording; they must not be interpreted as `state it once and move on` when a new supported interpretation/distinction/limitation/consequence remains. Require the mandatory pre-finalization evidence-depth completion gate from the template before declaring the script complete. The writer must silently build a module-by-module completion ledger and disposition every applicable approved explanatory dimension as `DEVELOPED`, `DEVELOP_NOW`, or `SKIP_SUPPORTED_REASON`; any `DEVELOP_NOW` means the script is NOT complete and the writer must return to the relevant existing section, develop that supported material delta, and recheck until zero `DEVELOP_NOW` dimensions remain. A structural/retention pass or boundary-compliance pass cannot substitute for this evidence-depth gate. Require a separate post-draft module × dimension matrix pass: visit every materially useful approved module one by one, explicitly disposition all nine dimensions, treat a qualifier label by itself as NOT developed, and treat a borderline DEVELOPED-vs-DEVELOP_NOW judgment as DEVELOP_NOW whenever one concise supported explanation would materially clarify the approved distinction. After developing every DEVELOP_NOW item, rebuild the ENTIRE matrix and repeat until every cell is terminal and exactly zero DEVELOP_NOW remain. The ledger is silent working process only and must never appear in narration or be used to chase runtime/word count. Evidence interpretation, meaningful distinctions, limitations, comparisons, practical consequences, and explanations that add new viewer understanding are legitimate depth, not padding. The writer must write the strongest fully developed complete script supported by approved evidence, then report actual word count/runtime afterward as informational metadata only with `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. In particular, preserve the full material-delta semantics: a different example/food/section, new wording, another hypothetical, or repeated safety/scope reminder is not sufficient new value; if no concrete material delta exists, omit or merge the recurrence; allow at most one concise final recap that compresses rather than reteaches. Create or update only opus_writer_package.md.",
+        "Prepare Opus Package": f"For {ref}, prepare a fresh per-project opus_writer_package.md from the current writing templates and 05_script_outline.md. Read Templates/Writing/opus_writer_prompt.md in full. HARD PRESERVATION RULE: copy the complete `## Full Evidence Development Lock`, `## Semantic Progression Lock`, and `## Execution / No-Negotiation Lock` sections from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md without summarizing, weakening, paraphrasing, or omitting their rules. STRUCTURE PRESERVATION RULE: also copy the complete `## Outline Structure Lock` section from Templates/Writing/opus_writer_prompt.md into opus_writer_package.md verbatim without summarizing, weakening, paraphrasing, or omitting any rule. Also preserve the Execution / No-Negotiation rule that the writer must draft first without pre-negotiating research sufficiency, predicted word capacity, target feasibility, or asking for more research merely to reach runtime. RUNTIME PACKAGE LOCK: do not place any automatic runtime target, runtime range, WPM target, word-count target/range, minimum, maximum, floor, required runtime adjustment, or total-length numeric drafting target. Do not write the literal phrase `validation boundary` anywhere in the package, even inside a prohibition or negative example. POSITION-GATE EXCEPTION: the `## Outline Structure Lock` is authoritative and must be copied verbatim, including its Hook boundary, first-practical-value/action placement rules, configured-WPM conversion for those position gates, prohibition on a separate Introduction, and required `Hook ends at` / `First promised action begins at` runtime-report timestamps. These are position gates only, not total-runtime or word-count targets in opus_writer_package.md. Runtime and word count cannot influence drafting, revision, expansion, compression, research/source requests, claims, or upstream routing. The writer must fully develop every materially useful approved evidence module at legitimate explanatory depth rather than summarize or compress it for brevity, while never reviving unapproved material from research or the outline. First correct coverage of a claim plus its boundary is the minimum for inclusion, NOT the completion criterion. Before a module is complete, the writer must silently test all applicable source-supported explanatory dimensions preserved by the Full Evidence Development Lock—study/population/formulation context, permitted mechanism or task distinction, interpretation, null/mixed/uncertain-result meaning, limitation/non-transfer boundary, 60+ relevance, scope-clarifying comparison, and practical consequence—and develop each materially useful dimension that adds genuinely new viewer understanding. `One main idea per paragraph`, concise delivery, anti-repetition, and the material-delta test remove redundant wording; they must not be interpreted as `state it once and move on` when a new supported interpretation/distinction/limitation/consequence remains. Require the mandatory pre-finalization evidence-depth completion gate from the template before declaring the script complete. The writer must silently build a module-by-module completion ledger and disposition every applicable approved explanatory dimension as `DEVELOPED`, `DEVELOP_NOW`, or `SKIP_SUPPORTED_REASON`; any `DEVELOP_NOW` means the script is NOT complete and the writer must return to the relevant existing section, develop that supported material delta, and recheck until zero `DEVELOP_NOW` dimensions remain. A structural/retention pass or boundary-compliance pass cannot substitute for this evidence-depth gate. Require a separate post-draft module × dimension matrix pass: visit every materially useful approved module one by one, explicitly disposition all nine dimensions, treat a qualifier label by itself as NOT developed, and treat a borderline DEVELOPED-vs-DEVELOP_NOW judgment as DEVELOP_NOW whenever one concise supported explanation would materially clarify the approved distinction. After developing every DEVELOP_NOW item, rebuild the ENTIRE matrix and repeat until every cell is terminal and exactly zero DEVELOP_NOW remain. The ledger is silent working process only and must never appear in narration or be used to chase runtime/word count. Evidence interpretation, meaningful distinctions, limitations, comparisons, practical consequences, and explanations that add new viewer understanding are legitimate depth, not padding. The writer must write the strongest fully developed complete script supported by approved evidence, then report actual word count/runtime afterward as informational metadata only with `Runtime Advisory: ADVISORY ONLY — NON-BLOCKING`. In particular, preserve the full material-delta semantics: a different example/food/section, new wording, another hypothetical, or repeated safety/scope reminder is not sufficient new value; if no concrete material delta exists, omit or merge the recurrence; allow at most one concise final recap that compresses rather than reteaches. Create or update only opus_writer_package.md.",
         "Writer Workspace": f"Manual stage for {ref}. Download opus_writer_package.md, write the full script in Claude, then upload the result through Writer Workspace as 06_final_script.md. Direct Codex Run is intentionally disabled for this manual stage.",
         "Narrative QA": f"For {ref}, run Narrative_QA_Agent using 05_script_outline.md, 02_research_sheet.md when present, 13_fact_check_log.md when present, 06_final_script.md, config.json, the Narrative QA templates. Independently audit the CURRENT final script for storytelling, pacing, semantic repetition, whole-script recurrence, information progression, title-payoff timing, redundant recap/ending cycles, safety-boundary consolidation, transitions, tone, CTA placement, non-blocking evidence-review flags, and approved blueprint order. Keep density separate from progression: paragraph length or several sourced facts alone are not a hard failure when the beat adds concrete new viewer value. MATERIAL-DELTA TEST: apply a MATERIAL-DELTA TEST to every post-primary occurrence for repeated core ideas; later occurrences must add exact new viewer knowledge/decision/mechanism/consequence/evidence/action, except one concise final recap; any post-primary occurrence with no concrete material delta must be CUT/MERGED. EVIDENCE REVIEW HANDOFF — NON-BLOCKING: classify factual additions as Type A material factual claims, Type B source-faithful explanatory paraphrases, or Type C narrative connectives for auditability. If a Type A proposition lacks an explicit approved trace, mark EVIDENCE REVIEW FLAG — SOURCE TRACE: NONE and KEEP — MG2 REVIEW. Missing provenance alone MUST NOT cause CUT/MERGE, Revision Patch, PASS WITH REVISIONS, or FAIL in Narrative QA; Medical Gate 2 / Fact Check owns that evidence decision. Narrative QA may revise the same sentence only for an independent narrative defect and must name that narrative defect. Type B may use EXPLANATORY PARAPHRASE — TRACE: <source>; Type C may use NARRATIVE CONNECTIVE — NO SOURCE REQUIRED. BLUEPRINT ORDER GATE: compare the current major sequence with 05_script_outline.md; unresolved unapproved major reorder cannot PASS. RUNTIME ADVISORY-ONLY LOCK: runtime, word count, configured minimum/target/maximum, WPM, and runtime tolerance MUST NOT determine PASS / PASS WITH REVISIONS / FAIL. Runtime must never cause a revision, expansion, compression, source-pool audit, redevelopment route, or another QA cycle. Count spoken narration only and include one compact ## Runtime Advisory with current narration words, estimated runtime at config.json WPM, preferred configured range, BELOW/INSIDE/ABOVE position, and the exact statement 'QA effect: NONE — runtime is advisory and cannot change the Narrative QA verdict.' Do not output Runtime Shortfall Cause, Remaining Approved Material Audit, Runtime Prediction, Convergence Check, required word adjustment, or runtime-driven patch. Every Revision Patch must identify a concrete narrative or safety-placement defect that would still exist if runtime and missing source provenance were ignored, and use the minimum necessary correction. Missing source provenance alone can never be a patch reason. Create 14_narrative_qa.md with Status: PASS / PASS WITH REVISIONS / FAIL based ONLY on narrative-quality, structure, repetition/progression, payoff, and safety-placement gates; evidence-review flags are handed to Medical Gate 2 and are non-blocking here. Include required Semantic Progression Gate with Material delta vs primary and Approved source trace columns, Approved Blueprint Order Audit, Issue List, Revision Patch when needed, and Runtime Advisory. Repetition Risk HIGH, unresolved semantic recurrence above threshold, unresolved redundant endings/recaps, materially delayed title payoff, unresolved 2+ consecutive low-progression beats, or unresolved blueprint-order defects cannot PASS. Evidence Review Flags never block Narrative QA and proceed to Medical Gate 2 / Fact Check. Do not estimate AVD percentages. Do not directly rewrite 06_final_script.md.",
         "Medical Gate 2": f"For {ref}, run Medical_Agent Gate 2 after Narrative QA PASS or PASS WITH REVISIONS. Compare every medical statement in 06_final_script.md against 02_research_sheet.md and 13_fact_check_log.md. Create 15_medical_gate_2.md with Status: PASS / PASS WITH REVISIONS / FAIL. When edits are required, include a structured Revision Patch using Section:, Current Text:, Replace With:, Reason:, Severity:. Update 13_fact_check_log.md only when necessary. Do not directly rewrite the script or run production.",
         "Speech Optimizer": f"For {ref}, run the Speech Optimizer only after Narrative QA and Medical Gate 2 both report exactly PASS. Do not bypass, ignore, or reinterpret those upstream gates; PASS WITH REVISIONS / PASS WITH SUGGESTIONS / FAIL are not sufficient. Use the current approved 06_final_script.md as the canonical input and Templates/Voice/ only for speech/delivery optimization. Create only 06a_voice_script.md and 06b_voice_checklist.md. TTS-SAFE CANONICAL TEXT LOCK: perform all speech-safe punctuation normalization in 06a_voice_script.md before Production. Normalize/remove smart quotes, em/en dashes, ellipses, decorative Unicode punctuation, repeated punctuation, and non-spoken symbols conservatively; expand ordinary contractions when needed for synthesis safety; retain simple ASCII sentence punctuation and necessary intra-word hyphens for natural pacing/pronunciation. PUNCTUATION SPACING HARD GATE: attach punctuation directly to the preceding word with no whitespace before sentence punctuation, use one normal space before the next word, and never leave doubled spacing around punctuation. Dash or ellipsis replacement must form a grammatical comma or sentence boundary, never a detached punctuation mark. Run a final punctuation-spacing audit before saving 06a_voice_script.md. Never change medical meaning, qualifiers, negation, numbers/units, technical names, safety cautions, CTA meaning, or approved hook words. After this stage, 06a_voice_script.md is the exact canonical spoken text and downstream Production must copy it verbatim without independent punctuation or wording cleanup. The checklist must include Speech QA, Paragraph Statistics, Pronunciation Review, Chapter Plan, and Upload Checklist. Do not modify 06_final_script.md.",
-        "Production Package": f"For {ref}, 06a_voice_script.md is the ONLY authoritative source for narration and scene text. Read that file fresh from disk before planning scenes. Do NOT read, reuse, infer narration from, or copy scene text from 05_script_outline.md, 06_final_script.md, 06_final_script_locked.md, any prior 07_production_sheet.csv, 08_actual_timeline.csv, old image/B-roll prompts, run logs, caches, or any other project editorial artifact. Start Production without checking any prior editorial workflow stage, gate, checklist, title, research, outline, final-script, or production-cleaner status. Preserve the supplied narration exactly: every 07_production_sheet.csv script_excerpt must be an exact contiguous excerpt from the current 06a_voice_script.md and scene excerpts must follow source order without invented/paraphrased script lines. Respect production_settings.json. Use VIDEO_PROMPT_TEMPLATE_ULTIMATE.md only as the narrative-context/prompt-quality framework; ignore its legacy 8-second/WPM/image-count/batching allocation rules. The NEW 07_production_sheet.csv created in this run becomes authoritative for AI_IMAGE slots and assignment order. Preserve image_001.png assignment-order naming. Run the system-level semantic Visual Diversity Engine with a project-local Visual Diversity Ledger: derive Core Visual Signatures, discover project-local visual families, and enforce config-driven semantic duplicate/rolling/family-balance thresholds through the bounded QA -> rewrite -> signature recalculation convergence loop. Do not finalize 10_image_prompts.md until diversity reaches PASS or a justified unresolved FAIL is documented. A similarity of 1.00 may never remain Rewritten: NO without explicit Intentional Repetition: YES plus reason. Rewrite core concepts rather than camera/location variants, reset the ledger per project, and emit the full semantic Visual Diversity QA. After diversity convergence, run the Final Semantic Coherence Guard against original Script Context, Narrative Context, preceding visual, following visual, AND the final rendered prompt text itself; infer normalized temporal/lighting with explicit time-of-day consistency, setting/action compatibility, object/location, scene-purpose/structural-role, and emotional-tone attributes and reject contradictions even when metadata appears compatible. Explicitly detect final-prompt temporal contradictions such as night/bedtime context paired with morning/daybreak lighting, and the inverse, by semantic compatibility rather than a fixed phrase blacklist. Reject incoherent diversity rewrites, correct them within configured semantic_coherence retry bounds, recalculate affected diversity signatures/families after every coherence correction, and require BOTH Overall Visual Diversity: PASS and Overall Semantic Coherence: PASS before marking 10_image_prompts.md production-ready. Continue diversity convergence while unjustified near-duplicate candidates remain above configured limits; if retry bounds are exhausted, keep FAIL, enumerate exact unresolved image IDs, and emit Production Ready: NO rather than silently treating the diagnostic file as ready. Classify discourse role before prompt generation: host sign-off/episode-close terminal narration is STRUCTURAL_CLOSE; other CTA/subscribe/transition narration may be STRUCTURAL when appropriate. STRUCTURAL_CLOSE must not inherit recurring topic imagery unless the exact closing narration requires it. After all rewrites, run the deterministic final-output semantic verifier over final prompt text; any detected conflict overrides a stale PASS and forces exact-image reporting plus Production Ready: NO. For every AI_IMAGE candidate, treat exact current Script Context as primary authority, immediate previous/following Narrative Context second, then visual clarity, human realism, diversity, and camera/composition variation. Before accepting the final rendered prompt, apply the muted-audio semantic test: if shown without audio, would its main subject/action reasonably illustrate the narration being spoken? Emit Alignment Score: 0-100 for every image and require >=85. Below 85, rewrite the visual concept from Script Context itself; camera/style-only rewrites do not count. Never solve repetition by substituting an unrelated archetype; allow repeated objects when the narration genuinely requires them. Prefer documented intentional repetition over a less relevant visual. DETERMINISTIC SCENE LEDGER IS AUTHORITATIVE: read 06c_scene_ledger.csv and 06c_scene_ledger.meta.json created by application code from the current 06a narration before this run. Do not independently split, reword, reorder, or resize any ledger unit. Every Production row must consume either exactly one ledger unit or an exact concatenation of consecutive ledger units in source order; legal merges may never exceed the ordinary 32-word ceiling. Never create an empty or unmapped Production row, and never use notes or asset type as a segmentation exception. Ledger scene_id values are source-unit identifiers only; after legal merges, renumber final Production scene_id and IMG/BR IDs sequentially from the accepted final grouping. Apply production_settings.json only after the ledger boundaries exist and only as an approximate asset-type distribution over the final legal grouping. HARD CSV CONTRACT: 07_production_sheet.csv MUST use the existing canonical 32-column header exactly and in order: scene_id,start_time,end_time,duration_sec,scene_purpose,script_excerpt,visual_mode,avatar_required,avatar_style,background_style,image_prompt_id,broll_prompt_id,narrative_context,visual_intent,filmable,asset_decision_reason,asset_search_query,alternative_search_query_1,alternative_search_query_2,ai_image_prompt,overlay_instruction,recommended_asset_type,recommended_shot,manual_search_notes,avoid_results,asset_source,selected_asset_path,asset_status,motion,transition,on_screen_text,notes. Populate the rich production data for every row; never emit compact slot_id/slot_type/asset_type schemas. recommended_asset_type must use STOCK_VIDEO/STOCK_IMAGE/AI_IMAGE/AVATAR/OVERLAY/SPLIT_SCREEN/NO_ASSET_NEEDED. AI_IMAGE rows require sequential IMG001.. IDs and non-empty ai_image_prompt; stock rows require sequential BR001.. IDs and concrete queries. Create only 07_production_sheet.csv, 10_image_prompts.md, and 12_broll_prompts.md. AI prompts only for AI_IMAGE scenes.",
-        "SEO": f"For {ref}, run SEO_Agent only after the approved script and final 08_actual_timeline.csv exist. Use project.json.anchor_title EXACTLY as the final/winning YouTube title; do not optimize, rewrite, rank, or replace it. Create or update only 08_youtube_metadata.md. For ## 5. Chapters / Timestamps, emit semantic chapter labels with S### scene anchors only; deterministic application code replaces them with Actual Audio Start timestamps from 08_actual_timeline.csv.",
+        # Compatibility status phrase: scene segmentation/timing FAILED means deterministic-controller repair is required; transcript timing cannot repair invalid scene boundaries, and AI must not retime locked slots.
+        "Production Package": f"For {ref}, TIMESTAMP-FIRST PRODUCTION IS MANDATORY. Python owns ALL timing and slot boundaries. Ignore legacy 8-second/WPM/image-count/batching allocation rules; they have no timing authority. Preserve the existing Core Visual Signatures system, Visual Diversity Ledger, project-local visual families, config-driven semantic duplicate detection, and reset the ledger per project. Preserve the Final Semantic Coherence Guard including setting/action compatibility and time-of-day consistency. Run the bounded QA -> rewrite -> signature recalculation convergence loop for visual choices only; recalculate affected diversity signatures/families after coherence corrections. require BOTH Overall Visual Diversity: PASS and Overall Semantic Coherence: PASS. Do not finalize 10_image_prompts.md until diversity reaches PASS; similarity of 1.00 may never remain Rewritten: NO.  REQUIRED INPUT: Projects/{project.name}/08_ratio_allocated_slots.csv. If it is missing, STOP; the GUI must first build the Master Narration Timeline, apply Production Rules, and apply Production Mix. Read 08_ratio_allocated_slots.csv in source order. HARD TIMING LOCK: every output row must correspond 1:1 with one locked slot. Copy start_time, end_time, and duration_sec EXACTLY. Never calculate, estimate, rewrite, round, split, merge, add, remove, reorder, or otherwise change a timing boundary. AI has ZERO authority over timestamps or slot count. AI's job is visual planning only: choose the most appropriate visual/asset for each locked slot, using transcript_text, scope, target_lane, section/rule context, and nearby locked slots. The GUI production mix is a target allocation, but medical/narrative visual correctness and explicit hard rules remain authoritative where applicable. 06a_voice_script.md remains the approved narration wording authority; do not invent narration. Create 07_production_sheet.csv using the canonical 32-column header exactly: scene_id,start_time,end_time,duration_sec,scene_purpose,script_excerpt,visual_mode,avatar_required,avatar_style,background_style,image_prompt_id,broll_prompt_id,narrative_context,visual_intent,filmable,asset_decision_reason,asset_search_query,alternative_search_query_1,alternative_search_query_2,ai_image_prompt,overlay_instruction,recommended_asset_type,recommended_shot,manual_search_notes,avoid_results,asset_source,selected_asset_path,asset_status,motion,transition,on_screen_text,notes. For each row copy locked transcript_text into script_excerpt exactly. recommended_asset_type must use STOCK_VIDEO/STOCK_IMAGE/AI_IMAGE/AVATAR/OVERLAY/SPLIT_SCREEN/NO_ASSET_NEEDED. AI_IMAGE rows require sequential IMG001.. IDs and a non-empty ai_image_prompt; stock rows require sequential BR001.. IDs and concrete search queries. Use VIDEO_PROMPT_TEMPLATE_ULTIMATE.md only for visual prompt quality, never timing or allocation formulas. Do not use 06c_scene_ledger.csv, provisional timing, WPM, word-count timing, prior 07_production_sheet.csv, or legacy 08_actual_timeline.csv to determine boundaries. Create only 07_production_sheet.csv, 10_image_prompts.md, and 12_broll_prompts.md. AI prompts only for AI_IMAGE rows. Preserve sequential AI-image filenames in assignment order beginning image_001.png.",
+                "SEO": f"For {ref}, run SEO_Agent only after the approved script and timestamp-first 07_production_sheet.csv exist. Use project.json.anchor_title EXACTLY as the final/winning YouTube title; do not optimize, rewrite, rank, or replace it. Create or update only 08_youtube_metadata.md. For ## 5. Chapters / Timestamps, emit semantic chapter labels using the exact scene_id values that exist in 07_production_sheet.csv (for timestamp-first projects these are typically P#### anchors); deterministic application code replaces them with locked scene start_time values from 07_production_sheet.csv, derived from the actual avatar Master Clock. Never estimate chapter timestamps and do not require legacy 08_actual_timeline.csv.",
         "Final QA + Summary": f"For {ref}, run Final QA only. Check all required outputs, narrative QA, Medical Gate 2, host identity, metadata, and production files. Create or update only 09_qa_checklist.md and 16_project_summary.md. Do not silently rewrite approved content.",
     }
     return commands[stage]
 
+
+
+def agent_command(stage: str, project_name: str) -> str:
+    """Backward-compatible command accessor used by tests and external callers."""
+    return command_for_stage(PROJECTS_DIR / project_name, stage)
 
 
 
@@ -311,6 +322,32 @@ OPUS_STALE_RUNTIME_PATTERNS = (
     r"\b(?:expand|increase|lengthen)\s+(?:the\s+)?(?:draft|script|word\s+count|length)\b",
     r"\b(?:additional|more)\s+(?:approved\s+)?(?:research|sources?|claims?)(?:/claims?)?\s+to\s+(?:increase|reach|meet)\b",
 )
+
+
+def finalize_opus_writer_structure_lock(project: Path, root: Path) -> None:
+    """Deterministically preserve the canonical Outline Structure Lock in the Writer package."""
+    template_path = Path(root) / "Templates" / "Writing" / "opus_writer_prompt.md"
+    package_path = Path(project) / "opus_writer_package.md"
+    template = safe_read_text(template_path)
+    package = safe_read_text(package_path)
+    heading = "## Outline Structure Lock"
+    next_heading = "## Execution / No-Negotiation Lock"
+    start = template.find(heading)
+    if start < 0:
+        raise ValueError("Canonical Outline Structure Lock is missing from opus_writer_prompt.md.")
+    end = template.find(next_heading, start)
+    if end < 0:
+        raise ValueError("Execution / No-Negotiation Lock is missing after Outline Structure Lock.")
+    canonical = template[start:end].rstrip() + "\n\n"
+    if canonical.rstrip() in package:
+        return
+    if heading in package:
+        raise ValueError("Generated Writer package contains a non-canonical Outline Structure Lock.")
+    insert_at = package.find(next_heading)
+    if insert_at < 0:
+        raise ValueError("Generated Writer package is missing Execution / No-Negotiation Lock.")
+    package = package[:insert_at] + canonical + package[insert_at:]
+    package_path.write_text(package, encoding="utf-8")
 
 
 def opus_writer_package_runtime_issues(project: Path) -> list[str]:
@@ -377,6 +414,15 @@ def run_external_command(command_template: str, prompt: str, project: Path, titl
         stage is None and "prepare a fresh per-project opus_writer_package.md" in prompt
     )
     if result.returncode == 0 and is_opus_package_run:
+        try:
+            finalize_opus_writer_structure_lock(project, ROOT)
+        except (OSError, ValueError) as exc:
+            result.returncode = 2
+            result.output = (
+                result.output
+                + f"\n\nOpus Writer package structure finalization failed: {exc}"
+            )[-20000:]
+            return result
         package_issues = opus_writer_package_runtime_issues(project)
         if package_issues:
             result.returncode = 2
@@ -402,7 +448,7 @@ def run_external_command(command_template: str, prompt: str, project: Path, titl
                 + "\n\nProduction learning archive: PASS"
                 + f"\nAnalytics ID: {checkpoint['analytics_id']}"
                 + f"\nMerged scenes: {checkpoint['merged_rows']}"
-                + "\nTiming authority: 08_actual_timeline.csv"
+                + "\nTiming authority: timestamp-first Master Clock / 07_production_sheet.csv"
             )[-20000:]
         except (AnalyticsDBError, OSError, ValueError) as exc:
             result.returncode = 2
@@ -906,19 +952,22 @@ def render_new_project() -> None:
 
 
 def build_deep_research_package(project: Path) -> str:
-    """Build the manual Opus/Genspark deep-research handoff from Stage 1."""
+    """Build an independent manual Opus/Genspark deep-research handoff."""
     title = resolve_title_anchor(project) or ""
-    validation = safe_read_text(project / "01_topic_validation.md").strip()
     return f"""# Deep Research Handover Package
 
 ## Immutable Anchor / Outlier Title
 {title}
 
-## Stage 1 Approved Production Angle and Boundaries
-{validation}
+## Independent Research Boundary
+Treat the immutable title as the packaging question/hypothesis to investigate, not as an evidence verdict and not as proof that any implied answer, ranking, mechanism, benefit, or payoff is correct.
+
+Research independently from the evidence. Do not assume or inherit a recommended answer, production angle, working payoff, preferred candidate, selected evidence family, proposition verdict, or saturation conclusion from an earlier pipeline stage.
+
+The title wording remains immutable for packaging purposes, but the research conclusion is not predetermined. If the strongest available evidence narrows, complicates, contradicts, or fails to establish an implication of the title, report that clearly rather than searching toward a preferred answer.
 
 ## Assignment
-Conduct deep research for the immutable title above for a senior-health audience, primarily adults 60+. The goal is broad, evidence-disciplined discovery that can support a complete long-form educational video without padding. Do not rewrite, repair, replace, rank, or re-adjudicate the title. Stay inside the approved Stage 1 angle and boundaries.
+Conduct deep research for the immutable title above for a senior-health audience, primarily adults 60+. The goal is broad, evidence-disciplined discovery that can support a complete long-form educational video without padding. Do not rewrite, repair, replace, rank, or re-adjudicate the title. Independently determine what the evidence supports, does not support, and leaves uncertain.
 
 Be conservative about CLAIM STRENGTH, not about SEARCH BREADTH.
 
@@ -965,7 +1014,7 @@ For NOT RECOMMENDED, explain the evidence limitation briefly. This is an advisor
 
 ## Final Report
 Return one complete research report suitable for direct paste into the Senior Health AI "Imported Deep Research" box. Include:
-- immutable title and Stage 1 boundary acknowledgment;
+- immutable title and independent-research boundary acknowledgment;
 - search/discovery summary and semantic-saturation note;
 - viewer-value module inventory;
 - proposition/evidence table with population, formulation/exposure, finding direction, limitations, and source;
@@ -1576,7 +1625,7 @@ def render_production() -> None:
         st.success("READY FOR PRODUCTION")
 
     settings_path = project / "production_settings.json"
-    defaults = {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20, "image_duration_seconds": 10, "image_platform": "Genspark Web"}
+    defaults = {"avatar": 40, "ai_images": 30, "stock": 10, "overlays": 20, "image_duration_seconds": 10, "image_platform": "Genspark Web", "ratio_tolerance_points": 5.0, "ratio_strict_mode": False}
     try:
         settings = {**defaults, **json.loads(safe_read_text(settings_path) or "{}")}
     except json.JSONDecodeError:
@@ -1591,22 +1640,70 @@ def render_production() -> None:
     mix_valid, mix_reason = validate_production_mix(avatar, ai_images, stock, overlays)
     st.metric("Total", f"{total}%")
 
-    duration = st.number_input("AI image display duration (seconds)", 6, 20, int(settings["image_duration_seconds"]))
+    st.caption("Visual durations are controlled by the enabled Production Rules below; there is no global AI-image timing override.")
+    st.markdown("#### Ratio Accuracy")
+    ratio_strict = st.checkbox(
+        "Strict ratio mode",
+        value=bool(settings.get("ratio_strict_mode", False)),
+        help="When enabled, ratio validation requires near-exact duration percentages. Timestamp slot boundaries are never fabricated just to hit the ratio.",
+    )
+    ratio_tolerance = st.number_input(
+        "Ratio tolerance (percentage points)",
+        min_value=0.0,
+        max_value=25.0,
+        value=float(settings.get("ratio_tolerance_points", 5.0)),
+        step=0.5,
+        disabled=ratio_strict,
+        help="Example: target 40% with tolerance 5 allows 35–45%.",
+    )
+    if ratio_strict:
+        st.caption("STRICT mode active: allowed deviation is 0.01 percentage points. Real transcript boundaries remain authoritative.")
+    else:
+        st.caption(f"Tolerance mode active: each configured lane may deviate by ±{ratio_tolerance:g} percentage points.")
     options = ["Genspark Web", "Midjourney", "ChatGPT", "Other"]
     current_platform = settings.get("image_platform", "Genspark Web")
     platform = st.selectbox("Image platform", options, index=options.index(current_platform) if current_platform in options else 0)
 
-    voice_script = safe_read_text(project / "06a_voice_script.md")
-    if voice_script:
-        minutes = count_words(voice_script) / max(1, canonical_runtime(config).wpm)
-        estimated_images = round((minutes * 60 * ai_images / 100) / max(1, duration))
-        st.info(f"Estimated runtime: {minutes:.1f} minutes · Estimated AI images: approximately {estimated_images}")
+    master_timeline_path = project / "08_master_narration_timeline.csv"
+    ratio_slots_path = project / "08_ratio_allocated_slots.csv"
+    actual_runtime_seconds = 0.0
+    actual_segments = 0
+    if master_timeline_path.is_file():
+        try:
+            with master_timeline_path.open("r", encoding="utf-8-sig", newline="") as handle:
+                master_rows = list(csv.DictReader(handle))
+            if master_rows:
+                actual_segments = len(master_rows)
+                actual_runtime_seconds = max(
+                    parse_timeline_time(row.get("Actual Audio End", "0")) for row in master_rows
+                )
+        except (OSError, csv.Error, ValueError):
+            actual_runtime_seconds = 0.0
+    allocated_ai_slots = None
+    if ratio_slots_path.is_file():
+        try:
+            with ratio_slots_path.open("r", encoding="utf-8-sig", newline="") as handle:
+                allocated_rows = list(csv.DictReader(handle))
+            allocated_ai_slots = sum(
+                1 for row in allocated_rows
+                if str(row.get("target_lane") or row.get("recommended_asset_type") or "").strip().upper()
+                in {"AI_IMAGES", "AI_IMAGE", "IMAGE"}
+            )
+        except (OSError, csv.Error):
+            allocated_ai_slots = None
+    if actual_runtime_seconds > 0:
+        summary = f"Actual master runtime: {actual_runtime_seconds / 60:.2f} minutes · Transcript segments: {actual_segments}"
+        if allocated_ai_slots is not None:
+            summary += f" · Deterministically allocated AI-image slots: {allocated_ai_slots}"
+        st.info(summary)
     else:
-        st.info("Runtime estimate will appear when 06a_voice_script.md is available.")
+        st.info("Actual runtime will appear after 08_master_narration_timeline.csv is built from avatar transcription.")
 
     payload = {
         "avatar": avatar, "ai_images": ai_images, "stock": stock, "overlays": overlays,
-        "image_duration_seconds": duration, "image_platform": platform,
+        "image_platform": platform,
+        "ratio_tolerance_points": ratio_tolerance,
+        "ratio_strict_mode": ratio_strict,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
     }
     if st.button("Save Production Mix", disabled=not mix_valid):
@@ -1615,23 +1712,131 @@ def render_production() -> None:
     if not mix_valid:
         st.warning(mix_reason)
 
+    st.markdown("### Production Rule Controller")
+    st.caption("Project-level production timing rules. These values are GUI-controlled and are not hard-coded into the Production Planner.")
+    rules = load_rules(project)
+    st.caption("Add: use the + row at the bottom · Edit: change any cell · Delete: select row(s) and delete · Enable/Disable: toggle Enabled · Priority: larger number wins.")
+    edited_rules = st.data_editor(
+        pd.DataFrame(rules),
+        hide_index=True,
+        width="stretch",
+        num_rows="dynamic",
+        key=f"production_rules_editor_{project.name}",
+        column_config={
+            "id": st.column_config.TextColumn("Rule ID", required=True, help="Stable unique ID used by the rule engine."),
+            "name": st.column_config.TextColumn("Rule Name", required=True),
+            "category": st.column_config.SelectboxColumn("Category", options=["IMAGE", "AVATAR", "EVIDENCE", "B-ROLL", "TRANSITION", "CAPCUT"], required=True),
+            "scope": st.column_config.SelectboxColumn("Scope", options=["ALL", "HOOK", "BODY", "EVIDENCE", "CTA"], required=True),
+            "enabled": st.column_config.CheckboxColumn("Enabled", default=True),
+            "priority": st.column_config.NumberColumn("Priority", min_value=0, step=10, default=100, help="Higher priority is resolved first."),
+            "hard": st.column_config.CheckboxColumn("Hard Constraint", default=True),
+            "min_seconds": st.column_config.NumberColumn("Min Seconds", min_value=0.0, step=0.5, default=0.0),
+            "max_seconds": st.column_config.NumberColumn("Max Seconds", min_value=0.0, step=0.5, default=0.0),
+        },
+    )
+    rule_records = edited_rules.fillna("").to_dict("records")
+    rule_issues = validate_rules(rule_records)
+    enabled_count = sum(1 for rule in rule_records if bool(rule.get("enabled")))
+    hard_count = sum(1 for rule in rule_records if bool(rule.get("hard")))
+    rc1, rc2, rc3 = st.columns(3)
+    rc1.metric("Rules", len(rule_records))
+    rc2.metric("Enabled", enabled_count)
+    rc3.metric("Hard Constraints", hard_count)
+    if rule_issues:
+        st.warning("Production rules need correction before they can be saved.")
+        for issue in rule_issues:
+            st.caption(f"• {issue}")
+    if st.button("Save Production Rules", disabled=bool(rule_issues), key=f"save_production_rules_{project.name}"):
+        try:
+            saved_rules_path = save_rules(project, rule_records)
+        except (OSError, ValueError) as exc:
+            st.error(f"Production rules could not be saved: {exc}")
+        else:
+            st.success(f"Production rules saved: {saved_rules_path.name}")
+            st.rerun()
+
+    active_preview = sorted(
+        (rule for rule in rule_records if bool(rule.get("enabled"))),
+        key=lambda rule: (-int(rule.get("priority") or 0), str(rule.get("id") or "")),
+    )
+    with st.expander("Resolved Rule Priority Preview", expanded=False):
+        if active_preview:
+            st.dataframe(
+                pd.DataFrame(active_preview)[["priority", "id", "name", "category", "scope", "hard", "min_seconds", "max_seconds"]],
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.info("No production rules are enabled.")
+
+
+    st.markdown("### Timestamp-First Preflight")
+    st.caption("Runs the deterministic chain in order: saved rules → production slots → duration ratio allocation → Timeline QA. It does not call AI or generate assets.")
+    preflight_ready = master_timeline_path.is_file() and mix_valid and not bool(rule_issues)
+    if st.button("Build Slots + Ratio + Run Timeline QA", type="primary", disabled=not preflight_ready, key=f"timestamp_preflight_{project.name}"):
+        try:
+            saved_rules_path = save_rules(project, rule_records)
+            if not safe_write_text(settings_path, json.dumps(payload, indent=2) + "\n"):
+                raise OSError("Production Mix could not be saved.")
+            slots_path = build_production_slots(project, config)
+            ratio_path = allocate_ratio_targets(project)
+            qa_result = audit_timeline(project)
+        except Exception as exc:
+            st.error(f"Timestamp-first preflight failed: {exc}")
+        else:
+            st.session_state[f"timestamp_preflight_result_{project.name}"] = {
+                "status": qa_result.get("status", "UNKNOWN"),
+                "slots": slots_path.name,
+                "ratio": ratio_path.name,
+                "issues": qa_result.get("issues", []),
+            }
+            st.rerun()
+
+    preflight_result = st.session_state.get(f"timestamp_preflight_result_{project.name}")
+    if preflight_result:
+        if preflight_result.get("status") == "PASS":
+            st.success(
+                f"Timestamp-first preflight PASS · {preflight_result.get('slots')} → "
+                f"{preflight_result.get('ratio')} → Timeline QA PASS"
+            )
+        else:
+            st.error("Timestamp-first preflight completed, but Timeline QA FAILED.")
+            issues = preflight_result.get("issues") or []
+            if issues:
+                st.json(issues)
+
+
     cli_template = detect_codex_command()
     direct_enabled = bool(config.get("direct_run_enabled", True)) and bool(cli_template)
     generation_reasons = []
+    master_timeline_path = project / "08_master_narration_timeline.csv"
     if lock.locked:
         generation_reasons.append("Production Lock is not READY.")
+    if not master_timeline_path.is_file():
+        generation_reasons.append(
+            "Timestamp-first Master Narration Timeline is missing. Transcribe avatars and build "
+            "08_master_narration_timeline.csv before Production."
+        )
     if not mix_valid:
         generation_reasons.append(mix_reason)
+    qa_report_path = project / "timeline_qa_report.json"
+    try:
+        current_qa = json.loads(safe_read_text(qa_report_path) or "{}") if qa_report_path.is_file() else {}
+    except json.JSONDecodeError:
+        current_qa = {}
+    if current_qa.get("status") != "PASS":
+        generation_reasons.append("Timeline QA must PASS before Production visual planning or asset generation.")
     if not direct_enabled:
         generation_reasons.append("Codex CLI is unavailable or Direct Codex Run is disabled in configuration.")
 
-    st.markdown("### Generate Production Outputs")
+    st.markdown("### Generate Timestamp-First Production Outputs")
+    st.caption("Production planning is enabled only after actual avatar transcript timing exists. No estimated pre-avatar timing.")
     generate_disabled = bool(generation_reasons)
     if generation_reasons:
         for reason in generation_reasons:
             st.caption(f"• {reason}")
 
-    if st.button("Generate Production Plan", type="primary", disabled=generate_disabled, key=f"generate_production_{project.name}"):
+    if st.button("Generate Production Plan" + " From Actual Timestamps", type="primary", disabled=generate_disabled, key=f"generate_production_{project.name}"):
         if not safe_write_text(settings_path, json.dumps(payload, indent=2) + "\n"):
             st.error("Production generation was not started because production settings could not be saved.")
         else:
@@ -1672,11 +1877,24 @@ def render_production() -> None:
                         # Call the segmentation validator directly rather than relying on
                         # validate_canonical_rows(check_segmentation=...), so compatibility
                         # normalization cannot bypass Production-stage scene validity.
-                        segmentation_issues = production_sheet_segmentation_issues(project)
-                        if segmentation_issues:
+                        # Timestamp-first hard acceptance gate: AI may choose visuals only.
+                        # It may not alter deterministic slot count, timing, order, or transcript text.
+                        with (project / "07_production_sheet.csv").open(encoding="utf-8-sig", newline="") as handle:
+                            final_production_rows = list(csv.DictReader(handle))
+                        timing_lock_issues = validate_ai_timing_lock(project, final_production_rows)
+                        if timing_lock_issues:
                             source_ok = False
-                            source_issues = ["SCENE_SEGMENTATION_QA_FAILED"] + segmentation_issues
+                            source_issues = ["TIMING_LOCK_QA_FAILED"] + timing_lock_issues
+                        elif (project / "08_master_narration_timeline.csv").is_file():
+                            # Timestamp-first contract: after avatar transcription the immutable
+                            # Master Narration Timeline + deterministic ratio slots own narration,
+                            # order and timing. Legacy 06a/scene-ledger exact-excerpt gates are
+                            # intentionally NOT authoritative here; they predate transcription and
+                            # can reject a valid transcript-bound Production Sheet.
+                            source_ok = True
+                            source_issues = []
                         else:
+                            # Legacy projects still use the pre-avatar source/ledger contract.
                             ledger_issues = production_sheet_ledger_issues(project)
                             if ledger_issues:
                                 source_ok = False
@@ -1693,7 +1911,10 @@ def render_production() -> None:
                 if result.returncode == 0 and all(outputs.values()) and source_ok and (semantic_audit is None or semantic_audit.passed):
                     st.success("Production generation completed successfully.")
                 elif result.returncode == 0 and not source_ok:
-                    if source_issues and source_issues[0] == "SCENE_SEGMENTATION_QA_FAILED":
+                    if source_issues and source_issues[0] == "TIMING_LOCK_QA_FAILED":
+                        st.error("Production output rejected: AI changed Python-owned timestamp slots or locked transcript text.")
+                        display_issues = source_issues[1:]
+                    elif source_issues and source_issues[0] == "SCENE_SEGMENTATION_QA_FAILED":
                         st.error("Production output rejected: scene-boundary QA failed. The script source itself still matches 06a_voice_script.md.")
                         display_issues = source_issues[1:]
                     else:
@@ -1730,7 +1951,7 @@ def render_production() -> None:
 def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready: bool) -> None:
     st.markdown("---")
     st.markdown("## Avatar Timing Sync")
-    st.caption("Uses actual avatar speech timing after Production Lock. Approved narration files are read-only.")
+    st.caption("Timestamp-first workflow: transcribe avatars first, build the actual narration clock, then plan production. Approved narration files are read-only.")
 
     model_settings = transcription_settings(config)
     m1, m2, m3, m4 = st.columns(4)
@@ -1758,20 +1979,28 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     scenes = load_production_scenes(project / "07_production_sheet.csv")
     production_source_ok = True
     production_source_issues: list[str] = []
-    if scenes:
+    master_clock_path = project / "08_master_narration_timeline.csv"
+    # Timestamp-first projects deliberately build Production *after* avatar
+    # transcription. The resulting script_excerpt comes from the actual transcript,
+    # so it is not required to be an exact substring of 06a_voice_script.md.
+    # The locked master clock + timing-lock QA are the authority here.
+    timestamp_first_active = master_clock_path.is_file()
+    if scenes and not timestamp_first_active:
         production_source_ok, production_source_issues = validate_production_sheet_against_voice(project)
         if not production_source_ok:
             scenes = []
-            st.warning("07_production_sheet.csv does not match the current 06a_voice_script.md. Regenerate Production Plan before avatar timing.")
+            st.warning("Legacy Production Sheet does not match the current 06a_voice_script.md. Rebuild it before legacy avatar timing.")
             for issue in production_source_issues[:8]:
                 st.caption(f"• {issue}")
         else:
             segmentation_issues = production_sheet_segmentation_issues(project)
             if segmentation_issues:
                 scenes = []
-                st.error("Production sheet narration matches 06a_voice_script.md, but scene-boundary validation FAILED. Regenerate Production before Avatar Timing because transcript timing cannot repair invalid narration boundaries.")
+                st.error("Legacy Production Sheet narration matches 06a_voice_script.md, but scene-boundary validation FAILED.")
                 for issue in segmentation_issues[:6]:
                     st.caption(f"• {issue}")
+    elif scenes and timestamp_first_active:
+        st.caption("Timestamp-first Production Sheet is bound to 08_master_narration_timeline.csv; exact 06a script-excerpt matching is not used after transcription.")
     sequence = chunk_sequence_info(discovery)
     chunks_found = sequence.detected_count
     transcript_dir = project / "avatar_transcripts"
@@ -1785,7 +2014,22 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
 
     alignment_score = None
     timeline_status = "NOT GENERATED"
-    if manifest_path.is_file():
+    master_clock_status = "NOT GENERATED"
+    master_clock_runtime = None
+    master_clock_segments = 0
+    if timestamp_first_active:
+        try:
+            with master_clock_path.open("r", encoding="utf-8-sig", newline="") as handle:
+                master_rows = list(csv.DictReader(handle))
+            master_clock_segments = len(master_rows)
+            master_clock_runtime = max(
+                (parse_timeline_time(row.get("Actual Audio End", "0")) for row in master_rows),
+                default=0.0,
+            )
+            master_clock_status = "READY" if master_rows else "EMPTY"
+        except (OSError, TypeError, ValueError):
+            master_clock_status = "INVALID"
+    elif manifest_path.is_file():
         try:
             manifest = json.loads(safe_read_text(manifest_path) or "{}")
             alignment_score = float(manifest.get("alignment_score", 0.0))
@@ -1803,12 +2047,23 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     d2.metric("Total Avatar Duration", f"{inventory['total_duration'] / 60:.2f} min" if inventory["total_duration"] else "Pending")
     d3.metric("Total Production Scenes", len(scenes))
     d4.metric("Transcribed Chunks", f"{inventory['current']}/{chunks_found}" if chunks_found else "0")
-    e1, e2, e3 = st.columns(3)
-    e1.metric("Reused Cached Chunks", inventory["current"])
-    e2.metric("Alignment Score", f"{alignment_score:.1f}%" if alignment_score is not None else "Pending")
-    e3.metric("Timeline Status", timeline_status)
+    if timestamp_first_active:
+        e1, e2, e3, e4 = st.columns(4)
+        e1.metric("Reused Cached Chunks", inventory["current"])
+        e2.metric("Master Clock Status", master_clock_status)
+        e3.metric("Master Runtime", f"{master_clock_runtime / 60:.2f} min" if master_clock_runtime is not None else "Pending")
+        e4.metric("Master Segments", master_clock_segments)
+    else:
+        e1, e2, e3 = st.columns(3)
+        e1.metric("Reused Cached Chunks", inventory["current"])
+        e2.metric("Legacy Alignment Score", f"{alignment_score:.1f}%" if alignment_score is not None else "Pending")
+        e3.metric("Legacy Timeline Status", timeline_status)
 
-    blockers = avatar_sync_blockers(lock_ready, avatar_folder, scenes, discovery)
+    # Timestamp-first: transcription and the master narration clock no longer
+    # depend on a pre-existing Production Sheet.
+    blockers = avatar_sync_blockers(
+        lock_ready, avatar_folder, scenes, discovery, require_production_sheet=False
+    )
     if discovery:
         if discovery.unsupported:
             st.warning("Unsupported files: " + ", ".join(discovery.unsupported))
@@ -1899,7 +2154,50 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
     if not all_transcripts_present:
         timeline_blockers.append("Every avatar chunk must have current JSON and SRT outputs for the effective transcription model/settings.")
 
-    if st.button("Build Actual Timeline", disabled=bool(timeline_blockers), key=f"build_actual_timeline_{project.name}"):
+    st.markdown("### Timestamp-First Master Clock")
+    st.caption("Builds actual narration timing directly from avatar transcripts. 07_production_sheet.csv is not required.")
+    master_rebuild_confirmed = True
+    master_button_label = "Build Master Narration Timeline"
+    if timestamp_first_active:
+        st.warning("Master Clock is already READY. Rebuilding can change downstream slot boundaries and invalidates timestamp-first Production outputs. Rebuild only when avatar audio/transcripts intentionally changed.")
+        master_rebuild_confirmed = st.checkbox(
+            "I understand: rebuild the Master Clock and regenerate downstream Production outputs.",
+            value=False,
+            key=f"confirm_rebuild_master_clock_{project.name}",
+        )
+        master_button_label = "Rebuild Master Narration Timeline"
+    if st.button(
+        master_button_label,
+        disabled=bool(timeline_blockers) or not master_rebuild_confirmed,
+        key=f"build_master_narration_timeline_{project.name}",
+    ):
+        try:
+            with st.spinner("Building production-independent master narration clock..."):
+                master_result = build_master_narration_timeline(
+                    project, avatar_folder, config, transcript_dir=transcript_dir
+                )
+        except Exception as exc:
+            st.error(f"Master narration timeline failed: {type(exc).__name__}. Review avatar transcripts and approved voice script.")
+        else:
+            if master_result.success:
+                st.success(
+                    f"Master narration timeline generated with {master_result.rows} timestamped segments. "
+                    f"Alignment: {master_result.alignment_score:.1f}%"
+                )
+                st.caption("Timing authority: actual avatar transcript · Production Sheet dependency: NONE")
+            else:
+                st.error("Master narration timeline was not generated because validation failed.")
+                for item in master_result.missing_chunks + master_result.duplicate_chunks + master_result.warnings:
+                    st.caption(f"• {item}")
+            st.rerun()
+
+    # Legacy scene-aligned Actual Timeline remains available during migration,
+    # but unlike the master clock it still requires a valid Production Sheet.
+    legacy_timeline_blockers = list(timeline_blockers)
+    if not scenes:
+        legacy_timeline_blockers.append("07_production_sheet.csv is required for legacy scene-aligned Actual Timeline.")
+
+    if st.button("Build Actual Timeline (Legacy)", disabled=bool(legacy_timeline_blockers), key=f"build_actual_timeline_{project.name}"):
         try:
             with st.spinner("Aligning approved narration to actual spoken timing..."):
                 result = build_actual_timeline(project, avatar_folder, config, transcript_dir=transcript_dir)
@@ -1960,19 +2258,47 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
                 st.download_button(f"Download {path.name}", path.read_bytes(), file_name=path.name, mime=mime, key=f"download_avatar_timing_{project.name}_{path.name}")
 
     st.markdown("---")
-    st.markdown("## Timeline Builder & CapCut Export")
+    st.markdown("## Timeline Builder & CapCut-Ready Handoff")
+    st.caption("PIPELINE END: generates an editable CapCut Desktop project only. Final MP4 rendering/export is intentionally outside this automation.")
     capcut_dir = project / "capcut"
     capcut_manifest = capcut_dir / "timeline_manifest.json"
     capcut_report = capcut_dir / "export_report.md"
-    timeline_pass = timeline_path.is_file() and timeline_status == "PASS"
-    if not timeline_path.is_file():
-        st.caption("• 08_actual_timeline.csv must exist.")
-    if timeline_path.is_file() and timeline_status != "PASS":
-        st.caption("• Avatar Timeline status must be PASS.")
+    locked_timeline_path = project / "08_ratio_allocated_slots.csv"
+    qa_report_path = project / "timeline_qa_report.json"
+    try:
+        capcut_qa = json.loads(safe_read_text(qa_report_path) or "{}") if qa_report_path.is_file() else {}
+    except json.JSONDecodeError:
+        capcut_qa = {}
+    production_sheet_path = project / "07_production_sheet.csv"
+    capcut_timing_lock_issues: list[str] = []
+    if production_sheet_path.is_file() and locked_timeline_path.is_file():
+        try:
+            with production_sheet_path.open(encoding="utf-8-sig", newline="") as handle:
+                capcut_production_rows = list(csv.DictReader(handle))
+            capcut_timing_lock_issues = validate_ai_timing_lock(project, capcut_production_rows)
+        except (OSError, UnicodeError, csv.Error) as exc:
+            capcut_timing_lock_issues = [f"Could not validate 07_production_sheet.csv for CapCut handoff: {exc}"]
+
+    timeline_pass = (
+        locked_timeline_path.is_file()
+        and capcut_qa.get("status") == "PASS"
+        and production_sheet_path.is_file()
+        and not capcut_timing_lock_issues
+    )
+    if not locked_timeline_path.is_file():
+        st.caption("• 08_ratio_allocated_slots.csv must exist; legacy 08_actual_timeline.csv is not the CapCut production authority.")
+    if locked_timeline_path.is_file() and capcut_qa.get("status") != "PASS":
+        st.caption("• Timestamp-first Timeline QA must PASS before CapCut handoff.")
+    if not production_sheet_path.is_file():
+        st.caption("• Generate the timestamp-first Production Plan first; 07_production_sheet.csv supplies visual assignments only.")
+    elif capcut_timing_lock_issues:
+        st.error("CapCut handoff blocked: Production Plan no longer matches the Python-owned locked timestamp slots.")
+        for issue in capcut_timing_lock_issues[:10]:
+            st.caption(f"• {issue}")
     if st.button("Generate CapCut Project", type="primary", disabled=not timeline_pass, key=f"generate_capcut_{project.name}"):
         try:
-            with st.spinner("Building generic timeline manifest and CapCut Desktop project..."):
-                built = build_timeline_manifest(project, timeline_path)
+            with st.spinner("Building locked timestamp-first timeline manifest and editable CapCut-ready project..."):
+                built = build_timeline_manifest(project, locked_timeline_path)
                 exported = export_capcut_project(project, built.manifest_path)
         except (TimelineBuildError, CapCutExportError) as exc:
             st.error(f"CapCut export failed: {exc}")
@@ -2002,7 +2328,7 @@ def render_avatar_timing_sync(project: Path, config: dict[str, Any], lock_ready:
                 for warning in exported.warnings:
                     st.caption(f"• {warning}")
             else:
-                st.success(f"CapCut project generated: FINAL ASSETS READY. Base avatar duration {exported.duration_seconds:.3f} seconds.")
+                st.success(f"CAPCUT READY — editable project generated. Base avatar duration {exported.duration_seconds:.3f} seconds. Pipeline stops here; no final MP4 is rendered.")
             st.rerun()
 
     capcut_outputs = [capcut_manifest, capcut_dir / "asset_manifest.json", capcut_report,
@@ -2197,7 +2523,7 @@ def render_text_overlay_import() -> None:
     st.subheader("Text Overlay Import")
     project = project_selector("text_overlay_import")
     if not project: return
-    timeline_path = project / "08_actual_timeline.csv"
+    timeline_path = project / "08_master_narration_timeline.csv"
     artifact_path = project / ARTIFACT_NAME
     st.caption(f"Selected Project: {project.name}")
     st.caption(f"Authoritative Narration Source: {timeline_path}")

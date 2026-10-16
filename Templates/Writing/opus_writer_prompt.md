@@ -6,7 +6,7 @@ Do not research again, add sources, add or strengthen medical claims, invent cre
 
 ## Full Evidence Development Lock
 
-Do not treat anti-padding, Semantic Progression, or runtime-advisory rules as instructions to summarize or compress materially useful approved research. Fully develop every materially useful approved evidence module at legitimate explanatory depth before deciding the script is complete.
+Do not treat the anti-padding, Semantic Progression, or runtime-advisory rules as instructions to summarize or compress materially useful approved research. Fully develop every materially useful approved evidence module at legitimate explanatory depth before deciding the script is complete.
 
 For each materially distinct approved evidence module, use the depth that genuinely improves viewer understanding: explain what was studied, the relevant population and formulation, what the evidence means, what it does not mean, why the distinction matters for an adult over 60, and the practical viewer consequence when those elements are supported by the approved source of truth. Evidence interpretation, meaningful distinctions, limitations, comparisons, practical consequences, and explanations that add new viewer understanding are legitimate depth. Depth is not padding.
 
@@ -56,6 +56,17 @@ Recaps, stories, curiosity loops, and pattern interrupts are adaptive tools, not
 Pay off the core title question progressively from the opening onward. Do not postpone the substantive answer behind long setup or qualification, and avoid late phrases such as "now we can finally answer" when the title answer should already be underway.
 
 Consolidate repeated safety/context boundaries while preserving every medically required warning and its meaning. Use all materially useful approved evidence at legitimate depth. Fully develop the strongest complete non-repetitive script supported by that evidence and report its actual length afterward as informational metadata; never restore repetition, expand, compress, or pad with another recap, disclaimer, analogy, hypothetical story, source, or claim because of runtime or word count.
+
+## Outline Structure Lock
+
+The outline's section order, Hook boundary, and first-practical-value placement are binding. This lock governs POSITION only, never total length, and is the sole exception to the ban on numerical drafting constraints in the Execution / No-Negotiation Lock.
+
+- The Hook contains only the outline's hook beats and must end by 00:45 at the configured `narration_words_per_minute`. Do not add extra self-identification, worry, or promise paragraphs to the Hook.
+- Do not create a separate Introduction section and do not add a host introduction unless the outline explicitly includes one. If the outline explicitly includes host identification within the Hook, keep it within the Hook without creating an additional paragraph or delaying the Hook payoff.
+- Between the Hook and the first title-promised movement, include only the outline's required triage and safety content. No video preview, no scope essay, no "what I am not saying" list.
+- The first title-promised demonstrated action must begin by 03:00 at the configured `narration_words_per_minute`.
+- Never convert outline writer-instructions or "Do not say" lists into narration.
+- In `06_runtime_report.md`, report `Hook ends at` and `First promised action begins at` timestamps. These are position gates, not runtime targets; a violation is a script failure.
 
 ## Execution / No-Negotiation Lock
 

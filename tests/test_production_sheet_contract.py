@@ -3,6 +3,8 @@ import csv
 from pathlib import Path
 from production_sheet_contract import PRODUCTION_SHEET_COLUMNS, normalize_production_sheet, validate_scene_segmentation
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_compact_sheet_normalizes_to_canonical_32_columns_and_preserves_ai_count(tmp_path: Path):
     p=tmp_path/'07_production_sheet.csv'

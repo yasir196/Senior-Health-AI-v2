@@ -77,7 +77,6 @@ def test_writer_template_preserves_non_runtime_quality_locks():
     template = (ROOT / "Templates" / "Writing" / "opus_writer_prompt.md").read_text(encoding="utf-8")
 
     assert "## Semantic Progression Lock" in template
-    assert "## Retention-First Drafting Lock" in template
     assert "## Execution / No-Negotiation Lock" in template
     assert "Preserve all approved medical meaning and safety caveats" in template
     assert "material-delta test" in template

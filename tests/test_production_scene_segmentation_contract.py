@@ -29,10 +29,10 @@ def _row(excerpt: str, duration: str = "4.0", start: str = "0:00", end: str = "0
     return row
 
 
-def test_tiny_orphan_fragment_is_rejected():
+def test_tiny_orphan_fragment_is_reported_without_retiming_locked_slot():
     issues = validate_canonical_rows([_row("Just five.", duration="6", end="0:06")], PRODUCTION_SHEET_COLUMNS)
     assert any("only 2 words" in x for x in issues)
-    assert any("too long" in x for x in issues)
+    assert not any("too long" in x for x in issues)
 
 
 def test_intentional_emphasis_can_keep_tiny_fragment_with_plausible_duration():
@@ -41,22 +41,22 @@ def test_intentional_emphasis_can_keep_tiny_fragment_with_plausible_duration():
     assert not any("too long" in x for x in issues)
 
 
-def test_oversized_scene_is_rejected():
+def test_oversized_locked_transcript_slot_is_not_split_by_ai():
     excerpt = " ".join(["word"] * 40)
     issues = validate_canonical_rows([_row(excerpt, duration="12", end="0:12")], PRODUCTION_SHEET_COLUMNS)
-    assert any("40 words" in x and "split" in x for x in issues)
+    assert not any("40 words" in x and "split" in x for x in issues)
 
 
-def test_elapsed_time_must_not_be_hhmmss():
+def test_locked_timing_validation_is_owned_upstream_not_reinterpreted_as_provisional_scene_timing():
     issues = validate_canonical_rows([_row("This is a normal semantic scene with enough spoken words.", start="26:35:00", end="26:41:00")], PRODUCTION_SHEET_COLUMNS)
-    assert any("start_time must use elapsed M:SS" in x for x in issues)
-    assert any("end_time must use elapsed M:SS" in x for x in issues)
+    assert not any("start_time must use elapsed M:SS" in x for x in issues)
+    assert not any("end_time must use elapsed M:SS" in x for x in issues)
 
 
-def test_hard_upper_bound_rejects_33_word_normal_scene():
+def test_33_word_locked_transcript_slot_is_not_split_by_ai():
     excerpt = " ".join(["word"] * 33)
     issues = validate_canonical_rows([_row(excerpt, duration="10", end="0:10")], PRODUCTION_SHEET_COLUMNS)
-    assert any("33 words" in x and "split" in x for x in issues)
+    assert not any("33 words" in x and "split" in x for x in issues)
 
 
 def test_explicit_long_avatar_exception_allows_over_32_words():
@@ -73,12 +73,11 @@ def test_production_agent_has_no_fixed_5_to_8_second_scene_rule():
     assert "never from a fixed 5–8 second bucket" in text
 
 
-def test_production_agent_requires_zero_violation_final_segmentation_scan():
+def test_production_agent_preserves_locked_timestamp_authority():
     from pathlib import Path
 
     text = (Path(__file__).resolve().parents[1] / "Agents" / "Production_Agent.md").read_text(encoding="utf-8")
     assert "Final scene-segmentation hard gate before writing `07_production_sheet.csv`" in text
-    assert "Merge every <4-word orphan" in text
-    assert "split every >32-word normal scene" in text
-    assert "renumber scene IDs and recalculate all provisional start/end/duration values from narration length" in text
-    assert "Do not finalize the CSV while any ordinary tiny-fragment, >32-word, or narration-duration plausibility violation remains." in text
+    assert "never mutate a locked transcript slot" in text
+    assert "report a timing/segmentation violation for deterministic-controller repair" in text
+    assert "Never split, merge, add, remove, reorder, round, or resize locked slots" in text

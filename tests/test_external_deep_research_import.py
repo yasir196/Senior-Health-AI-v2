@@ -1,7 +1,9 @@
 from pathlib import Path
+import app
 
 
 ROOT = Path(__file__).resolve().parents[1]
+APP = ROOT / "app.py"
 
 
 def test_workflow_supports_verbatim_external_deep_research_import():
@@ -43,15 +45,31 @@ def test_deep_research_handover_package_is_available_from_research_stage():
     assert "LONG-FORM FIT: SUPPORTED" in text
     assert "LONG-FORM FIT: NOT RECOMMENDED" in text
     assert "Medical Gate 1 remains the authority for approved narration claims" in text
+    assert "immutable title and independent-research boundary acknowledgment" in text
+    assert "immutable title and Stage 1 boundary acknowledgment" not in text
 
 
-def test_deep_research_handover_embeds_stage1_and_immutable_title():
-    text = APP.read_text(encoding="utf-8")
+def test_deep_research_handover_keeps_title_but_not_stage1_verdict(tmp_path: Path):
+    project = tmp_path / "project"
+    project.mkdir()
 
-    assert 'resolve_title_anchor(project)' in text
-    assert 'safe_read_text(project / "01_topic_validation.md")' in text
-    assert "Do not rewrite, repair, replace, rank, or re-adjudicate the title." in text
-    assert "Return one complete research report suitable for direct paste" in text
+    title = "Immutable Test Title"
+    stage1_marker = "STAGE1_PRIVATE_VERDICT_MARKER"
+
+    (project / "project.json").write_text(
+        f'{{"anchor_title": "{title}"}}',
+        encoding="utf-8",
+    )
+    (project / "01_topic_validation.md").write_text(
+        stage1_marker,
+        encoding="utf-8",
+    )
+
+    package = app.build_deep_research_package(project)
+
+    assert title in package
+    assert "## Independent Research Boundary" in package
+    assert stage1_marker not in package
 
 
 def test_imported_source_verification_uses_authoritative_fallbacks_before_unverified():
