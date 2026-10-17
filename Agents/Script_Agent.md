@@ -66,6 +66,7 @@ When `writer_mode` is `"outline_to_script"`, stop after `05_script_outline.md`. 
 19. When `writer_mode` is `"outline_to_script"`, report exactly: `Outline complete. Use Templates/Writing/opus_writer_prompt.md together with 05_script_outline.md in Claude Opus. After Opus writes the script, save it as 06_final_script.md, then run Narrative QA.`
 20. Save the outline for the external writer handoff or, when internal writing is enabled, save the outline and final script for Medical Gate 2.
 21. The outline must be completely thumbnail-independent. Do not mention or emit thumbnail context, thumbnail text, thumbnail promise, thumbnail concepts, thumbnail prompts, packaging hooks, or thumbnail alignment anywhere in `05_script_outline.md`.
+22. Before saving `05_script_outline.md`, run the Spoken Safety Budget Audit below. If it fails, rewrite the outline before saving; never emit a knowingly noncompliant outline.
 
 ### Safety / Disclaimer Placement Rule
 
@@ -74,10 +75,22 @@ Medical boundaries are hard constraints on meaning. They are not separate narrat
 - The final narration may contain safety/disclaimer language in **no more than two locations total**.
 - **Location 1 — early global boundary (optional):** when medically needed, state one concise educational/non-diagnostic boundary near the opening. If it is not needed, omit it.
 - **Location 2 — consolidated safety boundary (optional):** when medically needed, use one later safety location to consolidate all necessary red flags, urgent escalation, medication-safety wording, and other essential viewer-safety cautions. This may be a dedicated safety section or the close, whichever best fits the topic. Do not create both a separate safety section and another closing disclaimer.
-- Claim-specific evidence qualifications that are necessary for factual accuracy may remain attached to the claim, but they must be written as precise evidence language rather than generic disclaimer language. They do not authorize repeating `not a diagnosis`, `not proof`, `not a verdict`, `do not self-diagnose`, `consult a professional`, or equivalent boilerplate.
-- Approved-claim boundaries, prohibited claims, and Medical Gate 1 wording limits must remain visible as writer constraints where needed, but they must not be converted into repeated spoken narration.
-- Examples, mini stories, recaps, transitions, section endings, and visual cues must not append generic medical disclaimers or restate a safety boundary already assigned to one of the two permitted locations.
-- Never remove or weaken genuinely necessary medical safety information. Consolidate it into the permitted safety location instead of scattering it through the narration.
+- Outside those two locations, section beats must state the positive approved information directly. Do not append or embed defensive clauses such as `not a diagnosis`, `not proof`, `does not prove`, `does not confirm`, `not a verdict`, `not a label`, `not a test`, `not a scoring system`, `do not self-diagnose`, `do not assume`, `do not guess`, `consult a professional`, or semantic equivalents merely to restate an MG1 boundary.
+- Claim-specific evidence qualifications necessary to keep a scientific statement accurate are allowed only when they add a concrete evidence limitation that cannot be moved to the non-spoken constraints. Example: population, dose, duration, study design, association-versus-causation, or scope of a named study. Phrase the limitation once and specifically; never convert it into generic viewer-facing disclaimer language.
+- Medication action restrictions and red-flag/escalation instructions are safety content. Unless the immediate section would otherwise instruct a dangerous action, keep these as non-spoken constraints and consolidate their narration into Location 2.
+- Approved-claim boundaries, prohibited claims, and Medical Gate 1 wording limits must remain visible in dedicated non-spoken constraint sections. Their presence there satisfies the handoff requirement; they do not need to be echoed inside each section beat, story, recap, pattern interrupt, visual cue, or final payoff.
+- Examples, mini stories, recaps, transitions, section endings, pattern interrupts, visual cues, and the final recap must not append generic medical disclaimers or restate a safety boundary already assigned to one of the two permitted locations.
+- Never remove or weaken genuinely necessary medical safety information. Preserve it as a constraint and consolidate viewer-facing safety language into the permitted safety location instead of scattering it through the narration.
+
+### Spoken Safety Budget Audit — Mandatory Before Save
+
+Audit the complete planned narration, not only the `Safety / Disclaimer Placement Plan` section.
+
+1. Mark every planned viewer-facing sentence or beat whose function is to say that a symptom, clue, category, checklist, story, timing pattern, or observation does not diagnose/prove/confirm/establish/identify a cause, or tells the viewer not to diagnose/assume/guess/treat/change medication/seek professional help.
+2. Group adjacent safety sentences in the same planned location as one location. Any later section, story, recap, pattern interrupt, visual cue, or ending that repeats or paraphrases that safety function counts as another location.
+3. The count must be **0, 1, or 2**. If it is greater than 2, move the underlying medical boundary to `Required Cautions — Non-Spoken Writer Constraints` / `Medical Cautions`, or consolidate essential viewer-facing safety into Location 2, then audit again.
+4. Do not save the outline until the count is at most 2.
+5. Scientific evidence limitations that state a concrete study-specific scope are not generic disclaimer locations, but generic phrases attached to them such as `this does not prove your diagnosis` are.
 
 ## 5. Retention Engine Rules
 
@@ -214,7 +227,8 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - No false credentials, medical-title framing, invented patients, clinic-practice claims, viewer emails, consultations, or private care stories.
 - CTA must use the channel brand when available: Evidence After 60.
 - The script must fulfill the immutable title promise without overpromising.
-- Safety/disclaimer narration may appear in no more than two locations total. Generic diagnosis/proof/verdict/referral boilerplate outside those locations is a validation defect; consolidate it without weakening the underlying medical constraint.
+- Safety/disclaimer narration may appear in no more than two locations total. The mandatory Spoken Safety Budget Audit must PASS before `05_script_outline.md` is saved. Generic diagnosis/proof/verdict/test/referral/medication boilerplate outside those locations is a validation defect even when phrased differently.
+- A section beat cannot be made compliant merely by changing `not a diagnosis` to `not proof`, `not a verdict`, `does not establish`, `does not confirm`, `not a label`, or similar wording. Semantic function, not wording, determines whether it consumes the safety budget.
 - `05_script_outline.md` must contain no host/presenter identity or credential metadata and no thumbnail context, promise, text, concept, prompt, packaging hook, or thumbnail-alignment field.
 - Default target runtime comes from `config.json`; current default is 18-23 minutes, aiming for approximately 20 minutes.
 - Scripts outside the configured target runtime range fail QA unless the user explicitly overrides the runtime target.
@@ -252,6 +266,7 @@ At the end of every generated script, after runtime metrics, produce a `Retentio
 - Brand CTA guidance using Evidence After 60
 - Compliance reminder: no false credentials, no invented patients, no clinic-practice claims, and no licensed-clinician framing; do not identify or describe the host/presenter in the outline
 - Safety/disclaimer placement plan with no more than two narrated locations total: one optional early global boundary and one optional consolidated safety location
+- Spoken Safety Budget Audit result: list only the 0–2 planned narrated safety locations and `PASS`; do not list non-spoken constraints as narration
 - Value function for every section: evidence, mechanism, myth, comparison, practical tip, warning, or recap
 - Estimated duration
 - Runtime target and whether the planned outline fits 18-23 minutes
@@ -288,7 +303,7 @@ When `writer_mode` is `"outline_to_script"`, `05_script_outline.md` must be comp
 
 ## 8. Context Discipline and Quality Notes
 
-The outline and script should carry all creative decisions forward without requiring Production_Agent to inspect research or title strategy files beyond its own Required Inputs. In `outline_to_script` mode, the outline must carry all creative decisions forward for the manual Claude Opus writing step and must be treated as the source of truth. Keep claims tied to the fact-check log and avoid adding fresh statistics or mechanisms while drafting. Strengthen retention through structure, contrast, open loops, pattern interrupts, visual rhythm, and clear payoff rather than unsafe urgency. The first 30 seconds should identify the viewer, the problem, the surprising angle, and the reason to keep watching, while leaving a curiosity gap open. Preserve necessary medical cautions as constraints and narrate them only within the maximum two permitted safety/disclaimer locations. Keep the script easy to narrate and easy to break into short production scenes. Maintain narration rhythm with varied sentence length, clear transitions, grounded examples, mini stories, and short micro recaps. Build length through useful substance only; if a passage repeats an earlier idea without adding evidence, mechanism, myth correction, comparison, practical tip, warning, recap value, or retention function, cut it.
+The outline and script should carry all creative decisions forward without requiring Production_Agent to inspect research or title strategy files beyond its own Required Inputs. In `outline_to_script` mode, the outline must carry all creative decisions forward for the manual Claude Opus writing step and must be treated as the source of truth. Keep claims tied to the fact-check log and avoid adding fresh statistics or mechanisms while drafting. Strengthen retention through structure, contrast, open loops, pattern interrupts, visual rhythm, and clear payoff rather than unsafe urgency. The first 30 seconds should identify the viewer, the problem, the surprising angle, and the reason to keep watching, while leaving a curiosity gap open. Preserve necessary medical cautions as non-spoken constraints and narrate them only within the maximum two permitted safety/disclaimer locations. Before saving, inspect every section beat, story, recap, pattern interrupt, visual cue, teaser, and final payoff for semantic disclaimer leakage and move any excess safety function back into the non-spoken constraints or the consolidated safety location. Keep the script easy to narrate and easy to break into short production scenes. Maintain narration rhythm with varied sentence length, clear transitions, grounded examples, mini stories, and short micro recaps. Build length through useful substance only; if a passage repeats an earlier idea without adding evidence, mechanism, myth correction, comparison, practical tip, warning, recap value, or retention function, cut it.
 
 ## 9. What This Agent Must Never Do
 
@@ -297,7 +312,8 @@ The outline and script should carry all creative decisions forward without requi
 - Do not automatically open Claude, call Claude, or create a runtime sub-agent.
 - Do not treat `Templates/Writing/` files as agents; they are manual reusable instructions only.
 - Do not hide or weaken medically necessary cautions.
-- Do not narrate safety/disclaimer language in more than two locations total.
+- Do not save an outline whose planned narration uses safety/disclaimer language in more than two locations total.
+- Do not evade the two-location budget by paraphrasing the same disclaimer as `not proof`, `not a verdict`, `does not establish`, `does not confirm`, `not a label`, `not a test`, or similar language.
 - Do not mechanically repeat the same disclaimer, diagnosis boundary, medication warning, or professional-referral language after it has already been consolidated.
 - Do not put host name, host title, presenter identity, presenter role, or host compliance metadata in `05_script_outline.md`.
 - Do not put thumbnail context, thumbnail text, thumbnail promise, thumbnail concepts, thumbnail prompts, packaging hooks, or thumbnail alignment in `05_script_outline.md`.
