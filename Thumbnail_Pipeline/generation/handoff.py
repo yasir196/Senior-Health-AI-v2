@@ -8,6 +8,7 @@ def build_generation_handoff(
     gate: dict[str, Any],
     *,
     selected_text: str | None = None,
+    selected_text_authorized: bool = False,
 ) -> dict[str, Any]:
     """Build a renderer-neutral handoff. No external generator is called here."""
     if not gate.get("approved"):
@@ -17,8 +18,8 @@ def build_generation_handoff(
 
     composition = composition_spec.get("composition") or {}
     candidates = [str(x) for x in (composition.get("thumbnail_text_candidates") or []) if str(x)]
-    if selected_text is not None and selected_text not in candidates:
-        raise ValueError("Selected thumbnail text must come from reviewed candidates.")
+    if selected_text is not None and selected_text not in candidates and not selected_text_authorized:
+        raise ValueError("Selected thumbnail text must come from reviewed candidates or explicit downstream authorization.")
 
     return {
         "schema_version": "0.5.0",
@@ -30,6 +31,9 @@ def build_generation_handoff(
             "text_placement": composition.get("text_placement"),
             "safe_zone": composition.get("safe_zone"),
             "thumbnail_text": selected_text,
+            "visual_subject_examples": composition.get("visual_subject_examples") or [],
+            "structural_signature": composition.get("structural_signature") or {},
+            "visual_strategy": composition.get("visual_strategy"),
         },
         "provenance": composition_spec.get("provenance") or {},
         "gate": {

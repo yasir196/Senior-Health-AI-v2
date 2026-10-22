@@ -93,6 +93,7 @@ Python owns narration boundaries before this agent performs asset planning.
    - Every final row must consume narration; visual-only rows are forbidden.
    - Do not use asset percentages to create or resize narration boundaries.
    - After grouping is frozen, renumber Production scenes sequentially and assign the configured asset mix by semantic fit.
+   - ASSET DISTRIBUTION CONTRACT: treat the CURRENT saved `production_settings.json` percentages as a TIMELINE distribution, not a quota-block allocation. Choose each scene by semantic fit first, then balance active configured lanes across the whole timeline; do not put all AVATAR scenes first, then all AI_IMAGE scenes, or create equivalent lane blocks. Keep each active mapped lane's final share within ±5 percentage points of its saved setting when mathematically possible after legal grouping. A 0% lane must not be forced merely to improve variety. `SPLIT_SCREEN` and `NO_ASSET_NEEDED` are legal non-mix scene types: use them when semantically appropriate, but do not count them in the configured AVATAR/AI_IMAGE/STOCK/OVERLAY share denominator. Do not mechanically tile a short repeating percentage pattern; preserve natural local runs when scene meaning calls for them, subject to the deterministic distribution validator.
    - Recalculate provisional timing from each final excerpt and use elapsed M:SS / MM:SS.
    - A complete sentence longer than ~25–27 words is a valid ledger/Production unit and is not an upstream revision reason. Do not edit 06a, the ledger, or the sheet merely to force a word target.
 5. Assign each scene one purpose: HOOK, PROBLEM, CREDIBILITY, MECHANISM, PROOF, SOLUTION, WARNING, RECAP, or CTA.
@@ -111,9 +112,16 @@ Python owns narration boundaries before this agent performs asset planning.
 12. Keep all on-screen text in the CSV, not inside generated image prompts.
 13. Create B-roll prompts for hooks, warnings, mechanisms, comparisons, food examples, and visual demonstrations.
 14. Score the production plan for Retention Potential, Visual Variety, Avatar Balance, Medical Safety, and Mobile Clarity.
-15. Save the production sheet, image prompts, and B-roll prompts.
-16. Recommend the next optional Visual Director dry run without running it: `python Tools/broll_collector.py --project Projects/<topic_slug> --dry-run`.
-17. Treat the B-roll Collector / Visual Director as a post-Production step. Production_Agent decides the initial scene visual modes, image prompt IDs, B-roll prompt IDs, motion, transitions, on-screen text, narrative planning fields, and recommended asset types. The Visual Director may later recommend visual-mode changes, but it must not rewrite narration or silently alter the production sheet.
+15. Before saving, run the FINAL NARRATION-PROVENANCE GATE:
+   - re-read the current `06a_voice_script.md` from disk and validate the final in-memory rows against that exact source.
+   - every final `script_excerpt` must be found as one contiguous excerpt of the approved narration in source order; no paraphrase, mutation, skip, duplication, or invented narration is allowed.
+   - Treat this as a generation hard gate, not a downstream warning. The equivalent checks are `production_sheet_contract.validate_scene_segmentation` plus the application's narration/ledger provenance validation.
+   - Acceptance requires provenance issues = 0 and segmentation/timing issues = 0; ordinary excerpts under 4 words = 0 and narration-duration plausibility violations = 0. Repair only legal grouping, then validate again.
+   - Never weaken or bypass downstream Avatar Timing source validation.
+16. Run the POST-ASSET SEGMENTATION GATE on the FINAL literal `script_excerpt` strings after asset assignment and all row fields are complete. Asset assignment must not alter narration boundaries. Do not accept a repeating percentage template as a reason to resize scenes. Continue only when the deterministic validator itself returns an empty issue list.
+17. Save the production sheet, image prompts, and B-roll prompts.
+18. Recommend the next optional Visual Director dry run without running it: `python Tools/broll_collector.py --project Projects/<topic_slug> --dry-run`.
+19. Treat the B-roll Collector / Visual Director as a post-Production step. Production_Agent decides the initial scene visual modes, image prompt IDs, B-roll prompt IDs, motion, transitions, on-screen text, narrative planning fields, and recommended asset types. The Visual Director may later recommend visual-mode changes, but it must not rewrite narration or silently alter the production sheet.
 
 ## 4B. Performance Profile and Optimization Rules
 

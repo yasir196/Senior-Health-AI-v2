@@ -57,6 +57,76 @@ class V2AnalyticsReadOnlyAdapter:
         with self._connect() as con:
             return [dict(r) for r in con.execute(sql).fetchall()]
 
+    def qualifying_thumbnail_layout_winners(self, *, min_ctr: float = 6.0, min_impressions: int = 5000) -> list[dict[str, Any]]:
+        """Return fresh channel-wide thumbnail layout winners from latest reliable evidence.
+
+        One latest evidence row per video is considered, so cumulative CTR snapshots are
+        never summed or double-counted. Winner eligibility is data-driven: CTR and
+        impressions must clear the supplied floors, and the thumbnail/version attribution
+        must be observed rather than historically uncertain.
+        """
+        rows = self.latest_thumbnail_evidence()
+        winners = [
+            r for r in rows
+            if float(r.get("ctr") or 0) >= float(min_ctr)
+            and float(r.get("impressions") or 0) >= float(min_impressions)
+            and r.get("attribution_status") == "post_snapshot_window_observed"
+            and str(r.get("composition_layout") or "").strip()
+        ]
+        winners.sort(
+            key=lambda r: (
+                -float(r.get("ctr") or 0),
+                -float(r.get("impressions") or 0),
+                str(r.get("analytics_id") or ""),
+            )
+        )
+        return winners
+
+    def hero_category_support(self) -> list[dict[str, Any]]:
+        """Return observed support for DB hero categories from latest thumbnail evidence."""
+        sql = """
+        SELECT a.hero_category AS hero_category, COUNT(DISTINCT e.analytics_id) AS video_count,
+               SUM(e.impressions) AS total_impressions
+        FROM thumbnail_ctr_evidence e
+        JOIN thumbnail_analyses a ON a.id=e.thumbnail_analysis_id
+        WHERE e.id=(SELECT e2.id FROM thumbnail_ctr_evidence e2
+                    WHERE e2.analytics_id=e.analytics_id
+                    ORDER BY e2.joined_at DESC,e2.id DESC LIMIT 1)
+          AND a.hero_category IS NOT NULL AND TRIM(a.hero_category)<>''
+          AND e.impressions IS NOT NULL AND e.impressions>0
+        GROUP BY a.hero_category
+        ORDER BY video_count DESC,total_impressions DESC,a.hero_category
+        """
+        with self._connect() as con:
+            return [dict(r) for r in con.execute(sql).fetchall()]
+
+    def latest_packaging_associations(self, hero_category: str | None = None) -> dict[str, Any]:
+        """Read latest persisted packaging associations without mutating V2."""
+        run_sql = """
+        SELECT id,computed_at,evidence_video_count,association_count,notes
+        FROM thumbnail_packaging_comparison_runs ORDER BY id DESC LIMIT 1
+        """
+        assoc_sql = """
+        SELECT run_id,computed_at,context_type,context_value,feature_name,feature_value,
+               video_count,total_impressions,weighted_ctr,comparison_video_count,
+               comparison_impressions,comparison_weighted_ctr,ctr_delta_points,
+               evidence_weight,maturity,association_direction,attribution_status,
+               interpretation,evidence_json
+        FROM thumbnail_packaging_associations
+        WHERE run_id=? AND (context_type='channel'
+          OR (context_type='hero_category' AND context_value=?))
+        ORDER BY CASE context_type WHEN 'hero_category' THEN 0 ELSE 1 END,
+                 evidence_weight DESC,video_count DESC,total_impressions DESC,id
+        """
+        with self._connect() as con:
+            run = con.execute(run_sql).fetchone()
+            if run is None:
+                return {"run": None, "hero_category": hero_category, "channel": [], "category": []}
+            rows = [dict(r) for r in con.execute(assoc_sql, (run["id"], hero_category or "")).fetchall()]
+        return {"run": dict(run), "hero_category": hero_category,
+                "channel": [r for r in rows if r["context_type"] == "channel"],
+                "category": [r for r in rows if r["context_type"] == "hero_category"]}
+
     def to_intelligence_rows(self) -> list[dict[str, Any]]:
         out=[]
         for r in self.latest_thumbnail_evidence():

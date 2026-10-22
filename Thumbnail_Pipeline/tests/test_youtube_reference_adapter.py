@@ -18,3 +18,25 @@ def test_new_project_context_combines_winners_and_youtube(monkeypatch):
     assert c["primary_learning_source"]=="channel_winners"
     assert c["youtube_reference_count"]==2
     assert c["immutable_title"]=="New title"
+
+
+class SparseTopicFake:
+    def __init__(self): self.queries=[]
+    def search(self,query,limit=12):
+        self.queries.append(query)
+        if len(self.queries)==1:
+            return [{"video_id":"seed","channel_name":"A","video_title":"Morning Shoulder Pain Guide","thumbnail_url_or_path":"seed","views":5000}]
+        return [
+            {"video_id":"b","channel_name":"B","video_title":"Shoulder Pain Gentle Moves","thumbnail_url_or_path":"b","views":6000},
+            {"video_id":"c","channel_name":"C","video_title":"Morning Shoulder Pain Relief","thumbnail_url_or_path":"c","views":7000},
+            {"video_id":"d","channel_name":"D","video_title":"Unrelated Cooking Video","thumbnail_url_or_path":"d","views":9000},
+        ]
+
+
+def test_sparse_single_exact_hit_expands_from_immutable_title_without_seeded_topic_words():
+    provider=SparseTopicFake()
+    rows=collect_references(provider=provider,topic="Morning Shoulder Pain Gentle Moves",category="",limit_per_query=12)
+    assert len(rows)>=3
+    assert len(provider.queries)>1
+    assert provider.queries[0]=="Morning Shoulder Pain Gentle Moves"
+    assert all("Cooking" not in str(x.get("video_title")) for x in rows)

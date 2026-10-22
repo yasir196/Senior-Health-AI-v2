@@ -29,3 +29,12 @@ def test_never_uploads_or_writes_v2():
     r=export_final_thumbnail_prompt(spec(),gate(),selected_text="START HERE")
     assert r["youtube_upload_executed"] is False
     assert r["v2_write_performed"] is False
+
+
+def test_exports_current_topic_visual_subject_evidence():
+    s=spec()
+    s["composition"]["visual_subject_examples"]=["coffee cup with cloves","cloves beside coffee cup"]
+    r=export_final_thumbnail_prompt(s,gate(),selected_text="START HERE")
+    assert "CURRENT-TOPIC VISUAL EVIDENCE:" in r["final_prompt"]
+    assert "coffee cup with cloves" in r["final_prompt"]
+    assert "unrelated historical cluster objects" in r["final_prompt"]
