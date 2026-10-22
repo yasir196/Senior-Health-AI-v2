@@ -1,3 +1,21 @@
+# Timestamp-First Master Production Override — HARD
+
+This override supersedes only legacy timing/allocation authority below; all existing visual-diversity, semantic-coherence, medical-safety, prompt-quality, narration-provenance, schema, asset-ID, and final QA gates remain active.
+
+- Required timing input is `Projects/<topic_slug>/08_ratio_allocated_slots.csv`, produced from the actual avatar transcript. Python owns every slot boundary.
+- For each locked slot, preserve source order and copy `start_time`, `end_time`, `duration_sec`, and `transcript_text` (as `script_excerpt`) exactly.
+- Never estimate timing from WPM, word count, fixed buckets, legacy 8-second/WPM/image-count/batching allocation rules, `06c_scene_ledger.csv`, or a prior Production Sheet.
+- Never split, merge, add, remove, reorder, round, or resize locked slots. Timing and slot count are immutable. AI chooses visuals only.
+- Any older instruction below that asks the agent to create, regroup, or recalculate timing is superseded by this override. In particular, scene timing comes from locked transcript slots, never from a fixed 5–8 second bucket.
+- `07_production_sheet.csv` remains authoritative for AI-image assignments after visual planning; `07_production_sheet.csv` decides which rows are `AI_IMAGE` for downstream prompt generation.
+- Treat this as a generation hard gate, not a downstream warning: run `production_sheet_contract.validate_scene_segmentation` as validation-only on the locked rows; ordinary excerpts under 4 words = 0 unless intentionally emphasized, and narration-duration plausibility violations = 0 only where the deterministic controller owns that check. If validation reports a locked-timing conflict, validate again after deterministic-controller repair; never retime it in AI.
+- FINAL NARRATION-PROVENANCE GATE: re-read the current `06a_voice_script.md` from disk and confirm every final `script_excerpt` is the exact locked `transcript_text`/approved spoken text for that slot. every final `script_excerpt` must be found as one contiguous excerpt in the approved spoken source; preserve provenance issues = 0 and segmentation/timing issues = 0 as acceptance language, while timing repair remains upstream. Never weaken or bypass downstream Avatar Timing source validation.
+- Production mix must follow the CURRENT saved `production_settings.json` and is a TIMELINE distribution, not a quota-block allocation: never implement it as all AVATAR scenes first, all AI_IMAGE scenes next, or any other quota block. Preserve locked chronological order. A 0% lane must not be forced into any slot. In the default tolerance mode, each enabled lane should remain within ±5 percentage points of its saved target unless the GUI config specifies another tolerance; strict mode uses the configured strict tolerance.
+- POST-ASSET SEGMENTATION GATE: validate the FINAL literal `script_excerpt` strings after asset assignment. This is validation-only and must not split, merge, rewrite, or retime locked rows; acceptance requires that the deterministic validator itself returns an empty issue list. Do not use a repeating percentage template for mix allocation.
+- Final scene-segmentation hard gate before writing `07_production_sheet.csv`: validate the locked slots rather than changing them; report a timing/segmentation violation for deterministic-controller repair instead of editing timestamps.
+- Legacy validator language such as "Merge every <4-word orphan" or "split every >32-word normal scene" is diagnostic only under timestamp-first mode: never mutate a locked transcript slot to satisfy it; route any conflict back to the deterministic controller.
+- Preserve the legacy FINAL NARRATION-PROVENANCE GATE and POST-ASSET SEGMENTATION GATE as validation-only gates. Production mix remains a TIMELINE distribution, not a quota-block allocation.
+
 # Production_Agent
 
 ## 1. Role

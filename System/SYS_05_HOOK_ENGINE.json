@@ -1,49 +1,65 @@
 {
   "module": "hook_engine",
-  "version": "1.0",
+  "version": "1.1",
+  "authority": "Synchronized with SYS_10_SCRIPT_STATE_MACHINE.json v1.3. If Knowledge/05_Hook_Blueprints.md disagrees with this file, this file is authoritative.",
+  "principle": "Optimize retention within medical accuracy. Where retention conflicts with safety or evidence boundaries, safety and evidence take priority. Withhold depth, never the core answer to the thumbnail promise.",
   "beat_schema": [
     { "beat": 1, "t_start": 0, "t_end": 5, "function": "pattern_interrupt", "required": true },
     { "beat": 2, "t_start": 5, "t_end": 15, "function": "self_identification", "required": true },
-    { "beat": 3, "t_start": 15, "t_end": 30, "function": "emotional_anchor", "required": true },
-    { "beat": 4, "t_start": 30, "t_end": 45, "function": "credibility_plus_statistic", "required": true },
-    { "beat": 5, "t_start": 45, "t_end": 60, "function": "open_loop_numbered_promise", "required": true }
+    { "beat": 3, "t_start": 15, "t_end": 30, "function": "thumbnail_answer_and_concrete_value", "required": true },
+    { "beat": 4, "t_start": 30, "t_end": 40, "function": "emotional_anchor_and_promise", "required": true },
+    { "beat": 5, "t_start": 40, "t_end": 45, "function": "credibility_or_forward_momentum", "required": false }
   ],
+  "beat_notes": {
+    "beat_3": "Answer the thumbnail promise and give one usable piece of value (e.g., name the moves or give one cue). Required within the first 30 seconds per SYS_10 I13.",
+    "beat_5": "Optional. Credibility may appear here or later in the body as an embedded beat. Any statistic must be approved in the fact-check log."
+  },
   "opening_strategies_ranked": [
-    { "id": "O1", "name": "physical_participation", "example": "Hold up your hand and look right now", "rank": 1 },
-    { "id": "O2", "name": "anti_authority_secret", "example": "Your doctor will never tell you this", "rank": 2 },
-    { "id": "O3", "name": "symptom_checklist", "example": "If you have even one of these four signs", "rank": 3 },
+    { "id": "O1", "name": "physical_participation", "example": "Hold up your hand and look right now", "rank": 1, "condition": "Only when the action is safe for the audience and within approved cautions." },
+    { "id": "O3", "name": "symptom_checklist", "example": "If you have even one of these four signs", "rank": 3, "condition": "Plain-language symptoms only; never diagnostic." },
     { "id": "O4", "name": "sensory_scenario", "example": "You squint at the menu and everything goes fuzzy", "rank": 4 },
-    { "id": "O5", "name": "narrative_cold_open", "example": "Picture this: a 71-year-old man, still mowing his lawn", "rank": 5 },
-    { "id": "O6", "name": "contrarian_belief_attack", "example": "If you think walking is the best exercise, listen closely", "rank": 6 }
+    { "id": "O5", "name": "narrative_cold_open", "example": "Picture this: a 71-year-old man, still mowing his lawn", "rank": 5, "condition": "Label as hypothetical; no fictional medical outcomes." },
+    { "id": "O6", "name": "contrarian_belief_attack", "example": "If you think walking is the best exercise, listen closely", "rank": 6, "condition": "The correction must be supported by approved evidence." }
   ],
+  "opening_strategies_note": "O2 (anti_authority_secret) was removed in v1.1. IDs and ranks are preserved; the gap at rank 2 is intentional.",
   "curiosity_loop_techniques": [
-    "withheld_payoff_tease",
+    "deferred_depth_tease",
     "numbered_promise",
-    "countdown_structure",
-    "body_as_oracle_claim"
+    "countdown_structure"
   ],
   "pattern_interrupts": [
     "direct_command",
     "unexpected_apology",
-    "shocking_statistic",
-    "threat_during_safe_activity"
+    "myth_vs_reality",
+    "approved_surprising_fact"
   ],
   "retention_methods": [
     "delay_greeting_until_after_tension",
     "short_punchy_lines",
     "symptom_checklist",
-    "reopen_loop_every_60_90s",
+    "adaptive_loops_close_every_loop",
     "restate_strongest_payoff_near_end"
   ],
   "failure_modes": [
     "soft_greeting_before_tension",
     "vague_statistic",
-    "benefit_without_gap"
+    "benefit_without_gap",
+    "withholding_thumbnail_answer",
+    "unapproved_statistic",
+    "scare_tactics",
+    "anti_authority_framing"
+  ],
+  "prohibited": [
+    "anti_authority_secret",
+    "shocking_statistic",
+    "threat_during_safe_activity",
+    "body_as_oracle_claim"
   ],
   "hook_rules": [
     { "id": "HR1", "rule": "credentials_after_tension", "severity": "block" },
-    { "id": "HR2", "rule": "exactly_one_hard_statistic", "severity": "warn" },
-    { "id": "HR3", "rule": "villain_is_system_not_viewer", "severity": "warn" },
-    { "id": "HR4", "rule": "end_on_open_loop", "severity": "block" }
+    { "id": "HR2", "rule": "statistic_only_if_approved_in_fact_check_log", "severity": "block", "note": "Replaces exactly_one_hard_statistic. A statistic is optional; an unapproved statistic is never allowed." },
+    { "id": "HR3", "rule": "villain_is_system_not_viewer", "severity": "warn", "note": "Never frame clinicians or medical care as the villain." },
+    { "id": "HR4", "rule": "end_on_forward_momentum", "severity": "warn", "note": "Replaces end_on_open_loop. Give a reason to keep watching without withholding the thumbnail answer." },
+    { "id": "HR5", "rule": "thumbnail_answer_within_first_30_seconds", "severity": "block", "note": "Mirrors SYS_10 I13 and qa_failure_rules.thumbnail_answer_withheld_from_opening." }
   ]
 }

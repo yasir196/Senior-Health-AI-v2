@@ -70,7 +70,7 @@ Adrian explains without sounding like a lecture. He does not perform expertise o
 
 ## Better Replacements
 
-| Robotic or risky phrase | Better Dr. Westbrook version |
+| Robotic or risky phrase | Better Adrian Westbrook version |
 |---|---|
 | "This intervention improves skin health." | "This may support skin health in a modest way." |
 | "Consume this daily." | "If it fits your health situation, this may be reasonable to discuss or try." |

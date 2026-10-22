@@ -27,7 +27,7 @@ PASS_VALUES = {"PASS", "PASSED", "APPROVED", "READY"}
 CONDITIONAL_VALUES = {"PASS WITH SUGGESTIONS", "PASS WITH REVISIONS", "PASS WITH REQUIRED EDITS", "CONDITIONAL PASS", "PASS_WITH_SUGGESTIONS"}
 FAIL_VALUES = {"FAIL", "FAILED", "BLOCKED", "REJECTED"}
 ALLOWED_SCRIPT_EXTENSIONS = {".md", ".txt"}
-DEFAULT_REQUIRED_HEADINGS = ["hook", "introduction", "main content", "conclusion"]
+DEFAULT_REQUIRED_HEADINGS = ["hook", "main content", "conclusion"]
 QA_REPORTS = {
     "Narrative QA": "14_narrative_qa.md", "Medical Gate 2": "15_medical_gate_2.md",
     "Speech Optimizer": "06b_voice_checklist.md", "Production Cleaner": "production_clean_report.md",
@@ -2303,6 +2303,30 @@ def detect_script_safety_signals(text: str) -> tuple[bool, bool]:
     medical_safety_present = any(re.search(pattern, text, re.I) for pattern in MEDICAL_SAFETY_PATTERNS)
     return cta_present, medical_safety_present
 
+def _script_section_body(text: str, heading_name: str) -> str:
+    """Return one exact Markdown section body, stopping at the next heading."""
+    match = re.search(
+        rf"(?im)^#{{1,6}}\s+{re.escape(heading_name)}\s*$",
+        text,
+    )
+    if not match:
+        return ""
+
+    next_heading = re.search(r"(?m)^#{1,6}\s+.+?\s*$", text[match.end():])
+    end = match.end() + next_heading.start() if next_heading else len(text)
+    return text[match.end():end]
+
+
+def _spoken_section_words(text: str, heading_name: str) -> int:
+    """Count spoken words in a Markdown section, excluding production directions."""
+    body = _script_section_body(text, heading_name)
+    body = re.sub(
+        r"(?is)\[\s*(?:visual\s+cue|b-?roll|on[- ]screen|graphic|image|scene|editor(?:'s)?\s+note|qa\s+note|production\s+note)\s*:[^\]]*\]",
+        "",
+        body,
+    )
+    return count_words(body)
+
 def validate_final_script(project: Path, config: dict[str, Any]) -> ScriptValidation:
     path = project / "06_final_script.md"; exists = path.is_file() and path.stat().st_size > 0; text = read_text(path) if exists else ""
     profile = canonical_runtime(config)
@@ -2318,6 +2342,18 @@ def validate_final_script(project: Path, config: dict[str, Any]) -> ScriptValida
     if exists and words < int(config.get("writer_minimum_words", 300)): issues.append(f"Script is too short ({words} words).")
     if exists and not found: issues.append("Script has no Markdown headings.")
     if missing: issues.append("Missing required headings: " + ", ".join(missing) + ".")
+    if exists and any(heading == "introduction" for heading in found):
+        issues.append(
+            "Standalone Introduction heading is not allowed; optional host identification must stay inside the Hook."
+        )
+
+    if exists and "hook" in found:
+        hook_words = _spoken_section_words(text, "Hook")
+        hook_seconds = (hook_words / max(1, wpm)) * 60.0
+        if hook_seconds > 45.0:
+            issues.append(
+                f"Hook exceeds 45 seconds ({hook_words} spoken words at {wpm} WPM = {hook_seconds:.1f}s)."
+            )
     if exists and re.search(r"(?im)^#{1,6}\s*(runtime metrics|retention report|medical review|humanization report|config values used)", text): issues.append("QA/report content must be stored in separate 06_* report files, not 06_final_script.md.")
     if exists and not (cta_present or medical_safety_present): issues.append("No CTA or medical-safety language was detected.")
     return ScriptValidation(exists and not issues, exists, words, runtime, profile.words_min, profile.words_max, runtime_min, runtime_max, missing, issues, text[:12000], cta_present, medical_safety_present)

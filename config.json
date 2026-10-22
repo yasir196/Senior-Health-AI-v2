@@ -74,7 +74,6 @@
   "writer_minimum_words": 300,
   "writer_required_headings": [
     "Hook",
-    "Introduction",
     "Main Content",
     "Conclusion"
   ],

@@ -14,18 +14,16 @@ from v31_core import (
 
 
 def valid_script(words_per_section: int = 80) -> str:
-    filler = " ".join(["healthy"] * words_per_section)
+    hook_filler = " ".join(["healthy"] * words_per_section)
+    body_filler = " ".join(["healthy"] * max(words_per_section, 120))
     return f"""# Hook
-{filler}
-
-# Introduction
-{filler}
+{hook_filler}
 
 # Main Content
-{filler}
+{body_filler}
 
 # Conclusion
-{filler}
+{body_filler}
 
 Please talk to your doctor and subscribe for more evidence-based education.
 """
@@ -71,7 +69,7 @@ def base_config() -> dict:
     return {
         "speech_optimizer_required_for_production": True,
         "writer_minimum_words": 300,
-        "writer_required_headings": ["hook", "introduction", "main content", "conclusion"],
+        "writer_required_headings": ["hook", "main content", "conclusion"],
         "narration_words_per_minute": 145,
         "target_runtime_range_minutes": [23, 28],
     }
@@ -129,17 +127,70 @@ def test_missing_script_is_invalid_and_blocks_narrative_qa(tmp_path: Path):
     assert not ready
     assert any("missing" in reason.lower() for reason in reasons)
 
-
-def script_with_swollen_legs_safety_and_cta() -> str:
-    filler = " ".join(["healthy"] * 80)
-    return f"""# Hook
-{filler}
-
-# Introduction
-{filler}
+def test_final_script_rejects_hook_over_45_seconds(tmp_path: Path):
+    hook = " ".join(["healthy"] * 130)
+    script = f"""# Hook
+{hook}
 
 # Main Content
-{filler}
+{" ".join(["healthy"] * 100)}
+
+# Conclusion
+{" ".join(["healthy"] * 100)}
+
+Please talk to your doctor and subscribe for more evidence-based education.
+"""
+    (tmp_path / "06_final_script.md").write_text(script, encoding="utf-8")
+
+    validation = validate_final_script(
+        tmp_path,
+        {**base_config(), "narration_words_per_minute": 169},
+    )
+
+    assert not validation.valid
+    assert any("hook" in issue.lower() and "45" in issue for issue in validation.issues)
+
+
+def test_final_script_rejects_standalone_introduction_heading(tmp_path: Path):
+    script = valid_script().replace(
+        "# Main Content",
+        "# Introduction\nI am Adrian Westbrook, a health educator.\n\n# Main Content",
+    )
+    (tmp_path / "06_final_script.md").write_text(script, encoding="utf-8")
+
+    validation = validate_final_script(tmp_path, base_config())
+
+    assert not validation.valid
+    assert any("introduction" in issue.lower() for issue in validation.issues)
+
+
+def test_final_script_accepts_short_hook_without_introduction(tmp_path: Path):
+    script = f"""# Hook
+{" ".join(["healthy"] * 80)}
+
+# Main Content
+{" ".join(["healthy"] * 140)}
+
+# Conclusion
+{" ".join(["healthy"] * 100)}
+
+Please talk to your doctor and subscribe for more evidence-based education.
+"""
+    (tmp_path / "06_final_script.md").write_text(script, encoding="utf-8")
+
+    validation = validate_final_script(tmp_path, base_config())
+
+    assert validation.valid
+
+
+def script_with_swollen_legs_safety_and_cta() -> str:
+    hook_filler = " ".join(["healthy"] * 80)
+    body_filler = " ".join(["healthy"] * 120)
+    return f"""# Hook
+{hook_filler}
+
+# Main Content
+{body_filler}
 
 Do not try movements for new or worsening one-sided swelling; seek prompt medical assessment.
 Call emergency services for chest pain or shortness of breath.
@@ -147,7 +198,7 @@ Stop movement for pain, dizziness, or breathlessness.
 Do not start, stop, skip, or change medicine or a diuretic on your own because of swelling.
 
 # Conclusion
-{filler}
+{body_filler}
 
 If you value calm, evidence-based health guidance for life after 60, consider subscribing to Evidence After 60.
 """
@@ -545,8 +596,12 @@ def test_production_outputs_reports_expected_files(tmp_path):
 def test_production_page_uses_shared_word_count_and_generation_action():
     app_source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
     production_source = app_source.split("def render_production() -> None:", 1)[1].split("def load_production_sheet", 1)[0]
-    assert "count_words(voice_script)" in production_source
-    assert "word_count(" not in production_source
+    # Timestamp-first Production must not derive runtime/image counts from script
+    # word count. Actual avatar transcript timing is the sole runtime authority.
+    assert "count_words(voice_script)" not in production_source
+    assert "Estimated runtime:" not in production_source
+    assert "Actual master runtime:" in production_source
+    assert '08_master_narration_timeline.csv' in production_source
     assert '"Generate Production Plan"' in production_source
     assert "run_external_command(cli_template, prompt, project)" in production_source
     assert "disabled=generate_disabled" in production_source
